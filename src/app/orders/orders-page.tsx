@@ -31,7 +31,7 @@ export default function OrdersPage({
 	const [openModal, setOpenModal] = useState(false);
 	const [selectedOrder, setSelectedOrder] = useState<DBOrder | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
-	console.log(orders);
+
 	useEffect(() => {
 		const interval = setInterval(() => {
 			getOrders().then(setOrders);
