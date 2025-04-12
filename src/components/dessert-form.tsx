@@ -22,19 +22,19 @@ const formSchema = z.object({
 	price: z.number().min(0, "Price must be a valid number"),
 });
 
-type ProductFormProps = {
+type DessertFormProps = {
 	initialData?: Dessert;
 	onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>;
 	onDelete?: () => Promise<void>;
 	isLoading?: boolean;
 };
 
-export function ProductForm({
+export function DessertForm({
 	initialData,
 	onSubmit,
 	onDelete,
 	isLoading,
-}: ProductFormProps) {
+}: DessertFormProps) {
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
 		defaultValues: initialData || { name: "", description: "", price: 0 },
@@ -98,10 +98,10 @@ export function ProductForm({
 						onClick={onDelete}
 						disabled={isLoading}
 					>
-						Delete Product
+						Delete Dessert
 					</Button>
 					<Button type="submit" className="flex-1" disabled={isLoading}>
-						{initialData ? "Update Product" : "Add Product"}
+						{initialData ? "Update Dessert" : "Add Dessert"}
 					</Button>
 				</div>
 			</form>

@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/card";
 import type { Dessert } from "@/lib/types";
 
-interface ProductListProps {
+interface DessertListProps {
 	desserts: Dessert[];
-	addToCart: (product: Dessert) => void;
+	addToCart: (dessert: Dessert) => void;
 }
 
-export function ProductList({ desserts, addToCart }: ProductListProps) {
+export function DessertList({ desserts, addToCart }: DessertListProps) {
 	return (
 		<div className="flex flex-col gap-3">
 			{desserts.map((dessert) => (

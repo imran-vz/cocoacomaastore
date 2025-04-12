@@ -6,8 +6,8 @@ import { Minus, Plus, Trash2 } from "lucide-react";
 
 interface CartProps {
 	cart: CartItem[];
-	updateQuantity: (productId: number, quantity: number) => void;
-	removeFromCart: (productId: number) => void;
+	updateQuantity: (dessertId: number, quantity: number) => void;
+	removeFromCart: (dessertId: number) => void;
 	total: number;
 }
 

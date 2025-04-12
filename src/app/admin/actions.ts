@@ -5,11 +5,11 @@ import { dessertsTable } from "@/db/schema";
 import type { Dessert } from "@/lib/types";
 import { eq } from "drizzle-orm";
 
-export async function getProducts() {
+export async function getDesserts() {
 	return await db.select().from(dessertsTable).orderBy(dessertsTable.id);
 }
 
-export async function createProduct(data: Omit<Dessert, "id">) {
+export async function createDessert(data: Omit<Dessert, "id">) {
 	return await db.insert(dessertsTable).values({
 		name: data.name,
 		description: data.description,
@@ -17,7 +17,7 @@ export async function createProduct(data: Omit<Dessert, "id">) {
 	});
 }
 
-export async function updateProduct(id: number, data: Omit<Dessert, "id">) {
+export async function updateDessert(id: number, data: Omit<Dessert, "id">) {
 	await db
 		.update(dessertsTable)
 		.set({
@@ -28,6 +28,6 @@ export async function updateProduct(id: number, data: Omit<Dessert, "id">) {
 		.where(eq(dessertsTable.id, id));
 }
 
-export async function deleteProduct(id: number) {
+export async function deleteDessert(id: number) {
 	await db.delete(dessertsTable).where(eq(dessertsTable.id, id));
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { ProductForm } from "@/components/product-form";
+import { DessertForm } from "@/components/dessert-form";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -20,20 +20,20 @@ import type { Dessert } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-	createProduct,
-	deleteProduct,
-	getProducts,
-	updateProduct,
+	createDessert,
+	deleteDessert,
+	getDesserts,
+	updateDessert,
 } from "./actions";
 
 export default function AdminPage() {
-	const [products, setProducts] = useState<Dessert[]>([]);
-	const [editingProduct, setEditingProduct] = useState<Dessert | null>(null);
+	const [desserts, setDesserts] = useState<Dessert[]>([]);
+	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
 	const [openModal, setOpenModal] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 
 	useEffect(() => {
-		getProducts().then(setProducts);
+		getDesserts().then(setDesserts);
 	}, []);
 
 	const handleOpenModal = () => {
@@ -47,39 +47,39 @@ export default function AdminPage() {
 	const handleSubmit = async (values: Omit<Dessert, "id">) => {
 		setIsLoading(true);
 		try {
-			if (editingProduct) {
-				await updateProduct(editingProduct.id, values);
+			if (editingDessert) {
+				await updateDessert(editingDessert.id, values);
 			} else {
-				await createProduct(values);
+				await createDessert(values);
 			}
 
-			// Refresh products
-			const updatedProducts = await getProducts();
-			setProducts(updatedProducts);
-			setEditingProduct(null);
+			// Refresh desserts
+			const updatedDesserts = await getDesserts();
+			setDesserts(updatedDesserts);
+			setEditingDessert(null);
 			handleCloseModal();
-			toast.success("Product saved successfully");
+			toast.success("Dessert saved successfully");
 		} catch (error) {
-			toast.error("Failed to save product");
-			console.error("Failed to save product:", error);
+			toast.error("Failed to save dessert");
+			console.error("Failed to save dessert:", error);
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
 	const handleDelete = async () => {
-		if (editingProduct) {
+		if (editingDessert) {
 			try {
 				setIsLoading(true);
-				await deleteProduct(editingProduct.id);
-				const updatedProducts = await getProducts();
-				setProducts(updatedProducts);
-				setEditingProduct(null);
+				await deleteDessert(editingDessert.id);
+				const updatedDesserts = await getDesserts();
+				setDesserts(updatedDesserts);
+				setEditingDessert(null);
 				handleCloseModal();
-				toast.success("Product deleted successfully");
+				toast.success("Dessert deleted successfully");
 			} catch (error) {
-				toast.error("Failed to delete product");
-				console.error("Failed to delete product:", error);
+				toast.error("Failed to delete dessert");
+				console.error("Failed to delete dessert:", error);
 			} finally {
 				setIsLoading(false);
 			}
@@ -93,12 +93,12 @@ export default function AdminPage() {
 					<DialogContent>
 						<DialogHeader>
 							<DialogTitle>
-								{editingProduct ? "Edit Product" : "Add New Product"}
+								{editingDessert ? "Edit Dessert" : "Add New Dessert"}
 							</DialogTitle>
 						</DialogHeader>
-						<ProductForm
-							key={editingProduct?.id}
-							initialData={editingProduct ?? undefined}
+						<DessertForm
+							key={editingDessert?.id}
+							initialData={editingDessert ?? undefined}
 							onSubmit={handleSubmit}
 							onDelete={handleDelete}
 							isLoading={isLoading}
@@ -108,14 +108,14 @@ export default function AdminPage() {
 
 				<div>
 					<div className="flex justify-between items-center">
-						<h2 className="text-2xl font-bold mb-4">Products</h2>
+						<h2 className="text-2xl font-bold mb-4">Desserts</h2>
 						<Button
 							onClick={() => {
-								setEditingProduct(null);
+								setEditingDessert(null);
 								handleOpenModal();
 							}}
 						>
-							Add Product
+							Add Dessert
 						</Button>
 					</div>
 					<div className="overflow-x-auto max-w-screen">
@@ -129,20 +129,20 @@ export default function AdminPage() {
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{products.map((product) => (
-									<TableRow key={product.id}>
+								{desserts.map((dessert) => (
+									<TableRow key={dessert.id}>
 										<TableCell className="font-medium max-w-[130px] truncate">
-											{product.name}
+											{dessert.name}
 										</TableCell>
 										<TableCell className="break-words max-w-[100px] truncate">
-											{product.description}
+											{dessert.description}
 										</TableCell>
-										<TableCell>{product.price.toFixed(2)}</TableCell>
+										<TableCell>{dessert.price.toFixed(2)}</TableCell>
 										<TableCell>
 											<Button
 												variant="outline"
 												onClick={() => {
-													setEditingProduct(product);
+													setEditingDessert(dessert);
 													handleOpenModal();
 												}}
 											>

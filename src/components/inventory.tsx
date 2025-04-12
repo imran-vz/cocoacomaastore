@@ -1,7 +1,7 @@
 "use client";
 
 import { Cart } from "@/components/cart";
-import { ProductList } from "@/components/product-list";
+import { DessertList } from "@/components/dessert-list";
 import { Receipt } from "@/components/receipt";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CartItem, Dessert } from "@/lib/types";
@@ -11,19 +11,19 @@ import { useState } from "react";
 export function Inventory({ desserts }: { desserts: Dessert[] }) {
 	const [cart, setCart] = useState<CartItem[]>([]);
 
-	const addToCart = (product: Dessert) => {
-		const existingProduct = cart.find((item) => item.id === product.id);
+	const addToCart = (dessert: Dessert) => {
+		const existingDessert = cart.find((item) => item.id === dessert.id);
 
-		if (existingProduct) {
+		if (existingDessert) {
 			setCart(
 				cart.map((item) =>
-					item.id === product.id
+					item.id === dessert.id
 						? { ...item, quantity: item.quantity + 1 }
 						: item,
 				),
 			);
 		} else {
-			setCart([...cart, { ...product, quantity: 1 }]);
+			setCart([...cart, { ...dessert, quantity: 1 }]);
 		}
 	};
 
@@ -64,7 +64,7 @@ export function Inventory({ desserts }: { desserts: Dessert[] }) {
 						</span>
 					</div>
 				</div>
-				<ProductList desserts={desserts} addToCart={addToCart} />
+				<DessertList desserts={desserts} addToCart={addToCart} />
 			</div>
 
 			<Card>
