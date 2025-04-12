@@ -90,7 +90,7 @@ export function Inventory({ desserts }: { desserts: Dessert[] }) {
 						<Receipt cart={cart} total={total} clearCart={clearCart} />
 					) : (
 						<div className="text-center py-6 text-muted-foreground">
-							<p>Add items to cart and checkout to see receipt</p>
+							<p>Add items to cart to see receipt</p>
 						</div>
 					)}
 				</CardContent>
