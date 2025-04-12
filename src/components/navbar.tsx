@@ -46,7 +46,7 @@ export default function Navbar() {
 									<SheetClose asChild>
 										<Link
 											className="text-2xl font-medium text-slate-900 underline "
-											href="/admin"
+											href="/desserts"
 										>
 											Desserts
 										</Link>

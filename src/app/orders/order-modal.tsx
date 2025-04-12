@@ -7,10 +7,10 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import type { Order } from "@/lib/types";
+import type { DBOrder } from "./orders-page";
 
 interface OrderModalProps {
-	order: Order;
+	order: DBOrder;
 	onClose: () => void;
 	done: () => void;
 	isLoading: boolean;
@@ -28,7 +28,7 @@ export default function OrderModal({
 			<DialogContent>
 				<DialogHeader className="text-left">
 					<DialogTitle>Order Details</DialogTitle>
-					<DialogDescription>
+					<DialogDescription asChild>
 						<div className="space-y-1">
 							<p className="mt-1 text-sm text-gray-500">
 								<span className="font-bold">Customer:</span>{" "}
@@ -66,9 +66,9 @@ export default function OrderModal({
 							</tr>
 						</thead>
 						<tbody>
-							{order.items.map((item) => (
+							{order.orderItems.map((item) => (
 								<tr key={item.id} className="border-b">
-									<td className="py-2">{item.name}</td>
+									<td className="py-2">{item.dessert.name}</td>
 									<td className="text-right py-2">{item.quantity}</td>
 								</tr>
 							))}

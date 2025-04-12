@@ -1,6 +1,9 @@
-import { Inventory } from "@/components/inventory";
 import { Suspense } from "react";
-import { getDesserts } from "./admin/actions";
+
+import { Inventory } from "@/components/inventory";
+import { getDesserts } from "./desserts/actions";
+
+export const dynamic = "force-dynamic"; // forces dynamic rendering
 
 export default async function Home() {
 	const desserts = await getDesserts();

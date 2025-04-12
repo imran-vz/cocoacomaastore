@@ -1,12 +1,13 @@
 "use client";
 
-import { createOrder } from "@/app/admin/actions";
-import { Button } from "@/components/ui/button";
-import type { CartItem } from "@/lib/types";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { Input } from "./ui/input";
 import { toast } from "sonner";
+
+import { createOrder } from "@/app/orders/actions";
+import { Button } from "@/components/ui/button";
+import type { CartItem } from "@/lib/types";
+import { Input } from "./ui/input";
 
 interface CartProps {
 	cart: CartItem[];
@@ -24,6 +25,7 @@ export function Cart({
 	clearCart,
 }: CartProps) {
 	const [name, setName] = useState("");
+	const [deliveryCost, setDeliveryCost] = useState("0.00");
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleCheckout = async () => {
@@ -37,6 +39,7 @@ export function Cart({
 			await createOrder({
 				customerName: name,
 				items: cart,
+				deliveryCost: deliveryCost.toString(),
 			});
 			clearCart();
 			setName("");
@@ -63,6 +66,15 @@ export function Cart({
 					placeholder="Customer Name"
 					value={name}
 					onChange={(e) => setName(e.target.value)}
+				/>
+				<Input
+					placeholder="Delivery Cost"
+					value={deliveryCost}
+					onChange={(e) =>
+						e.target.value
+							? setDeliveryCost(Number.parseFloat(e.target.value).toString())
+							: setDeliveryCost("")
+					}
 				/>
 			</div>
 
@@ -110,7 +122,9 @@ export function Cart({
 			</div>
 			<div className="flex justify-between mt-4">
 				<p className="text-sm">Total:</p>
-				<p className="text-sm font-medium">₹{total.toFixed(2)}</p>
+				<p className="text-sm font-medium">
+					₹{(total + Number.parseFloat(deliveryCost)).toFixed(2)}
+				</p>
 			</div>
 			<div className="flex justify-end mt-4">
 				<Button variant="outline" onClick={handleCheckout}>
