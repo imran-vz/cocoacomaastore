@@ -89,7 +89,7 @@ export default function ManageDesserts({
 		<main className="min-h-screen p-3 pb-6 max-w-md mx-auto">
 			<div className="space-y-8">
 				<Dialog open={openModal} onOpenChange={handleCloseModal}>
-					<DialogContent>
+					<DialogContent className="-mt-20">
 						<DialogHeader>
 							<DialogTitle>
 								{editingDessert ? "Edit Dessert" : "Add New Dessert"}

@@ -25,7 +25,7 @@ export default function OrderModal({
 	console.log(order.status);
 	return (
 		<Dialog open={true} onOpenChange={onClose}>
-			<DialogContent>
+			<DialogContent className="-mt-20">
 				<DialogHeader className="text-left">
 					<DialogTitle>Order Details</DialogTitle>
 					<DialogDescription asChild>
