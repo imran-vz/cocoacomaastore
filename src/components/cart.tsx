@@ -1,15 +1,15 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import type { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
-import { z } from "zod";
+import type { z } from "zod";
 
 import { createOrder } from "@/app/orders/actions";
 import { Button } from "@/components/ui/button";
 import type { CartItem } from "@/lib/types";
+import type { cartFormSchema } from "./inventory";
 import {
 	Form,
 	FormControl,
@@ -26,16 +26,8 @@ interface CartProps {
 	removeFromCart: (dessertId: number) => void;
 	total: number;
 	clearCart: () => void;
+	form: UseFormReturn<z.infer<typeof cartFormSchema>>;
 }
-
-const formSchema = z.object({
-	name: z.string().min(1),
-	deliveryCost: z
-		.string()
-		.refine((val) => !Number.isNaN(Number.parseFloat(val)), {
-			message: "Delivery cost must be a number",
-		}),
-});
 
 export function Cart({
 	cart,
@@ -43,18 +35,11 @@ export function Cart({
 	removeFromCart,
 	total,
 	clearCart,
+	form,
 }: CartProps) {
-	const form = useForm<z.infer<typeof formSchema>>({
-		resolver: zodResolver(formSchema),
-		defaultValues: {
-			name: "",
-			deliveryCost: "0.00",
-		},
-	});
-
 	const [isLoading, setIsLoading] = useState(false);
 
-	const handleCheckout = async (values: z.infer<typeof formSchema>) => {
+	const handleCheckout = async (values: z.infer<typeof cartFormSchema>) => {
 		setIsLoading(true);
 		try {
 			await createOrder({

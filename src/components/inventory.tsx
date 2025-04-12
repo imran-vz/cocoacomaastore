@@ -1,17 +1,36 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
+import { ShoppingBag } from "lucide-react";
+import { use, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
 import { Cart } from "@/components/cart";
 import { DessertList } from "@/components/dessert-list";
-import { Receipt } from "@/components/receipt";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CartItem, Dessert } from "@/lib/types";
-import { ShoppingBag } from "lucide-react";
-import { use, useState } from "react";
 import Bill from "./bill";
+
+export const cartFormSchema = z.object({
+	name: z.string().min(1),
+	deliveryCost: z
+		.string()
+		.refine((val) => !Number.isNaN(Number.parseFloat(val)), {
+			message: "Delivery cost must be a number",
+		}),
+});
 
 export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 	const items = use(desserts);
 	const [cart, setCart] = useState<CartItem[]>([]);
+	const form = useForm<z.infer<typeof cartFormSchema>>({
+		resolver: zodResolver(cartFormSchema),
+		defaultValues: {
+			name: "",
+			deliveryCost: "0.00",
+		},
+	});
 
 	const addToCart = (dessert: Dessert) => {
 		const existingDessert = cart.find((item) => item.id === dessert.id);
@@ -51,8 +70,14 @@ export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	};
 
+	const deliveryCost = form.watch("deliveryCost");
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-	const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+	const total = useMemo(() => {
+		return (
+			cart.reduce((sum, item) => sum + item.price * item.quantity, 0) +
+			Number(deliveryCost)
+		);
+	}, [cart, deliveryCost]);
 
 	return (
 		<div className="flex flex-col gap-4">
@@ -80,6 +105,7 @@ export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 						removeFromCart={removeFromCart}
 						total={total}
 						clearCart={clearCart}
+						form={form}
 					/>
 				</CardContent>
 			</Card>
@@ -92,13 +118,9 @@ export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 					{cart.length > 0 ? (
 						<Bill
 							order={{
-								id: 1,
-								customerName: "John Doe",
 								items: cart,
-								deliveryCost: "10",
-								status: "pending",
-								createdAt: new Date(),
-								total: total.toString(),
+								total: total,
+								deliveryCost: Number(deliveryCost),
 							}}
 						/>
 					) : (

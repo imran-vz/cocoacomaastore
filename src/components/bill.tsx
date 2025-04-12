@@ -1,10 +1,16 @@
 import { QRCodeSVG } from "qrcode.react";
-import type { Order } from "@/lib/types";
-import { Button } from "./ui/button";
 import { useRef } from "react";
 
+import type { CartItem } from "@/lib/types";
+import { Button } from "./ui/button";
+import { Separator } from "./ui/separator";
+
 interface BillProps {
-	order: Order;
+	order: {
+		items: CartItem[];
+		total: number;
+		deliveryCost: number;
+	};
 }
 
 export default function Bill({ order }: BillProps) {
@@ -19,7 +25,7 @@ export default function Bill({ order }: BillProps) {
 			)
 			.join(
 				"\n",
-			)}\nTotal: ₹${order.items.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2)}`;
+			)}\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}\nTotal: ₹${order.total.toFixed(2)}`;
 
 		navigator.clipboard.writeText(orderText);
 	};
@@ -90,14 +96,16 @@ export default function Bill({ order }: BillProps) {
 							<span>₹{(item.price * item.quantity).toFixed(2)}</span>
 						</div>
 					))}
-					<div className="border-t pt-2 font-semibold flex justify-between">
+
+					<Separator />
+					<p className="text-sm text-muted-foreground inline-flex w-full justify-between">
+						<span>Delivery Cost</span> <span>₹{order.deliveryCost}</span>
+					</p>
+					<Separator />
+
+					<div className=" pt-2 font-semibold flex justify-between">
 						<span>Total</span>
-						<span>
-							₹
-							{order.items
-								.reduce((acc, item) => acc + item.price * item.quantity, 0)
-								.toFixed(2)}
-						</span>
+						<span>₹{order.total.toFixed(2)}</span>
 					</div>
 				</div>
 			</div>
