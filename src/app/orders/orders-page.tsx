@@ -76,7 +76,7 @@ export default function OrdersPage({
 	};
 
 	return (
-		<div className="p-4">
+		<div>
 			<h1 className="text-2xl font-bold mb-6">Orders</h1>
 			{openModal && selectedOrder && (
 				<OrderModal

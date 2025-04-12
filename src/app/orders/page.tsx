@@ -15,13 +15,11 @@ export const metadata: Metadata = {
 export default async function Orders() {
 	const orders = getOrders();
 	return (
-		<main>
+		<main className="min-h-screen p-3 pb-6 max-w-md mx-auto">
 			<Suspense
 				fallback={
-					<div className="flex flex-col gap-4">
-						<div className="p-4">
-							<h1 className="text-2xl font-bold mb-6">Orders</h1>
-						</div>
+					<div className="flex flex-col gap-4 ">
+						<h1 className="text-2xl font-bold mb-6">Orders</h1>
 						<Skeleton className="h-10 w-full" />
 						<Skeleton className="h-10 w-full" />
 						<Skeleton className="h-10 w-full" />
