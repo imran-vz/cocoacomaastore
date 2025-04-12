@@ -1,5 +1,6 @@
 "use client";
 
+import { createOrder } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import type { CartItem } from "@/lib/types";
 import { Minus, Plus, Trash2 } from "lucide-react";
@@ -68,6 +69,19 @@ export function Cart({
 						</div>
 					</div>
 				))}
+				<div className="flex justify-end">
+					<Button
+						variant="outline"
+						onClick={() => {
+							createOrder({
+								customerName: "John Doe",
+								items: cart,
+							});
+						}}
+					>
+						Checkout
+					</Button>
+				</div>
 			</div>
 		</div>
 	);

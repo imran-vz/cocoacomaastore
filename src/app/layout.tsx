@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+
 import { Toaster } from "@/components/ui/sonner";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { Database } from "lucide-react";
+import Navbar from "@/components/navbar";
+
+import "./globals.css";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -31,16 +31,7 @@ export default function RootLayout({
 			<body
 				className={`${geistSans.variable} ${geistMono.variable} antialiased`}
 			>
-				<div className="flex justify-between px-4 py-3 shadow items-center">
-					<Link href="/">
-						<h1 className="text-xl font-bold text-center">Cocoa Comaa Shop</h1>
-					</Link>
-					<Button asChild variant="outline">
-						<Link href="/admin">
-							<Database className="h-4 w-4" />
-						</Link>
-					</Button>
-				</div>
+				<Navbar />
 				{children}
 				<Toaster />
 			</body>

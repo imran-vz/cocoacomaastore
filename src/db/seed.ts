@@ -1,12 +1,21 @@
 import "dotenv/config";
-import { drizzle } from "drizzle-orm/neon-http";
-import { dessertsTable } from "./schema";
+
+import { Pool, neonConfig } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-serverless";
+import ws from "ws";
+import { dessertsTable, orderItemsTable, ordersTable } from "./schema";
 
 if (!process.env.DATABASE_URL) {
 	throw new Error("DATABASE_URL is not set");
 }
 
-const db = drizzle(process.env.DATABASE_URL);
+neonConfig.webSocketConstructor = ws;
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+const db = drizzle({
+	client: pool,
+	schema: { dessertsTable, ordersTable, orderItemsTable },
+});
 
 async function main() {
 	const desserts: (typeof dessertsTable.$inferInsert)[] = [
