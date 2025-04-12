@@ -110,8 +110,7 @@ export default function OrdersPage({
 									{order.orderItems.reduce(
 										(acc, item) => acc + item.quantity,
 										0,
-									)}{" "}
-									items
+									)}
 								</TableCell>
 								<TableCell className="p-2 whitespace-nowrap">
 									<Badge
