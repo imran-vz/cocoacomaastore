@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { getOrders } from "./actions";
 import OrdersPage from "./orders-page";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const dynamic = "force-dynamic"; // forces dynamic rendering
 
@@ -12,10 +13,23 @@ export const metadata: Metadata = {
 };
 
 export default async function Orders() {
-	const orders = await getOrders();
+	const orders = getOrders();
 	return (
-		<Suspense fallback={<div>Loading...</div>}>
-			<OrdersPage initialOrders={orders} />
-		</Suspense>
+		<main>
+			<Suspense
+				fallback={
+					<div className="flex flex-col gap-4">
+						<div className="p-4">
+							<h1 className="text-2xl font-bold mb-6">Orders</h1>
+						</div>
+						<Skeleton className="h-10 w-full" />
+						<Skeleton className="h-10 w-full" />
+						<Skeleton className="h-10 w-full" />
+					</div>
+				}
+			>
+				<OrdersPage initialOrders={orders} />
+			</Suspense>
+		</main>
 	);
 }

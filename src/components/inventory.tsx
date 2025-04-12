@@ -6,9 +6,10 @@ import { Receipt } from "@/components/receipt";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CartItem, Dessert } from "@/lib/types";
 import { ShoppingBag } from "lucide-react";
-import { useState } from "react";
+import { use, useState } from "react";
 
-export function Inventory({ desserts }: { desserts: Dessert[] }) {
+export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
+	const items = use(desserts);
 	const [cart, setCart] = useState<CartItem[]>([]);
 
 	const addToCart = (dessert: Dessert) => {
@@ -64,7 +65,7 @@ export function Inventory({ desserts }: { desserts: Dessert[] }) {
 						</span>
 					</div>
 				</div>
-				<DessertList desserts={desserts} addToCart={addToCart} />
+				<DessertList desserts={items} addToCart={addToCart} />
 			</div>
 
 			<Card className="gap-2">

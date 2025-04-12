@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { use, useState } from "react";
 import { toast } from "sonner";
 
 import { DessertForm } from "@/components/dessert-form";
@@ -29,8 +29,8 @@ import {
 
 export default function ManageDesserts({
 	initialDesserts,
-}: { initialDesserts: Dessert[] }) {
-	const [desserts, setDesserts] = useState<Dessert[]>(initialDesserts);
+}: { initialDesserts: Promise<Dessert[]> }) {
+	const [desserts, setDesserts] = useState<Dessert[]>(use(initialDesserts));
 	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
 	const [openModal, setOpenModal] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
@@ -86,72 +86,67 @@ export default function ManageDesserts({
 	};
 
 	return (
-		<main className="min-h-screen p-3 pb-6 max-w-md mx-auto">
-			<div className="space-y-8">
-				<Dialog open={openModal} onOpenChange={handleCloseModal}>
-					<DialogContent className="-mt-20">
-						<DialogHeader>
-							<DialogTitle>
-								{editingDessert ? "Edit Dessert" : "Add New Dessert"}
-							</DialogTitle>
-						</DialogHeader>
-						<DessertForm
-							key={editingDessert?.id}
-							initialData={editingDessert ?? undefined}
-							onSubmit={handleSubmit}
-							onDelete={handleDelete}
-							isLoading={isLoading}
-						/>
-					</DialogContent>
-				</Dialog>
+		<div className="space-y-8">
+			<Dialog open={openModal} onOpenChange={handleCloseModal}>
+				<DialogContent className="-mt-20">
+					<DialogHeader>
+						<DialogTitle>
+							{editingDessert ? "Edit Dessert" : "Add New Dessert"}
+						</DialogTitle>
+					</DialogHeader>
+					<DessertForm
+						key={editingDessert?.id}
+						initialData={editingDessert ?? undefined}
+						onSubmit={handleSubmit}
+						onDelete={handleDelete}
+						isLoading={isLoading}
+					/>
+				</DialogContent>
+			</Dialog>
 
-				<div>
-					<div className="flex justify-between items-center">
-						<h2 className="text-2xl font-bold mb-4">Desserts</h2>
-						<Button
-							type="button"
-							onClick={() => {
-								setEditingDessert(null);
-								handleOpenModal();
-							}}
-						>
-							Add Dessert
-						</Button>
-					</div>
-					<div className="overflow-x-auto max-w-screen">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead className="min-w-24">Name</TableHead>
-									<TableHead className="min-w-24">Price</TableHead>
-									<TableHead className="min-w-24">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{desserts.map((dessert) => (
-									<TableRow key={dessert.id}>
-										<TableCell className="font-medium">
-											{dessert.name}
-										</TableCell>
-										<TableCell>{dessert.price.toFixed(2)}</TableCell>
-										<TableCell>
-											<Button
-												variant="outline"
-												onClick={() => {
-													setEditingDessert(dessert);
-													handleOpenModal();
-												}}
-											>
-												Edit
-											</Button>
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</div>
-				</div>
+			<div className="flex justify-between items-center">
+				<h2 className="text-2xl font-bold">Desserts</h2>
+				<Button
+					type="button"
+					onClick={() => {
+						setEditingDessert(null);
+						handleOpenModal();
+					}}
+				>
+					Add Dessert
+				</Button>
 			</div>
-		</main>
+
+			<div className="overflow-x-auto max-w-screen">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead className="min-w-24">Name</TableHead>
+							<TableHead className="min-w-24">Price</TableHead>
+							<TableHead className="min-w-24">Actions</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{desserts.map((dessert) => (
+							<TableRow key={dessert.id}>
+								<TableCell className="font-medium">{dessert.name}</TableCell>
+								<TableCell>{dessert.price.toFixed(2)}</TableCell>
+								<TableCell>
+									<Button
+										variant="outline"
+										onClick={() => {
+											setEditingDessert(dessert);
+											handleOpenModal();
+										}}
+									>
+										Edit
+									</Button>
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
+		</div>
 	);
 }

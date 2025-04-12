@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import ManageDesserts from "./manage-desserts";
 import { getDesserts } from "./actions";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic"; // forces dynamic rendering
 
@@ -11,7 +14,26 @@ export const metadata: Metadata = {
 };
 
 export default async function page() {
-	const desserts = await getDesserts();
+	const desserts = getDesserts();
 
-	return <ManageDesserts initialDesserts={desserts} />;
+	return (
+		<main className="min-h-screen p-3 pb-6 max-w-md mx-auto">
+			<Suspense
+				fallback={
+					<div className="flex flex-col gap-4">
+						<div className="flex justify-between items-center">
+							<h2 className="text-2xl font-bold">Desserts</h2>
+							<Button type="button">Add Dessert</Button>
+						</div>
+
+						<Skeleton className="h-10 w-full" />
+						<Skeleton className="h-10 w-full" />
+						<Skeleton className="h-10 w-full" />
+					</div>
+				}
+			>
+				<ManageDesserts initialDesserts={desserts} />
+			</Suspense>
+		</main>
+	);
 }

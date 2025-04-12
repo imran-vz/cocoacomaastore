@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2Icon, LoaderIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -37,8 +37,8 @@ export type DBOrder = {
 
 export default function OrdersPage({
 	initialOrders,
-}: { initialOrders: DBOrder[] }) {
-	const [orders, setOrders] = useState(initialOrders);
+}: { initialOrders: Promise<DBOrder[]> }) {
+	const [orders, setOrders] = useState(use(initialOrders));
 	const [openModal, setOpenModal] = useState(false);
 	const [selectedOrder, setSelectedOrder] = useState<DBOrder | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
