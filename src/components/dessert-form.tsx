@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { Dessert } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -82,6 +83,10 @@ export function DessertForm({
 									type="number"
 									{...field}
 									onChange={(e) => {
+										if (e.target.value === "") {
+											field.onChange("");
+											return;
+										}
 										field.onChange(Number(e.target.value));
 									}}
 								/>
@@ -93,7 +98,7 @@ export function DessertForm({
 				<div className="flex gap-2">
 					<Button
 						type="button"
-						className="flex-1"
+						className={cn("flex-1", initialData ? "" : "invisible")}
 						variant="outline"
 						onClick={onDelete}
 						disabled={isLoading}

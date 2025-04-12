@@ -10,7 +10,7 @@ export async function getDesserts() {
 }
 
 export async function createDessert(data: Omit<Dessert, "id">) {
-	return await db.insert(dessertsTable).values({
+	await db.insert(dessertsTable).values({
 		name: data.name,
 		description: data.description,
 		price: data.price,

@@ -108,6 +108,7 @@ export default function ManageDesserts({
 					<div className="flex justify-between items-center">
 						<h2 className="text-2xl font-bold mb-4">Desserts</h2>
 						<Button
+							type="button"
 							onClick={() => {
 								setEditingDessert(null);
 								handleOpenModal();
