@@ -120,20 +120,16 @@ export default function ManageDesserts({
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead className="min-w-[100px]">Description</TableHead>
-									<TableHead>Price</TableHead>
-									<TableHead>Actions</TableHead>
+									<TableHead className="min-w-24">Name</TableHead>
+									<TableHead className="min-w-24">Price</TableHead>
+									<TableHead className="min-w-24">Actions</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{desserts.map((dessert) => (
 									<TableRow key={dessert.id}>
-										<TableCell className="font-medium max-w-[130px] truncate">
+										<TableCell className="font-medium">
 											{dessert.name}
-										</TableCell>
-										<TableCell className="break-words max-w-[100px] truncate">
-											{dessert.description}
 										</TableCell>
 										<TableCell>{dessert.price.toFixed(2)}</TableCell>
 										<TableCell>
