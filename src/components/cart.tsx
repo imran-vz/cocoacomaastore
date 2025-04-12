@@ -107,15 +107,15 @@ export function Cart({
 						</div>
 					</div>
 				))}
-				<div className="flex justify-between mt-4">
-					<p className="text-sm">Total:</p>
-					<p className="text-sm font-medium">₹{total.toFixed(2)}</p>
-				</div>
-				<div className="flex justify-end mt-4">
-					<Button variant="outline" onClick={handleCheckout}>
-						{isLoading ? "Processing..." : "Checkout"}
-					</Button>
-				</div>
+			</div>
+			<div className="flex justify-between mt-4">
+				<p className="text-sm">Total:</p>
+				<p className="text-sm font-medium">₹{total.toFixed(2)}</p>
+			</div>
+			<div className="flex justify-end mt-4">
+				<Button variant="outline" onClick={handleCheckout}>
+					{isLoading ? "Processing..." : "Checkout"}
+				</Button>
 			</div>
 		</div>
 	);

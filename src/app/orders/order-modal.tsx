@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
@@ -20,26 +22,46 @@ export default function OrderModal({
 	done,
 	isLoading,
 }: OrderModalProps) {
+	console.log(order.status);
 	return (
 		<Dialog open={true} onOpenChange={onClose}>
-			<DialogHeader>
-				<DialogTitle>Order Details</DialogTitle>
-			</DialogHeader>
 			<DialogContent>
-				<div className="space-y-4">
-					<div>
-						<h3 className="text-lg font-medium leading-6 text-gray-900">
-							Customer Name
-						</h3>
-						<p className="mt-1 text-sm text-gray-500">{order.customerName}</p>
-					</div>
-				</div>
+				<DialogHeader className="text-left">
+					<DialogTitle>Order Details</DialogTitle>
+					<DialogDescription>
+						<div className="space-y-1">
+							<p className="mt-1 text-sm text-gray-500">
+								<span className="font-bold">Customer:</span>{" "}
+								{order.customerName}
+							</p>
+							<p className="mt-1 text-sm text-gray-500">
+								<span className="font-bold">Order:</span> #{order.id}
+							</p>
+							<p className="mt-1 text-sm text-gray-500">
+								<span className="font-bold">Time:</span>{" "}
+								{order.createdAt.toLocaleTimeString("en-IN", {
+									hour: "2-digit",
+									minute: "2-digit",
+									hour12: true,
+								})}
+							</p>
+							<p className="mt-1 text-sm text-gray-500">
+								<span className="font-bold">Date:</span>{" "}
+								{order.createdAt.toLocaleDateString("en-IN", {
+									year: "numeric",
+									month: "short",
+									day: "numeric",
+								})}
+							</p>
+						</div>
+					</DialogDescription>
+				</DialogHeader>
 
 				<div className="space-y-4">
 					<table className="w-full">
 						<thead>
 							<tr className="border-b">
-								<th className="text-left py-2">Item</th>
+								<th className="text-left py-2">Items</th>
 								<th className="text-right py-2">Quantity</th>
 							</tr>
 						</thead>
@@ -54,14 +76,19 @@ export default function OrderModal({
 					</table>
 				</div>
 
-				<div className="flex justify-end gap-2">
-					<Button variant="outline" onClick={onClose}>
-						Close
-					</Button>
-					<Button onClick={done} disabled={isLoading}>
-						{isLoading ? "Loading..." : "Done"}
-					</Button>
-				</div>
+				<DialogFooter>
+					<div className="flex justify-end gap-2">
+						<Button variant="outline" onClick={onClose}>
+							Close
+						</Button>
+						<Button
+							onClick={done}
+							disabled={isLoading || order.status === "completed"}
+						>
+							{isLoading ? "Loading..." : "Done"}
+						</Button>
+					</div>
+				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	);

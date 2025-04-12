@@ -48,7 +48,6 @@ async function _getOrders() {
 		.innerJoin(orderItemsTable, eq(ordersTable.id, orderItemsTable.orderId))
 		.innerJoin(dessertsTable, eq(orderItemsTable.dessertId, dessertsTable.id))
 		.orderBy(desc(ordersTable.status), asc(ordersTable.createdAt));
-
 	return orders;
 }
 export async function getOrders() {
