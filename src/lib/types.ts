@@ -15,6 +15,8 @@ export interface Order {
 	id: number;
 	customerName: string;
 	status: OrderStatus;
+	deliveryCost: string;
+	total: string;
 	createdAt: Date;
 	items: CartItem[];
 }

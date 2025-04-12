@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CartItem, Dessert } from "@/lib/types";
 import { ShoppingBag } from "lucide-react";
 import { use, useState } from "react";
+import Bill from "./bill";
 
 export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 	const items = use(desserts);
@@ -89,7 +90,17 @@ export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 				</CardHeader>
 				<CardContent>
 					{cart.length > 0 ? (
-						<Receipt cart={cart} total={total} clearCart={clearCart} />
+						<Bill
+							order={{
+								id: 1,
+								customerName: "John Doe",
+								items: cart,
+								deliveryCost: "10",
+								status: "pending",
+								createdAt: new Date(),
+								total: total.toString(),
+							}}
+						/>
 					) : (
 						<div className="text-center py-6 text-muted-foreground">
 							<p>Add items to cart to see receipt</p>
