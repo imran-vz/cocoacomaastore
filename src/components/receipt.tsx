@@ -33,7 +33,7 @@ export function Receipt({ cart, total, clearCart }: ReceiptProps) {
               size: A5;
               margin: 0;
             }
-            
+
             /* Base styles */
             body {
               font-family: 'Courier New', monospace;
@@ -163,12 +163,12 @@ export function Receipt({ cart, total, clearCart }: ReceiptProps) {
               ${content.innerHTML}
             </div>
           </div>
-          
+
           <script>
             // Auto-print when loaded
-            // window.onload = function() {
-            //   window.print();
-            // }
+            window.onload = function() {
+              window.print();
+            }
           </script>
         </body>
       </html>
