@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { CheckCircle2Icon, LoaderIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { getOrders, updateOrderStatus } from "./actions";
 import OrderModal from "./order-modal";
-import { toast } from "sonner";
 
 export type DBOrder = {
 	id: number;
@@ -76,46 +87,46 @@ export default function OrdersPage({
 				/>
 			)}
 			<div className="overflow-x-auto">
-				<table className="min-w-full bg-white shadow-md rounded-lg">
-					<thead className="bg-gray-50">
-						<tr>
-							<th className="px-2 text-left text-xs font-medium text-slate-500 uppercase">
-								Customer
-							</th>
-							<th className="px-2 text-left text-xs min-w-24 font-medium text-slate-500 uppercase">
-								Items
-							</th>
-							<th className="px-2 text-left text-xs font-medium text-slate-500 uppercase">
-								Status
-							</th>
-							<th className="pl-2 text-left text-xs font-medium text-slate-500 uppercase">
-								Actions
-							</th>
-						</tr>
-					</thead>
-					<tbody className="divide-y divide-gray-200">
-						{orders.map((order) => (
-							<tr key={order.id}>
-								<td className="p-2 whitespace-nowrap">{order.customerName}</td>
-								<td className="p-2 text-xs">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Customer</TableHead>
+							<TableHead>Items</TableHead>
+							<TableHead>Status</TableHead>
+							<TableHead>Actions</TableHead>
+						</TableRow>
+					</TableHeader>
+
+					<TableBody>
+						{orders.map((order, index) => (
+							<TableRow
+								key={order.id}
+								className={index % 2 === 1 ? "bg-muted" : ""}
+							>
+								<TableCell onClick={() => handleView(order.id)}>
+									{order.customerName}
+								</TableCell>
+								<TableCell className="p-2 text-xs">
 									{order.orderItems.reduce(
 										(acc, item) => acc + item.quantity,
 										0,
 									)}{" "}
 									items
-								</td>
-								<td className="p-2 whitespace-nowrap">
-									<span
-										className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-											order.status === "completed"
-												? "bg-green-100 text-green-800"
-												: "bg-yellow-100 text-yellow-800"
-										}`}
+								</TableCell>
+								<TableCell className="p-2 whitespace-nowrap">
+									<Badge
+										variant="outline"
+										className="flex gap-1 px-1.5 text-muted-foreground [&_svg]:size-3"
 									>
+										{order.status === "completed" ? (
+											<CheckCircle2Icon className="text-green-500 dark:text-green-400" />
+										) : (
+											<LoaderIcon />
+										)}
 										{order.status}
-									</span>
-								</td>
-								<td className="p-2 whitespace-nowrap space-x-2">
+									</Badge>
+								</TableCell>
+								<TableCell className="p-2 whitespace-nowrap space-x-2">
 									<Button
 										onClick={() => handleView(order.id)}
 										variant="outline"
@@ -123,20 +134,11 @@ export default function OrdersPage({
 									>
 										View
 									</Button>
-									{order.status === "pending" && (
-										<Button
-											onClick={() => handleDone(order.id)}
-											variant="default"
-											size="sm"
-										>
-											Done
-										</Button>
-									)}
-								</td>
-							</tr>
+								</TableCell>
+							</TableRow>
 						))}
-					</tbody>
-				</table>
+					</TableBody>
+				</Table>
 			</div>
 		</div>
 	);
