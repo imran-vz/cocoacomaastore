@@ -67,8 +67,8 @@ export function Inventory({ desserts }: { desserts: Dessert[] }) {
 				<DessertList desserts={desserts} addToCart={addToCart} />
 			</div>
 
-			<Card>
-				<CardHeader className="pb-3">
+			<Card className="gap-2">
+				<CardHeader>
 					<CardTitle className="text-lg">Your Cart</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -77,6 +77,7 @@ export function Inventory({ desserts }: { desserts: Dessert[] }) {
 						updateQuantity={updateQuantity}
 						removeFromCart={removeFromCart}
 						total={total}
+						clearCart={clearCart}
 					/>
 				</CardContent>
 			</Card>

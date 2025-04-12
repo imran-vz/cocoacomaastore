@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { dessertsTable, ordersTable, orderItemsTable } from "@/db/schema";
 import type { CartItem, Dessert, Order } from "@/lib/types";
-import { desc, eq, gt } from "drizzle-orm";
+import { asc, desc, eq, gt } from "drizzle-orm";
 
 export async function getDesserts() {
 	return await db.select().from(dessertsTable).orderBy(dessertsTable.id);
@@ -47,7 +47,7 @@ async function _getOrders() {
 		.where(gt(ordersTable.createdAt, yesterday))
 		.innerJoin(orderItemsTable, eq(ordersTable.id, orderItemsTable.orderId))
 		.innerJoin(dessertsTable, eq(orderItemsTable.dessertId, dessertsTable.id))
-		.orderBy(desc(ordersTable.status), desc(ordersTable.createdAt));
+		.orderBy(desc(ordersTable.status), asc(ordersTable.createdAt));
 
 	return orders;
 }

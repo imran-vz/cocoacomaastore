@@ -55,16 +55,19 @@ export default function OrdersPage() {
 				<table className="min-w-full bg-white shadow-md rounded-lg">
 					<thead className="bg-gray-50">
 						<tr>
-							<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+							<th className="pr-2 text-left min-w-20 text-xs font-medium text-gray-500 uppercase tracking-wider">
+								Order ID
+							</th>
+							<th className="px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 								Customer
 							</th>
-							<th className="px-6 py-3 text-left text-xs min-w-24 font-medium text-gray-500 uppercase tracking-wider">
+							<th className="px-2 text-left text-xs min-w-24 font-medium text-gray-500 uppercase tracking-wider">
 								Items
 							</th>
-							<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+							<th className="px-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 								Status
 							</th>
-							<th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+							<th className="pl-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 								Actions
 							</th>
 						</tr>
@@ -72,13 +75,13 @@ export default function OrdersPage() {
 					<tbody className="divide-y divide-gray-200">
 						{orders.map((order) => (
 							<tr key={order.id}>
-								<td className="px-6 py-4 whitespace-nowrap">
-									{order.customerName}
+								<td className="p-2 whitespace-nowrap">{order.id}</td>
+								<td className="p-2 whitespace-nowrap">{order.customerName}</td>
+								<td className="p-2 text-xs">
+									{order.items.reduce((acc, item) => acc + item.quantity, 0)}{" "}
+									items
 								</td>
-								<td className="px-6 py-4 text-xs">
-									{order.items.length} items
-								</td>
-								<td className="px-6 py-4 whitespace-nowrap">
+								<td className="p-2 whitespace-nowrap">
 									<span
 										className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
 											order.status === "completed"
@@ -89,7 +92,7 @@ export default function OrdersPage() {
 										{order.status}
 									</span>
 								</td>
-								<td className="px-6 py-4 whitespace-nowrap space-x-2">
+								<td className="p-2 whitespace-nowrap space-x-2">
 									<Button
 										onClick={() => handleView(order.id)}
 										variant="outline"

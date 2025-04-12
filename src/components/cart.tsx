@@ -4,12 +4,16 @@ import { createOrder } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import type { CartItem } from "@/lib/types";
 import { Minus, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Input } from "./ui/input";
+import { toast } from "sonner";
 
 interface CartProps {
 	cart: CartItem[];
 	updateQuantity: (dessertId: number, quantity: number) => void;
 	removeFromCart: (dessertId: number) => void;
 	total: number;
+	clearCart: () => void;
 }
 
 export function Cart({
@@ -17,7 +21,33 @@ export function Cart({
 	updateQuantity,
 	removeFromCart,
 	total,
+	clearCart,
 }: CartProps) {
+	const [name, setName] = useState("");
+	const [isLoading, setIsLoading] = useState(false);
+
+	const handleCheckout = async () => {
+		if (!name) {
+			toast.error("Please enter a name");
+			return;
+		}
+
+		setIsLoading(true);
+		try {
+			await createOrder({
+				customerName: name,
+				items: cart,
+			});
+			clearCart();
+			setName("");
+			toast.success("Order created successfully");
+		} catch (error) {
+			console.error(error);
+			toast.error("Something went wrong");
+		} finally {
+			setIsLoading(false);
+		}
+	};
 	if (cart.length === 0) {
 		return (
 			<div className="text-center py-6 text-muted-foreground">
@@ -28,6 +58,14 @@ export function Cart({
 
 	return (
 		<div className="flex flex-col">
+			<div className="mb-4">
+				<Input
+					placeholder="Customer Name"
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+				/>
+			</div>
+
 			<div className="overflow-auto max-h-[200px]">
 				{cart.map((item) => (
 					<div
@@ -69,17 +107,13 @@ export function Cart({
 						</div>
 					</div>
 				))}
-				<div className="flex justify-end">
-					<Button
-						variant="outline"
-						onClick={() => {
-							createOrder({
-								customerName: "John Doe",
-								items: cart,
-							});
-						}}
-					>
-						Checkout
+				<div className="flex justify-between mt-4">
+					<p className="text-sm">Total:</p>
+					<p className="text-sm font-medium">₹{total.toFixed(2)}</p>
+				</div>
+				<div className="flex justify-end mt-4">
+					<Button variant="outline" onClick={handleCheckout}>
+						{isLoading ? "Processing..." : "Checkout"}
 					</Button>
 				</div>
 			</div>
