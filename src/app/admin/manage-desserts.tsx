@@ -1,3 +1,5 @@
+"use client";
+
 import { DessertForm } from "@/components/dessert-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +17,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { Dessert } from "@/lib/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import {
 	createDessert,
