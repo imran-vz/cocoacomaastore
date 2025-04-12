@@ -19,6 +19,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
 	title: "Cocoa Comaa Shop",
 	description: "Cocoa Comaa Shop",
+	icons: {
+		icon: "/favicon.svg",
+	},
 };
 
 export default function RootLayout({
