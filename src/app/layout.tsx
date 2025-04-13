@@ -18,19 +18,41 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-	title: "Cocoa Comaa Shop",
-	description: "Cocoa Comaa Shop",
+	title: "Cocoa Comaa",
+	description: "Cocoa Comaa",
 	icons: {
 		icon: "/favicon.svg",
+	},
+	robots: {
+		index: false,
+		follow: false,
+		noimageindex: true,
+		noarchive: true,
+		nosnippet: true,
+		googleBot: {
+			index: false,
+			follow: false,
+			noimageindex: true,
+			noarchive: true,
+			nosnippet: true,
+		},
+	},
+	appleWebApp: {
+		capable: true,
+		title: "Cocoa Comaa",
+		statusBarStyle: "black-translucent",
+		startupImage: "/icon-512x512.png",
 	},
 };
 
 export const viewport: Viewport = {
 	width: "device-width",
 	initialScale: 1,
+	minimumScale: 1,
 	maximumScale: 1,
 	userScalable: false,
 	themeColor: "#000000",
+	colorScheme: "light",
 };
 
 export default function RootLayout({
