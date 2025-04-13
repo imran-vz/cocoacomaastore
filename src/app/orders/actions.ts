@@ -1,11 +1,11 @@
 "use server";
 
 import { asc, desc, eq, gte } from "drizzle-orm";
+import { revalidateTag, unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import { orderItemsTable, ordersTable } from "@/db/schema";
 import type { CartItem } from "@/lib/types";
-import { revalidateTag, unstable_cache } from "next/cache";
 
 interface CreateOrderData {
 	customerName: string;
@@ -13,43 +13,46 @@ interface CreateOrderData {
 	deliveryCost: string;
 }
 
-export async function getOrders() {
+async function getOrders() {
 	const startOfDay = new Date();
 	startOfDay.setHours(0, 0, 0, 0);
-
-	const orders = unstable_cache(
-		async () =>
-			await db.query.ordersTable.findMany({
-				columns: {
-					isDeleted: false,
-				},
-				where: gte(ordersTable.createdAt, startOfDay),
-				orderBy: [desc(ordersTable.status), asc(ordersTable.createdAt)],
+	console.time("getOrders");
+	const orders = await db.query.ordersTable.findMany({
+		columns: {
+			isDeleted: false,
+		},
+		where: gte(ordersTable.createdAt, startOfDay),
+		orderBy: [desc(ordersTable.status), asc(ordersTable.createdAt)],
+		with: {
+			orderItems: {
 				with: {
-					orderItems: {
-						with: {
-							dessert: {
-								columns: {
-									id: true,
-									name: true,
-								},
-							},
-						},
+					dessert: {
 						columns: {
-							dessertId: false,
-							orderId: false,
+							id: true,
+							name: true,
 						},
 					},
 				},
-			}),
-		["orders"],
-		{ revalidate: 60 * 60 * 24, tags: ["orders"] },
-	);
+				columns: {
+					dessertId: false,
+					orderId: false,
+				},
+			},
+		},
+	});
+	console.timeEnd("getOrders");
 
 	return orders;
 }
 
+export const getCachedOrders = unstable_cache(getOrders, ["orders"], {
+	revalidate: 60 * 60 * 24,
+	tags: ["orders"],
+});
+
 export async function createOrder(data: CreateOrderData) {
+	console.time("createOrder");
+
 	await db.transaction(async (tx) => {
 		// Create the order
 		const [order] = await tx
@@ -79,6 +82,7 @@ export async function createOrder(data: CreateOrderData) {
 
 		return order;
 	});
+	console.timeEnd("createOrder");
 	revalidateTag("orders");
 }
 
@@ -86,17 +90,21 @@ export async function updateOrderStatus(
 	orderId: number,
 	status: "pending" | "completed",
 ) {
+	console.time("updateOrderStatus");
 	await db
 		.update(ordersTable)
 		.set({ status })
 		.where(eq(ordersTable.id, orderId));
+	console.timeEnd("updateOrderStatus");
 	revalidateTag("orders");
 }
 
 export async function deleteOrder(orderId: number) {
+	console.time("deleteOrder");
 	await db
 		.update(ordersTable)
 		.set({ isDeleted: true })
 		.where(eq(ordersTable.id, orderId));
+	console.timeEnd("deleteOrder");
 	revalidateTag("orders");
 }

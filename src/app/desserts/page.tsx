@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import ManageDesserts from "./manage-desserts";
-import { getDesserts } from "./actions";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getCachedDesserts } from "./actions";
+import ManageDesserts from "./manage-desserts";
 
 export const dynamic = "force-dynamic"; // forces dynamic rendering
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function page() {
-	const desserts = getDesserts();
+	const desserts = getCachedDesserts();
 
 	return (
 		<main className="min-h-screen p-3 pb-6 max-w-md mx-auto">

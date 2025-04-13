@@ -14,7 +14,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { getOrders, updateOrderStatus } from "./actions";
+import { getCachedOrders, updateOrderStatus } from "./actions";
 import OrderModal from "./order-modal";
 
 export type DBOrder = {
@@ -44,7 +44,7 @@ export default function OrdersPage({
 
 	useEffect(() => {
 		const interval = setInterval(() => {
-			getOrders().then(setOrders);
+			getCachedOrders().then(setOrders);
 		}, 10_000);
 
 		return () => clearInterval(interval);
@@ -59,7 +59,7 @@ export default function OrdersPage({
 					order.id === orderId ? { ...order, status: "completed" } : order,
 				),
 			);
-			getOrders().then(setOrders);
+			getCachedOrders().then(setOrders);
 			setSelectedOrder(null);
 		} catch (error) {
 			toast.error("Failed to update order status");

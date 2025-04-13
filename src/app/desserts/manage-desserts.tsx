@@ -23,7 +23,7 @@ import type { Dessert } from "@/lib/types";
 import {
 	createDessert,
 	deleteDessert,
-	getDesserts,
+	getCachedDesserts,
 	updateDessert,
 } from "./actions";
 
@@ -53,7 +53,7 @@ export default function ManageDesserts({
 			}
 
 			// Refresh desserts
-			const updatedDesserts = await getDesserts();
+			const updatedDesserts = await getCachedDesserts();
 			setDesserts(updatedDesserts);
 			setEditingDessert(null);
 			handleCloseModal();
@@ -71,7 +71,7 @@ export default function ManageDesserts({
 			try {
 				setIsLoading(true);
 				await deleteDessert(editingDessert.id);
-				const updatedDesserts = await getDesserts();
+				const updatedDesserts = await getCachedDesserts();
 				setDesserts(updatedDesserts);
 				setEditingDessert(null);
 				handleCloseModal();

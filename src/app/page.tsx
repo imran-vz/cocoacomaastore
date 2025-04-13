@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 
-import { getDesserts } from "./desserts/actions";
+import { getCachedDesserts } from "./desserts/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import Home from "@/components/home";
 
 export const dynamic = "force-dynamic"; // forces dynamic rendering
 
 export default async function page() {
-	const desserts = getDesserts();
+	const desserts = getCachedDesserts();
 
 	return (
 		<main className="min-h-screen p-3 pb-6">

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { getOrders } from "./actions";
+import { getCachedOrders } from "./actions";
 import OrdersPage from "./orders-page";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,7 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default async function Orders() {
-	const orders = getOrders();
+	const orders = getCachedOrders();
+
 	return (
 		<main className="min-h-screen p-3 pb-6 max-w-md mx-auto">
 			<Suspense
