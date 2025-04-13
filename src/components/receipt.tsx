@@ -30,8 +30,17 @@ export function Receipt({ cart, total, clearCart }: ReceiptProps) {
           <style>
             /* Page setup for printing */
             @page {
-              size: A5;
+              size: ISO A6;
               margin: 0;
+            }
+
+            @media print {
+              html, body {
+                height:100%; 
+                margin: 0 !important; 
+                padding: 0 !important;
+                overflow: hidden;
+              }
             }
 
             /* Base styles */
@@ -42,7 +51,7 @@ export function Receipt({ cart, total, clearCart }: ReceiptProps) {
               line-height: 1.5;
               color: #000;
               width: 100%;
-              height: 100%;
+              height:100%;
             }
 
             /* Tailwind reset */
@@ -86,7 +95,7 @@ export function Receipt({ cart, total, clearCart }: ReceiptProps) {
             .max-w-xs { max-width: 20rem; }
             .border { border: 1px solid #e2e8f0; }
             .border-dashed { border-style: dashed; }
-            .border-t { border-top-width: 1px; }
+            .border-t { border: 0px dashed #e2e8f0; border-top-width: 1px;  }
             .border-b { border-bottom-width: 1px; }
             .border-gray-300 { border-color: #d1d5db; }
             .rounded-md { border-radius: 0.375rem; }
@@ -191,14 +200,14 @@ export function Receipt({ cart, total, clearCart }: ReceiptProps) {
 					<h3 className="font-bold text-base">COCOA COMAA</h3>
 				</div>
 
-				<Separator className="my-4 h-px bg-slate-300" />
+				<Separator className="my-4 h-px border-t border-gray-300" />
 
 				<div className="mb-4">
 					<p>Date: {new Date().toLocaleDateString()}</p>
 					<p>Time: {new Date().toLocaleTimeString()}</p>
 				</div>
 
-				<Separator className="my-4 h-px bg-slate-300" />
+				<Separator className="my-4 h-px border-t border-gray-300" />
 
 				<div className="space-y-1 mb-3">
 					<table className="w-full">
@@ -223,7 +232,7 @@ export function Receipt({ cart, total, clearCart }: ReceiptProps) {
 					</table>
 				</div>
 
-				<Separator className="my-4 h-px bg-slate-300" />
+				<Separator className="my-4 h-px border-t border-gray-300" />
 
 				<div className="flex justify-between font-bold text-base">
 					<span>Total:</span>

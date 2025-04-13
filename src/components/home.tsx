@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ShoppingBag } from "lucide-react";
 import { use, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -11,6 +10,7 @@ import { DessertList } from "@/components/dessert-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CartItem, Dessert } from "@/lib/types";
 import Bill from "./bill";
+import { Receipt } from "./receipt";
 
 export const cartFormSchema = z.object({
 	name: z.string().min(1),
@@ -112,6 +112,21 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 								deliveryCost: Number.parseFloat(deliveryCost || "0"),
 							}}
 						/>
+					) : (
+						<div className="text-center py-6 text-muted-foreground">
+							<p>Add items to cart to see receipt</p>
+						</div>
+					)}
+				</CardContent>
+			</Card>
+
+			<Card className="gap-2">
+				<CardHeader className="pb-3">
+					<CardTitle className="text-lg">Receipt</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{cart.length > 0 ? (
+						<Receipt cart={cart} total={total} clearCart={clearCart} />
 					) : (
 						<div className="text-center py-6 text-muted-foreground">
 							<p>Add items to cart to see receipt</p>
