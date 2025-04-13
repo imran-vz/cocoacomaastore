@@ -16,7 +16,7 @@ export default function Navbar() {
 	return (
 		<div className="flex justify-between px-4 py-3 shadow items-center">
 			<Link href="/">
-				<h1 className="text-xl font-bold text-center">Cocoa Comaa Shop</h1>
+				<h1 className="text-xl font-bold text-center">Cocoa Comaa</h1>
 			</Link>
 			<Sheet>
 				<SheetTrigger asChild>
