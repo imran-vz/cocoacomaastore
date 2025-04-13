@@ -68,7 +68,6 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 	};
 
 	const deliveryCost = form.watch("deliveryCost");
-	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 	const total = useMemo(() => {
 		const itemCost = cart.reduce(
 			(sum, item) => sum + item.price * item.quantity,

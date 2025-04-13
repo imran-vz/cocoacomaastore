@@ -20,6 +20,7 @@ import {
 } from "./ui/form";
 import { Input } from "./ui/input";
 import { Separator } from "@radix-ui/react-separator";
+import { SlidingNumber } from "./ui/sliding-number";
 
 interface CartProps {
 	cart: CartItem[];
@@ -43,11 +44,12 @@ export function Cart({
 	const handleCheckout = async (values: z.infer<typeof cartFormSchema>) => {
 		setIsLoading(true);
 		try {
-			await createOrder({
+			const order = {
 				customerName: values.name,
 				deliveryCost: Number.parseFloat(values.deliveryCost).toFixed(2),
 				items: cart,
-			});
+			};
+			await createOrder(order);
 			clearCart();
 			form.reset();
 			toast.success("Order created successfully");
@@ -135,7 +137,7 @@ export function Cart({
 										<Minus className="h-3 w-3" />
 									</Button>
 									<span className="w-6 text-center text-sm">
-										{item.quantity}
+										<SlidingNumber value={item.quantity} />
 									</span>
 									<Button
 										type="button"
@@ -164,7 +166,9 @@ export function Cart({
 
 					<div className="flex justify-between">
 						<p className="font-medium">Total:</p>
-						<p className="text-sm font-medium">₹{total.toFixed(2)}</p>
+						<div className="flex items-center gap-1">
+							₹<SlidingNumber value={Number.parseFloat(total.toFixed(2))} />
+						</div>
 					</div>
 					<div className="flex justify-end">
 						<Button variant="outline" type="submit">

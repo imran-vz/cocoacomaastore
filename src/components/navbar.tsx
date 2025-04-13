@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
+import { TextRoll } from "./ui/text-roll";
 
 const navLinks = [
 	{ label: "Desserts", href: "/desserts" },
@@ -15,7 +16,16 @@ export default function Navbar() {
 	return (
 		<div className="flex justify-between px-4 py-3 shadow items-center">
 			<Link href="/">
-				<h1 className="text-xl font-bold text-center">Cocoa Comaa</h1>
+				<TextRoll
+					transition={{
+						repeat: Number.POSITIVE_INFINITY,
+						repeatType: "loop",
+						repeatDelay: 10,
+					}}
+					className="text-xl text-black font-bold dark:text-white"
+				>
+					Cocoa Comaa
+				</TextRoll>
 			</Link>
 			<nav>
 				<ul className="flex gap-4">
