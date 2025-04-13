@@ -5,6 +5,7 @@ import { asc, desc, eq, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { orderItemsTable, ordersTable } from "@/db/schema";
 import type { CartItem } from "@/lib/types";
+import { revalidateTag, unstable_cache } from "next/cache";
 
 interface CreateOrderData {
 	customerName: string;
@@ -16,36 +17,39 @@ export async function getOrders() {
 	const startOfDay = new Date();
 	startOfDay.setHours(0, 0, 0, 0);
 
-	const orders = await db.query.ordersTable.findMany({
-		columns: {
-			isDeleted: false,
-		},
-		where: gte(ordersTable.createdAt, startOfDay),
-		orderBy: [desc(ordersTable.status), asc(ordersTable.createdAt)],
-		with: {
-			orderItems: {
+	const orders = unstable_cache(
+		async () =>
+			await db.query.ordersTable.findMany({
+				columns: {
+					isDeleted: false,
+				},
+				where: gte(ordersTable.createdAt, startOfDay),
+				orderBy: [desc(ordersTable.status), asc(ordersTable.createdAt)],
 				with: {
-					dessert: {
+					orderItems: {
+						with: {
+							dessert: {
+								columns: {
+									id: true,
+									name: true,
+								},
+							},
+						},
 						columns: {
-							id: true,
-							name: true,
+							dessertId: false,
+							orderId: false,
 						},
 					},
 				},
-				columns: {
-					dessertId: false,
-					orderId: false,
-				},
-			},
-		},
-	});
+			}),
+		["orders"],
+		{ revalidate: 60 * 60 * 24, tags: ["orders"] },
+	);
 
 	return orders;
 }
 
 export async function createOrder(data: CreateOrderData) {
-	console.log(data);
-
 	await db.transaction(async (tx) => {
 		// Create the order
 		const [order] = await tx
@@ -75,6 +79,7 @@ export async function createOrder(data: CreateOrderData) {
 
 		return order;
 	});
+	revalidateTag("orders");
 }
 
 export async function updateOrderStatus(
@@ -85,6 +90,7 @@ export async function updateOrderStatus(
 		.update(ordersTable)
 		.set({ status })
 		.where(eq(ordersTable.id, orderId));
+	revalidateTag("orders");
 }
 
 export async function deleteOrder(orderId: number) {
@@ -92,4 +98,5 @@ export async function deleteOrder(orderId: number) {
 		.update(ordersTable)
 		.set({ isDeleted: true })
 		.where(eq(ordersTable.id, orderId));
+	revalidateTag("orders");
 }
