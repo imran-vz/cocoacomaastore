@@ -15,7 +15,7 @@ import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
+import { z } from "zod";
 
 const formSchema = z.object({
 	name: z.string().min(1, "Name is required"),

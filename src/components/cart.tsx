@@ -45,7 +45,7 @@ export function Cart({
 		try {
 			await createOrder({
 				customerName: values.name,
-				deliveryCost: values.deliveryCost,
+				deliveryCost: Number.parseFloat(values.deliveryCost).toFixed(2),
 				items: cart,
 			});
 			clearCart();

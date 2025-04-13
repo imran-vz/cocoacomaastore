@@ -26,10 +26,7 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const form = useForm<z.infer<typeof cartFormSchema>>({
 		resolver: zodResolver(cartFormSchema),
-		defaultValues: {
-			name: "",
-			deliveryCost: "",
-		},
+		defaultValues: { name: "", deliveryCost: "" },
 	});
 
 	const addToCart = (dessert: Dessert) => {

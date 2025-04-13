@@ -1,9 +1,9 @@
 import { QRCodeSVG } from "qrcode.react";
 import { useRef } from "react";
+import { toast } from "sonner";
 
 import type { CartItem } from "@/lib/types";
 import { Button } from "./ui/button";
-import { Separator } from "./ui/separator";
 
 interface BillProps {
 	order: {
@@ -28,6 +28,7 @@ export default function Bill({ order }: BillProps) {
 			)}\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}\nTotal: ₹${order.total.toFixed(2)}`;
 
 		navigator.clipboard.writeText(orderText);
+		toast.success("Order details copied to clipboard");
 	};
 
 	const copyQrCodeToClipboard = async () => {
@@ -72,8 +73,10 @@ export default function Bill({ order }: BillProps) {
 			}, "image/png");
 
 			URL.revokeObjectURL(url);
+			toast.success("QR code copied to clipboard");
 		} catch (err) {
 			console.error("Failed to copy QR code:", err);
+			toast.error("Failed to copy QR code");
 		}
 	};
 
