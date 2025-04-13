@@ -19,7 +19,6 @@ import OrderModal from "./order-modal";
 
 export type DBOrder = {
 	id: number;
-	isDeleted: boolean;
 	customerName: string;
 	createdAt: Date;
 	deliveryCost: string | null;
