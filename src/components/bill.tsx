@@ -28,7 +28,11 @@ export default function Bill({ order }: BillProps) {
 			)}\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}\nTotal: ₹${order.total.toFixed(2)}`;
 
 		navigator.clipboard.writeText(orderText);
-		toast.success("Order details copied to clipboard");
+		toast.info("Order details copied to clipboard", {
+			duration: 1000,
+			icon: "👍",
+			richColors: false,
+		});
 	};
 
 	const copyQrCodeToClipboard = async () => {
@@ -73,7 +77,11 @@ export default function Bill({ order }: BillProps) {
 			}, "image/png");
 
 			URL.revokeObjectURL(url);
-			toast.success("QR code copied to clipboard");
+			toast.info("QR code copied to clipboard", {
+				duration: 1000,
+				icon: "👍",
+				richColors: false,
+			});
 		} catch (err) {
 			console.error("Failed to copy QR code:", err);
 			toast.error("Failed to copy QR code");

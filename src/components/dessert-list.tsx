@@ -18,7 +18,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 	return (
 		<div className="flex flex-col gap-3">
 			{desserts.map((dessert) => (
-				<Card key={dessert.id} className="w-full py-4 gap-2">
+				<Card key={dessert.id} className="w-full shadow-none py-4 gap-2">
 					<CardHeader>
 						<div className="flex justify-between items-start">
 							<h3 className="font-semibold text-base">{dessert.name}</h3>

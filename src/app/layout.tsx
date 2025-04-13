@@ -68,7 +68,18 @@ export default function RootLayout({
 				<Analytics />
 				<Navbar />
 				{children}
-				<Toaster position="top-center" richColors />
+				<Toaster
+					position="top-center"
+					richColors
+					icons={{
+						success: "👍",
+						error: "🚫",
+						info: "💡",
+						warning: "⚠️",
+						loading: "🔄",
+					}}
+					mobileOffset={50}
+				/>
 			</body>
 		</html>
 	);

@@ -81,15 +81,6 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 	return (
 		<div className="flex flex-col gap-4">
 			<div>
-				<div className="flex items-center justify-between mb-3">
-					<h2 className="text-lg font-semibold">Deserts</h2>
-					<div className="flex items-center gap-2">
-						<ShoppingBag className="h-5 w-5" />
-						<span className="font-medium">
-							{totalItems} {totalItems === 1 ? "item" : "items"}
-						</span>
-					</div>
-				</div>
 				<DessertList desserts={items} addToCart={addToCart} />
 			</div>
 
@@ -109,7 +100,7 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 				</CardContent>
 			</Card>
 
-			<Card>
+			<Card className="gap-2">
 				<CardHeader className="pb-3">
 					<CardTitle className="text-lg">Bill</CardTitle>
 				</CardHeader>
