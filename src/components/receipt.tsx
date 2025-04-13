@@ -10,9 +10,15 @@ interface ReceiptProps {
 	cart: CartItem[];
 	total: number;
 	clearCart: () => void;
+	deliveryCost: number;
 }
 
-export function Receipt({ cart, total, clearCart }: ReceiptProps) {
+export function Receipt({
+	cart,
+	total,
+	clearCart,
+	deliveryCost,
+}: ReceiptProps) {
 	const receiptRef = useRef<HTMLDivElement>(null);
 
 	const handlePrint = () => {
@@ -234,7 +240,14 @@ export function Receipt({ cart, total, clearCart }: ReceiptProps) {
 
 				<Separator className="my-4 h-px border-t border-gray-300" />
 
-				<div className="flex justify-between font-bold text-base">
+				<div className="flex justify-between font-bold text-sm">
+					<span>Delivery Cost:</span>
+					<span>₹{deliveryCost.toFixed(2)}</span>
+				</div>
+
+				<Separator className="my-4 h-px border-t border-gray-300" />
+
+				<div className="flex justify-between font-bold text-sm">
 					<span>Total:</span>
 					<span>₹{total.toFixed(2)}</span>
 				</div>

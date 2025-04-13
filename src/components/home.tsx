@@ -126,7 +126,12 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 				</CardHeader>
 				<CardContent>
 					{cart.length > 0 ? (
-						<Receipt cart={cart} total={total} clearCart={clearCart} />
+						<Receipt
+							cart={cart}
+							total={total}
+							clearCart={clearCart}
+							deliveryCost={Number.parseFloat(deliveryCost || "0")}
+						/>
 					) : (
 						<div className="text-center py-6 text-muted-foreground">
 							<p>Add items to cart to see receipt</p>
