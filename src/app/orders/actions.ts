@@ -1,6 +1,6 @@
 "use server";
 
-import { asc, desc, eq, gt } from "drizzle-orm";
+import { asc, desc, eq, gte } from "drizzle-orm";
 
 import { db } from "@/db";
 import { orderItemsTable, ordersTable } from "@/db/schema";
@@ -13,11 +13,14 @@ interface CreateOrderData {
 }
 
 export async function getOrders() {
-	const yesterday = new Date();
-	yesterday.setDate(yesterday.getDate() - 1);
+	const startOfDay = new Date();
+	startOfDay.setHours(0, 0, 0, 0);
 
 	const orders = await db.query.ordersTable.findMany({
-		where: gt(ordersTable.createdAt, yesterday),
+		columns: {
+			isDeleted: false,
+		},
+		where: gte(ordersTable.createdAt, startOfDay),
 		orderBy: [desc(ordersTable.status), asc(ordersTable.createdAt)],
 		with: {
 			orderItems: {
