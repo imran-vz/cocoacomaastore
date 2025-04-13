@@ -88,7 +88,7 @@ export default function ManageDesserts({
 	return (
 		<div className="space-y-8">
 			<Dialog open={openModal} onOpenChange={handleCloseModal}>
-				<DialogContent className="-mt-20">
+				<DialogContent className="-mt-28">
 					<DialogHeader>
 						<DialogTitle>
 							{editingDessert ? "Edit Dessert" : "Add New Dessert"}

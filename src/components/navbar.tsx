@@ -13,6 +13,7 @@ const navLinks = [
 
 export default function Navbar() {
 	const pathname = usePathname();
+
 	return (
 		<div className="shadow-md sticky top-0 bg-white">
 			<div className="flex justify-between px-4 py-3 items-center max-w-lg mx-auto">

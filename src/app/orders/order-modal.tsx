@@ -22,10 +22,9 @@ export default function OrderModal({
 	done,
 	isLoading,
 }: OrderModalProps) {
-	console.log(order.status);
 	return (
 		<Dialog open={true} onOpenChange={onClose}>
-			<DialogContent className="-mt-20">
+			<DialogContent className="-mt-28">
 				<DialogHeader className="text-left">
 					<DialogTitle>Order Details</DialogTitle>
 					<DialogDescription asChild>

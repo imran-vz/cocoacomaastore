@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink"
+    xmlns:svgjs="http://svgjs.dev/svgjs" viewBox="0 0 800 800" opacity="0.1">
+    <defs>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="rrreflection-grad">
+            <stop stop-color="hsl(185, 53%, 55%)" stop-opacity="1" offset="45%"></stop>
+            <stop stop-color="hsl(0, 73%, 55%)" stop-opacity="1" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="rrreflection-grad-2">
+            <stop stop-color="hsl(0, 73%, 55%)" stop-opacity="1" offset="0%"></stop>
+            <stop stop-color="hsl(185, 53%, 55%)" stop-opacity="1" offset="45%"></stop>
+        </linearGradient>
+        <linearGradient gradientTransform="rotate(270)" x1="50%" y1="0%" x2="50%" y2="100%" id="rrreflection-grad-3">
+            <stop stop-color="hsl(185, 53%, 55%)" stop-opacity="1" offset="45%"></stop>
+            <stop stop-color="hsl(0, 73%, 55%)" stop-opacity="1" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient gradientTransform="rotate(270)" x1="50%" y1="0%" x2="50%" y2="100%" id="rrreflection-grad-4">
+            <stop stop-color="hsl(0, 73%, 55%)" stop-opacity="1" offset="0%"></stop>
+            <stop stop-color="hsl(185, 53%, 55%)" stop-opacity="1" offset="45%"></stop>
+        </linearGradient>
+    </defs>
+    <g stroke-width="0.5" stroke="url(#rrreflection-grad)" fill="none">
+        <circle r="825" cx="50%" cy="0"></circle>
+        <circle r="810" cx="50%" cy="0"></circle>
+        <circle r="795" cx="50%" cy="0"></circle>
+        <circle r="780" cx="50%" cy="0"></circle>
+        <circle r="765" cx="50%" cy="0"></circle>
+        <circle r="750" cx="50%" cy="0"></circle>
+        <circle r="735" cx="50%" cy="0"></circle>
+        <circle r="720" cx="50%" cy="0"></circle>
+        <circle r="705" cx="50%" cy="0"></circle>
+        <circle r="690" cx="50%" cy="0"></circle>
+        <circle r="675" cx="50%" cy="0"></circle>
+        <circle r="660" cx="50%" cy="0"></circle>
+        <circle r="645" cx="50%" cy="0"></circle>
+        <circle r="630" cx="50%" cy="0"></circle>
+        <circle r="615" cx="50%" cy="0"></circle>
+        <circle r="600" cx="50%" cy="0"></circle>
+        <circle r="585" cx="50%" cy="0"></circle>
+        <circle r="570" cx="50%" cy="0"></circle>
+        <circle r="555" cx="50%" cy="0"></circle>
+        <circle r="540" cx="50%" cy="0"></circle>
+        <circle r="525" cx="50%" cy="0"></circle>
+        <circle r="510" cx="50%" cy="0"></circle>
+        <circle r="495" cx="50%" cy="0"></circle>
+        <circle r="480" cx="50%" cy="0"></circle>
+        <circle r="465" cx="50%" cy="0"></circle>
+        <circle r="450" cx="50%" cy="0"></circle>
+        <circle r="435" cx="50%" cy="0"></circle>
+        <circle r="420" cx="50%" cy="0"></circle>
+        <circle r="405" cx="50%" cy="0"></circle>
+        <circle r="390" cx="50%" cy="0"></circle>
+        <circle r="375" cx="50%" cy="0"></circle>
+        <circle r="360" cx="50%" cy="0"></circle>
+        <circle r="345" cx="50%" cy="0"></circle>
+        <circle r="330" cx="50%" cy="0"></circle>
+        <circle r="315" cx="50%" cy="0"></circle>
+        <circle r="300" cx="50%" cy="0"></circle>
+        <circle r="285" cx="50%" cy="0"></circle>
+        <circle r="270" cx="50%" cy="0"></circle>
+        <circle r="255" cx="50%" cy="0"></circle>
+        <circle r="240" cx="50%" cy="0"></circle>
+        <circle r="225" cx="50%" cy="0"></circle>
+        <circle r="210" cx="50%" cy="0"></circle>
+        <circle r="195" cx="50%" cy="0"></circle>
+        <circle r="180" cx="50%" cy="0"></circle>
+        <circle r="165" cx="50%" cy="0"></circle>
+        <circle r="150" cx="50%" cy="0"></circle>
+        <circle r="135" cx="50%" cy="0"></circle>
+        <circle r="120" cx="50%" cy="0"></circle>
+        <circle r="105" cx="50%" cy="0"></circle>
+        <circle r="90" cx="50%" cy="0"></circle>
+        <circle r="75" cx="50%" cy="0"></circle>
+        <circle r="60" cx="50%" cy="0"></circle>
+        <circle r="45" cx="50%" cy="0"></circle>
+        <circle r="30" cx="50%" cy="0"></circle>
+        <circle r="15" cx="50%" cy="0"></circle>
+    </g>
+    <g stroke-width="0.5" stroke="url(#rrreflection-grad-2)" fill="none">
+        <circle r="825" cx="50%" cy="100%"></circle>
+        <circle r="810" cx="50%" cy="100%"></circle>
+        <circle r="795" cx="50%" cy="100%"></circle>
+        <circle r="780" cx="50%" cy="100%"></circle>
+        <circle r="765" cx="50%" cy="100%"></circle>
+        <circle r="750" cx="50%" cy="100%"></circle>
+        <circle r="735" cx="50%" cy="100%"></circle>
+        <circle r="720" cx="50%" cy="100%"></circle>
+        <circle r="705" cx="50%" cy="100%"></circle>
+        <circle r="690" cx="50%" cy="100%"></circle>
+        <circle r="675" cx="50%" cy="100%"></circle>
+        <circle r="660" cx="50%" cy="100%"></circle>
+        <circle r="645" cx="50%" cy="100%"></circle>
+        <circle r="630" cx="50%" cy="100%"></circle>
+        <circle r="615" cx="50%" cy="100%"></circle>
+        <circle r="600" cx="50%" cy="100%"></circle>
+        <circle r="585" cx="50%" cy="100%"></circle>
+        <circle r="570" cx="50%" cy="100%"></circle>
+        <circle r="555" cx="50%" cy="100%"></circle>
+        <circle r="540" cx="50%" cy="100%"></circle>
+        <circle r="525" cx="50%" cy="100%"></circle>
+        <circle r="510" cx="50%" cy="100%"></circle>
+        <circle r="495" cx="50%" cy="100%"></circle>
+        <circle r="480" cx="50%" cy="100%"></circle>
+        <circle r="465" cx="50%" cy="100%"></circle>
+        <circle r="450" cx="50%" cy="100%"></circle>
+        <circle r="435" cx="50%" cy="100%"></circle>
+        <circle r="420" cx="50%" cy="100%"></circle>
+        <circle r="405" cx="50%" cy="100%"></circle>
+        <circle r="390" cx="50%" cy="100%"></circle>
+        <circle r="375" cx="50%" cy="100%"></circle>
+        <circle r="360" cx="50%" cy="100%"></circle>
+        <circle r="345" cx="50%" cy="100%"></circle>
+        <circle r="330" cx="50%" cy="100%"></circle>
+        <circle r="315" cx="50%" cy="100%"></circle>
+        <circle r="300" cx="50%" cy="100%"></circle>
+        <circle r="285" cx="50%" cy="100%"></circle>
+        <circle r="270" cx="50%" cy="100%"></circle>
+        <circle r="255" cx="50%" cy="100%"></circle>
+        <circle r="240" cx="50%" cy="100%"></circle>
+        <circle r="225" cx="50%" cy="100%"></circle>
+        <circle r="210" cx="50%" cy="100%"></circle>
+        <circle r="195" cx="50%" cy="100%"></circle>
+        <circle r="180" cx="50%" cy="100%"></circle>
+        <circle r="165" cx="50%" cy="100%"></circle>
+        <circle r="150" cx="50%" cy="100%"></circle>
+        <circle r="135" cx="50%" cy="100%"></circle>
+        <circle r="120" cx="50%" cy="100%"></circle>
+        <circle r="105" cx="50%" cy="100%"></circle>
+        <circle r="90" cx="50%" cy="100%"></circle>
+        <circle r="75" cx="50%" cy="100%"></circle>
+        <circle r="60" cx="50%" cy="100%"></circle>
+        <circle r="45" cx="50%" cy="100%"></circle>
+        <circle r="30" cx="50%" cy="100%"></circle>
+        <circle r="15" cx="50%" cy="100%"></circle>
+    </g>
+    <g stroke-width="0.5" stroke="url(#rrreflection-grad-3)" fill="none">
+        <circle r="825" cx="0" cy="50%"></circle>
+        <circle r="810" cx="0" cy="50%"></circle>
+        <circle r="795" cx="0" cy="50%"></circle>
+        <circle r="780" cx="0" cy="50%"></circle>
+        <circle r="765" cx="0" cy="50%"></circle>
+        <circle r="750" cx="0" cy="50%"></circle>
+        <circle r="735" cx="0" cy="50%"></circle>
+        <circle r="720" cx="0" cy="50%"></circle>
+        <circle r="705" cx="0" cy="50%"></circle>
+        <circle r="690" cx="0" cy="50%"></circle>
+        <circle r="675" cx="0" cy="50%"></circle>
+        <circle r="660" cx="0" cy="50%"></circle>
+        <circle r="645" cx="0" cy="50%"></circle>
+        <circle r="630" cx="0" cy="50%"></circle>
+        <circle r="615" cx="0" cy="50%"></circle>
+        <circle r="600" cx="0" cy="50%"></circle>
+        <circle r="585" cx="0" cy="50%"></circle>
+        <circle r="570" cx="0" cy="50%"></circle>
+        <circle r="555" cx="0" cy="50%"></circle>
+        <circle r="540" cx="0" cy="50%"></circle>
+        <circle r="525" cx="0" cy="50%"></circle>
+        <circle r="510" cx="0" cy="50%"></circle>
+        <circle r="495" cx="0" cy="50%"></circle>
+        <circle r="480" cx="0" cy="50%"></circle>
+        <circle r="465" cx="0" cy="50%"></circle>
+        <circle r="450" cx="0" cy="50%"></circle>
+        <circle r="435" cx="0" cy="50%"></circle>
+        <circle r="420" cx="0" cy="50%"></circle>
+        <circle r="405" cx="0" cy="50%"></circle>
+        <circle r="390" cx="0" cy="50%"></circle>
+        <circle r="375" cx="0" cy="50%"></circle>
+        <circle r="360" cx="0" cy="50%"></circle>
+        <circle r="345" cx="0" cy="50%"></circle>
+        <circle r="330" cx="0" cy="50%"></circle>
+        <circle r="315" cx="0" cy="50%"></circle>
+        <circle r="300" cx="0" cy="50%"></circle>
+        <circle r="285" cx="0" cy="50%"></circle>
+        <circle r="270" cx="0" cy="50%"></circle>
+        <circle r="255" cx="0" cy="50%"></circle>
+        <circle r="240" cx="0" cy="50%"></circle>
+        <circle r="225" cx="0" cy="50%"></circle>
+        <circle r="210" cx="0" cy="50%"></circle>
+        <circle r="195" cx="0" cy="50%"></circle>
+        <circle r="180" cx="0" cy="50%"></circle>
+        <circle r="165" cx="0" cy="50%"></circle>
+        <circle r="150" cx="0" cy="50%"></circle>
+        <circle r="135" cx="0" cy="50%"></circle>
+        <circle r="120" cx="0" cy="50%"></circle>
+        <circle r="105" cx="0" cy="50%"></circle>
+        <circle r="90" cx="0" cy="50%"></circle>
+        <circle r="75" cx="0" cy="50%"></circle>
+        <circle r="60" cx="0" cy="50%"></circle>
+        <circle r="45" cx="0" cy="50%"></circle>
+        <circle r="30" cx="0" cy="50%"></circle>
+        <circle r="15" cx="0" cy="50%"></circle>
+    </g>
+    <g stroke-width="0.5" stroke="url(#rrreflection-grad-4)" fill="none">
+        <circle r="825" cx="100%" cy="50%"></circle>
+        <circle r="810" cx="100%" cy="50%"></circle>
+        <circle r="795" cx="100%" cy="50%"></circle>
+        <circle r="780" cx="100%" cy="50%"></circle>
+        <circle r="765" cx="100%" cy="50%"></circle>
+        <circle r="750" cx="100%" cy="50%"></circle>
+        <circle r="735" cx="100%" cy="50%"></circle>
+        <circle r="720" cx="100%" cy="50%"></circle>
+        <circle r="705" cx="100%" cy="50%"></circle>
+        <circle r="690" cx="100%" cy="50%"></circle>
+        <circle r="675" cx="100%" cy="50%"></circle>
+        <circle r="660" cx="100%" cy="50%"></circle>
+        <circle r="645" cx="100%" cy="50%"></circle>
+        <circle r="630" cx="100%" cy="50%"></circle>
+        <circle r="615" cx="100%" cy="50%"></circle>
+        <circle r="600" cx="100%" cy="50%"></circle>
+        <circle r="585" cx="100%" cy="50%"></circle>
+        <circle r="570" cx="100%" cy="50%"></circle>
+        <circle r="555" cx="100%" cy="50%"></circle>
+        <circle r="540" cx="100%" cy="50%"></circle>
+        <circle r="525" cx="100%" cy="50%"></circle>
+        <circle r="510" cx="100%" cy="50%"></circle>
+        <circle r="495" cx="100%" cy="50%"></circle>
+        <circle r="480" cx="100%" cy="50%"></circle>
+        <circle r="465" cx="100%" cy="50%"></circle>
+        <circle r="450" cx="100%" cy="50%"></circle>
+        <circle r="435" cx="100%" cy="50%"></circle>
+        <circle r="420" cx="100%" cy="50%"></circle>
+        <circle r="405" cx="100%" cy="50%"></circle>
+        <circle r="390" cx="100%" cy="50%"></circle>
+        <circle r="375" cx="100%" cy="50%"></circle>
+        <circle r="360" cx="100%" cy="50%"></circle>
+        <circle r="345" cx="100%" cy="50%"></circle>
+        <circle r="330" cx="100%" cy="50%"></circle>
+        <circle r="315" cx="100%" cy="50%"></circle>
+        <circle r="300" cx="100%" cy="50%"></circle>
+        <circle r="285" cx="100%" cy="50%"></circle>
+        <circle r="270" cx="100%" cy="50%"></circle>
+        <circle r="255" cx="100%" cy="50%"></circle>
+        <circle r="240" cx="100%" cy="50%"></circle>
+        <circle r="225" cx="100%" cy="50%"></circle>
+        <circle r="210" cx="100%" cy="50%"></circle>
+        <circle r="195" cx="100%" cy="50%"></circle>
+        <circle r="180" cx="100%" cy="50%"></circle>
+        <circle r="165" cx="100%" cy="50%"></circle>
+        <circle r="150" cx="100%" cy="50%"></circle>
+        <circle r="135" cx="100%" cy="50%"></circle>
+        <circle r="120" cx="100%" cy="50%"></circle>
+        <circle r="105" cx="100%" cy="50%"></circle>
+        <circle r="90" cx="100%" cy="50%"></circle>
+        <circle r="75" cx="100%" cy="50%"></circle>
+        <circle r="60" cx="100%" cy="50%"></circle>
+        <circle r="45" cx="100%" cy="50%"></circle>
+        <circle r="30" cx="100%" cy="50%"></circle>
+        <circle r="15" cx="100%" cy="50%"></circle>
+    </g>
+</svg>
