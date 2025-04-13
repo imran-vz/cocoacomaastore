@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 
-import { Inventory } from "@/components/inventory";
 import { getDesserts } from "./desserts/actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import Home from "@/components/home";
 
 export const dynamic = "force-dynamic"; // forces dynamic rendering
 
-export default async function Home() {
+export default async function page() {
 	const desserts = getDesserts();
 
 	return (
@@ -20,7 +20,7 @@ export default async function Home() {
 					</div>
 				}
 			>
-				<Inventory desserts={desserts} />
+				<Home desserts={desserts} />
 			</Suspense>
 		</main>
 	);

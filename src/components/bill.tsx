@@ -78,46 +78,20 @@ export default function Bill({ order }: BillProps) {
 	};
 
 	return (
-		<div className="space-y-8 p-4">
+		<div className="space-y-8">
 			{/* Order Details Section */}
-			<div className="space-y-2">
-				<div className="flex justify-between items-center">
-					<h2 className="font-semibold text-lg">Order Details</h2>
-					<Button onClick={copyOrderDetails} type="button">
-						Copy Order
-					</Button>
-				</div>
-				<div className="space-y-1">
-					{order.items.map((item) => (
-						<div key={item.id} className="flex justify-between">
-							<span>
-								{item.name} × {item.quantity}
-							</span>
-							<span>₹{(item.price * item.quantity).toFixed(2)}</span>
-						</div>
-					))}
-
-					<Separator />
-					<p className="text-sm text-muted-foreground inline-flex w-full justify-between">
-						<span>Delivery Cost</span> <span>₹{order.deliveryCost}</span>
-					</p>
-					<Separator />
-
-					<div className=" pt-2 font-semibold flex justify-between">
-						<span>Total</span>
-						<span>₹{order.total.toFixed(2)}</span>
-					</div>
-				</div>
+			<div className="flex gap-4 items-center justify-center">
+				<Button onClick={copyOrderDetails} type="button">
+					Copy Order
+				</Button>
+				<Button onClick={copyQrCodeToClipboard} type="button">
+					Copy UPI
+				</Button>
 			</div>
 
 			{/* QR Code Section */}
 			<div className="flex flex-col items-center space-y-2">
-				<div className="flex gap-2 items-center">
-					<h2 className="font-semibold text-lg">Scan to Pay</h2>
-					<Button onClick={copyQrCodeToClipboard} type="button">
-						Copy UPI
-					</Button>
-				</div>
+				<h2 className="font-semibold text-lg">Scan to Pay</h2>
 				<QRCodeSVG
 					ref={qrCodeRef}
 					value={UPI_STRING}

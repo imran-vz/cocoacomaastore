@@ -21,14 +21,14 @@ export const cartFormSchema = z.object({
 		}),
 });
 
-export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
+export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 	const items = use(desserts);
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const form = useForm<z.infer<typeof cartFormSchema>>({
 		resolver: zodResolver(cartFormSchema),
 		defaultValues: {
 			name: "",
-			deliveryCost: "0.00",
+			deliveryCost: "",
 		},
 	});
 
@@ -73,10 +73,12 @@ export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 	const deliveryCost = form.watch("deliveryCost");
 	const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 	const total = useMemo(() => {
-		return (
-			cart.reduce((sum, item) => sum + item.price * item.quantity, 0) +
-			Number(deliveryCost)
+		const itemCost = cart.reduce(
+			(sum, item) => sum + item.price * item.quantity,
+			0,
 		);
+		const dc = Number.parseFloat(deliveryCost || "0");
+		return itemCost + dc;
 	}, [cart, deliveryCost]);
 
 	return (
@@ -112,7 +114,7 @@ export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 
 			<Card>
 				<CardHeader className="pb-3">
-					<CardTitle className="text-lg">Receipt</CardTitle>
+					<CardTitle className="text-lg">Bill</CardTitle>
 				</CardHeader>
 				<CardContent>
 					{cart.length > 0 ? (
@@ -120,7 +122,7 @@ export function Inventory({ desserts }: { desserts: Promise<Dessert[]> }) {
 							order={{
 								items: cart,
 								total: total,
-								deliveryCost: Number(deliveryCost),
+								deliveryCost: Number.parseFloat(deliveryCost || "0"),
 							}}
 						/>
 					) : (
