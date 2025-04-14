@@ -13,7 +13,7 @@ export default function manifest(): MetadataRoute.Manifest {
 		categories: ["food", "dessert"],
 		lang: "en",
 		scope: "/",
-		display_override: ["fullscreen", "standalone"],
+		display_override: ["standalone", "minimal-ui"],
 		icons: [
 			{
 				src: "/icon-192x192.png",
