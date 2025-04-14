@@ -46,10 +46,15 @@ export default function ManageDesserts({
 	const handleSubmit = async (values: Omit<Dessert, "id">) => {
 		setIsLoading(true);
 		try {
+			const trimmedValues = {
+				...values,
+				name: values.name.trim(),
+				description: values.description?.trim() || null,
+			};
 			if (editingDessert) {
-				await updateDessert(editingDessert.id, values);
+				await updateDessert(editingDessert.id, trimmedValues);
 			} else {
-				await createDessert(values);
+				await createDessert(trimmedValues);
 			}
 
 			// Refresh desserts

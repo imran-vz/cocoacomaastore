@@ -3,10 +3,8 @@
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
-import { toast } from "sonner";
 import type { z } from "zod";
 
-import { createOrder } from "@/app/orders/actions";
 import { Button } from "@/components/ui/button";
 import type { CartItem } from "@/lib/types";
 import type { cartFormSchema } from "./home";
@@ -19,7 +17,6 @@ import {
 	FormMessage,
 } from "./ui/form";
 import { Input } from "./ui/input";
-import { Separator } from "@radix-ui/react-separator";
 import { SlidingNumber } from "./ui/sliding-number";
 
 interface CartProps {
@@ -41,38 +38,38 @@ export function Cart({
 }: CartProps) {
 	const [isLoading, setIsLoading] = useState(false);
 
-	const handleCheckout = async (values: z.infer<typeof cartFormSchema>) => {
-		setIsLoading(true);
-		try {
-			const order = {
-				customerName: values.name,
-				deliveryCost: Number.parseFloat(values.deliveryCost).toFixed(2),
-				items: cart,
-			};
-			await createOrder(order);
-			clearCart();
-			form.reset();
-			toast.success("Order created successfully");
-		} catch (error) {
-			console.error(error);
-			toast.error("Something went wrong");
-		} finally {
-			setIsLoading(false);
-		}
-	};
-	if (cart.length === 0) {
-		return (
-			<div className="text-center py-6 text-muted-foreground">
-				<p>Your cart is empty</p>
-			</div>
-		);
-	}
+	// const handleCheckout = async (values: z.infer<typeof cartFormSchema>) => {
+	// 	setIsLoading(true);
+	// 	try {
+	// 		const order = {
+	// 			customerName: values.name,
+	// 			deliveryCost: Number.parseFloat(values.deliveryCost).toFixed(2),
+	// 			items: cart,
+	// 		};
+	// 		await createOrder(order);
+	// 		clearCart();
+	// 		form.reset();
+	// 		toast.success("Order created successfully");
+	// 	} catch (error) {
+	// 		console.error(error);
+	// 		toast.error("Something went wrong");
+	// 	} finally {
+	// 		setIsLoading(false);
+	// 	}
+	// };
+	// if (cart.length === 0) {
+	// 	return (
+	// 		<div className="text-center py-6 text-muted-foreground">
+	// 			<p>Your cart is empty</p>
+	// 		</div>
+	// 	);
+	// }
 
 	return (
 		<div className="flex flex-col">
 			<Form {...form}>
 				<form
-					onSubmit={form.handleSubmit(handleCheckout)}
+					// onSubmit={form.handleSubmit(handleCheckout)}
 					className="space-y-4"
 				>
 					<div className="flex gap-4 flex-col">
@@ -86,7 +83,7 @@ export function Cart({
 										<Input
 											placeholder="Customer Name"
 											{...field}
-											className="max-w-48"
+											className="max-w-52"
 										/>
 									</FormControl>
 									<FormMessage />
@@ -104,7 +101,7 @@ export function Cart({
 											<Input
 												placeholder="Delivery Cost"
 												{...field}
-												className="max-w-48"
+												className="max-w-52"
 											/>
 										</FormControl>
 									</div>
@@ -121,7 +118,9 @@ export function Cart({
 								className="flex items-center py-2 border-b last:border-b-0"
 							>
 								<div className="flex-1">
-									<h4 className="font-medium text-sm">{item.name}</h4>
+									<h4 className="font-medium text-sm capitalize">
+										{item.name}
+									</h4>
 									<p className="text-xs text-muted-foreground">
 										{item.price.toFixed(2)}
 									</p>
@@ -162,9 +161,9 @@ export function Cart({
 						))}
 					</div>
 
-					<Separator className="h-px bg-slate-300" />
+					{/* <Separator className="h-px bg-slate-300" /> */}
 
-					<div className="flex justify-between">
+					{/* <div className="flex justify-between">
 						<p className="font-medium">Total:</p>
 						<div className="flex items-center gap-1">
 							₹<SlidingNumber value={Number.parseFloat(total.toFixed(2))} />
@@ -174,7 +173,7 @@ export function Cart({
 						<Button variant="outline" type="submit">
 							{isLoading ? "Processing..." : "Checkout"}
 						</Button>
-					</div>
+					</div> */}
 				</form>
 			</Form>
 		</div>

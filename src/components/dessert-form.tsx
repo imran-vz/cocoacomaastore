@@ -19,7 +19,7 @@ import { z } from "zod";
 
 const formSchema = z.object({
 	name: z.string().min(1, "Name is required"),
-	description: z.string().min(1, "Description is required"),
+	description: z.string().optional(),
 	price: z.number().min(0, "Price must be a valid number"),
 });
 
@@ -36,9 +36,14 @@ export function DessertForm({
 	onDelete,
 	isLoading,
 }: DessertFormProps) {
+	const defaultValues = {
+		name: initialData?.name || "",
+		description: initialData?.description || "",
+		price: initialData?.price || 0,
+	};
 	const form = useForm<z.infer<typeof formSchema>>({
 		resolver: zodResolver(formSchema),
-		defaultValues: initialData || { name: "", description: "", price: 0 },
+		defaultValues,
 	});
 
 	return (

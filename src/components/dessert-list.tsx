@@ -20,27 +20,16 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 			{desserts.map((dessert) => (
 				<Card key={dessert.id} className="w-full shadow-none py-4 gap-2">
 					<CardHeader>
-						<div className="flex justify-between items-start">
-							<h3 className="font-semibold text-base">{dessert.name}</h3>
+						<div className="flex justify-between items-center">
+							<h3 className="font-semibold text-base min-w-32 max-w-32 capitalize">
+								{dessert.name}
+							</h3>
 							<p className="font-bold text-base">{dessert.price.toFixed(2)}</p>
-						</div>
-					</CardHeader>
-
-					{dessert.description && (
-						<CardContent>
-							<p className="text-sm text-muted-foreground">
-								{dessert.description}
-							</p>
-						</CardContent>
-					)}
-
-					<CardFooter>
-						<div className="flex justify-end w-full">
 							<Button onClick={() => addToCart(dessert)} size="sm">
 								Add to Cart
 							</Button>
 						</div>
-					</CardFooter>
+					</CardHeader>
 				</Card>
 			))}
 		</div>

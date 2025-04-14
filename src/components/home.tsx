@@ -83,9 +83,18 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 				<DessertList desserts={items} addToCart={addToCart} />
 			</div>
 
-			<Card className="gap-2">
-				<CardHeader>
-					<CardTitle className="text-lg">Your Cart</CardTitle>
+			<Card>
+				<CardHeader className="flex items-center justify-between">
+					<CardTitle className="text-lg">Cart</CardTitle>
+					<div className="max-w-52 w-full">
+						<Bill
+							order={{
+								items: cart,
+								total: total,
+								deliveryCost: Number.parseFloat(deliveryCost || "0"),
+							}}
+						/>
+					</div>
 				</CardHeader>
 				<CardContent>
 					<Cart
@@ -96,27 +105,6 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 						clearCart={clearCart}
 						form={form}
 					/>
-				</CardContent>
-			</Card>
-
-			<Card className="gap-2">
-				<CardHeader className="pb-3">
-					<CardTitle className="text-lg">Bill</CardTitle>
-				</CardHeader>
-				<CardContent>
-					{cart.length > 0 ? (
-						<Bill
-							order={{
-								items: cart,
-								total: total,
-								deliveryCost: Number.parseFloat(deliveryCost || "0"),
-							}}
-						/>
-					) : (
-						<div className="text-center py-6 text-muted-foreground">
-							<p>Add items to cart to see receipt</p>
-						</div>
-					)}
 				</CardContent>
 			</Card>
 

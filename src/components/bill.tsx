@@ -13,19 +13,27 @@ interface BillProps {
 	};
 }
 
+function capitalize(str: string) {
+	return str
+		.split(" ")
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+}
+
 export default function Bill({ order }: BillProps) {
 	const UPI_STRING = `upi://pay?pa=Q525459501@ybl&pn=PhonePeMerchant&mc=0000&mode=02&purpose=00&am=${order.total}`;
 	const qrCodeRef = useRef<SVGSVGElement>(null);
 
 	const copyOrderDetails = () => {
-		const orderText = `${order.items
+		if (order.items.length === 0) return navigator.clipboard.writeText("");
+
+		const orderItemsText = order.items
 			.map(
 				(item) =>
-					`${item.name} × ${item.quantity} = ₹${(item.price * item.quantity).toFixed(2)}`,
+					`${capitalize(item.name.trim())} × ${item.quantity} = ₹${(item.price * item.quantity).toFixed(2)}`,
 			)
-			.join(
-				"\n",
-			)}\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}\nTotal: ₹${order.total.toFixed(2)}`;
+			.join("\n");
+		const orderText = `${orderItemsText}\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}\n-----\nTotal: ₹${order.total.toFixed(2)}`;
 
 		navigator.clipboard.writeText(orderText);
 		toast.info("Order details copied to clipboard", {
@@ -59,8 +67,8 @@ export default function Bill({ order }: BillProps) {
 			});
 
 			// add some padding on all sides to the canvas
-			canvas.width = img.width + 20;
-			canvas.height = img.height + 20;
+			canvas.width = img.width + 100;
+			canvas.height = img.height + 100;
 
 			// center the image on the canvas
 			ctx?.translate(canvas.width / 2, canvas.height / 2);
@@ -89,27 +97,34 @@ export default function Bill({ order }: BillProps) {
 	};
 
 	return (
-		<div className="space-y-8">
+		<div>
 			{/* Order Details Section */}
-			<div className="flex gap-4 items-center justify-center">
-				<Button onClick={copyOrderDetails} type="button">
+			<div className="flex gap-4 items-center justify-between">
+				<Button
+					onClick={copyOrderDetails}
+					type="button"
+					size="sm"
+					variant="outline"
+				>
 					Copy Order
 				</Button>
-				<Button onClick={copyQrCodeToClipboard} type="button">
+				<Button
+					onClick={copyQrCodeToClipboard}
+					type="button"
+					size="sm"
+					variant="outline"
+				>
 					Copy UPI
 				</Button>
 			</div>
 
 			{/* QR Code Section */}
-			<div className="flex flex-col items-center space-y-2">
-				<h2 className="font-semibold text-lg">Scan to Pay</h2>
-				<QRCodeSVG
-					ref={qrCodeRef}
-					value={UPI_STRING}
-					size={500}
-					className="w-48 h-48"
-				/>
-			</div>
+			<QRCodeSVG
+				ref={qrCodeRef}
+				value={UPI_STRING}
+				size={500}
+				className="hidden"
+			/>
 		</div>
 	);
 }
