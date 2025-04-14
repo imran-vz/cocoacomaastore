@@ -83,18 +83,9 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 				<DessertList desserts={items} addToCart={addToCart} />
 			</div>
 
-			<Card>
-				<CardHeader className="flex items-center justify-between">
+			<Card className="gap-2">
+				<CardHeader>
 					<CardTitle className="text-lg">Cart</CardTitle>
-					<div className="max-w-52 w-full">
-						<Bill
-							order={{
-								items: cart,
-								total: total,
-								deliveryCost: Number.parseFloat(deliveryCost || "0"),
-							}}
-						/>
-					</div>
 				</CardHeader>
 				<CardContent>
 					<Cart
@@ -109,8 +100,17 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 			</Card>
 
 			<Card className="gap-2">
-				<CardHeader className="pb-3">
+				<CardHeader className="flex items-center justify-between">
 					<CardTitle className="text-lg">Receipt</CardTitle>
+					<div className="max-w-52 w-full">
+						<Bill
+							order={{
+								items: cart,
+								total: total,
+								deliveryCost: Number.parseFloat(deliveryCost || "0"),
+							}}
+						/>
+					</div>
 				</CardHeader>
 				<CardContent>
 					{cart.length > 0 ? (
