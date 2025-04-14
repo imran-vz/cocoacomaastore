@@ -15,17 +15,12 @@ import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-
-const formSchema = z.object({
-	name: z.string().min(1, "Name is required"),
-	description: z.string().optional(),
-	price: z.number().min(0, "Price must be a valid number"),
-});
+import type { z } from "zod";
+import { dessertFormSchema } from "./form-schema/dessert";
 
 type DessertFormProps = {
 	initialData?: Dessert;
-	onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>;
+	onSubmit: (values: z.infer<typeof dessertFormSchema>) => Promise<void>;
 	onDelete?: () => Promise<void>;
 	isLoading?: boolean;
 };
@@ -41,8 +36,8 @@ export function DessertForm({
 		description: initialData?.description || "",
 		price: initialData?.price || 0,
 	};
-	const form = useForm<z.infer<typeof formSchema>>({
-		resolver: zodResolver(formSchema),
+	const form = useForm<z.infer<typeof dessertFormSchema>>({
+		resolver: zodResolver(dessertFormSchema),
 		defaultValues,
 	});
 

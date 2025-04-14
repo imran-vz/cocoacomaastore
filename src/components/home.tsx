@@ -3,23 +3,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { use, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import type { z } from "zod";
 
 import { Cart } from "@/components/cart";
 import { DessertList } from "@/components/dessert-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { CartItem, Dessert } from "@/lib/types";
 import Bill from "./bill";
+import { cartFormSchema } from "./form-schema/cart";
 import { Receipt } from "./receipt";
-
-export const cartFormSchema = z.object({
-	name: z.string().min(1),
-	deliveryCost: z
-		.string()
-		.refine((val) => !Number.isNaN(Number.parseFloat(val)), {
-			message: "Delivery cost must be a number",
-		}),
-});
 
 export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 	const items = use(desserts);

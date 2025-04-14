@@ -1,12 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardFooter,
-	CardHeader,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { Dessert } from "@/lib/types";
 
 interface DessertListProps {
@@ -16,13 +11,13 @@ interface DessertListProps {
 
 export function DessertList({ desserts, addToCart }: DessertListProps) {
 	return (
-		<div className="flex flex-col gap-3">
+		<div className="flex flex-col gap-2">
 			{desserts.map((dessert) => (
-				<Card key={dessert.id} className="w-full shadow-none py-4 gap-2">
-					<CardHeader>
+				<Card key={dessert.id} className="w-full shadow-none py-3 gap-2">
+					<CardContent className="px-4">
 						<div className="flex justify-between items-center">
 							<div className="flex-1">
-								<h4 className="font-medium text-sm capitalize">
+								<h4 className="font-bold text-base capitalize">
 									{dessert.name}
 								</h4>
 								<p className="text-xs text-muted-foreground">
@@ -33,7 +28,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 								Add to Cart
 							</Button>
 						</div>
-					</CardHeader>
+					</CardContent>
 				</Card>
 			))}
 		</div>
