@@ -5,13 +5,7 @@ declare const self: ServiceWorkerGlobalScope;
 const CACHE_NAME = "app-cache-v1";
 
 // Files to cache
-const urlsToCache = [
-	"/",
-	"/orders",
-	"/manifest.json",
-	"/icon-192x192.png",
-	"/icon-512x512.png",
-];
+const urlsToCache = ["/", "/icon-192x192.png", "/icon-512x512.png"];
 
 self.addEventListener("install", (event) => {
 	event.waitUntil(
