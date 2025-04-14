@@ -6,14 +6,16 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { dessertsTable } from "@/db/schema";
 import type { Dessert } from "@/lib/types";
+import { performance } from "node:perf_hooks";
 
 async function getDesserts() {
-	console.time("getDesserts");
+	const start = performance.now();
 	const desserts = await db.query.dessertsTable.findMany({
 		where: eq(dessertsTable.isDeleted, false),
 		orderBy: [asc(dessertsTable.id)],
 	});
-	console.timeEnd("getDesserts");
+	const duration = performance.now() - start;
+	console.log(`getDesserts: ${duration}ms`);
 	return desserts;
 }
 
@@ -23,18 +25,19 @@ export const getCachedDesserts = unstable_cache(getDesserts, ["desserts"], {
 });
 
 export async function createDessert(data: Omit<Dessert, "id">) {
-	console.time("createDessert");
+	const start = performance.now();
 	await db.insert(dessertsTable).values({
 		name: data.name,
 		description: data.description,
 		price: data.price,
 	});
-	console.timeEnd("createDessert");
+	const duration = performance.now() - start;
+	console.log(`createDessert: ${duration}ms`);
 	revalidateTag("desserts");
 }
 
 export async function updateDessert(id: number, data: Omit<Dessert, "id">) {
-	console.time("updateDessert");
+	const start = performance.now();
 	await db
 		.update(dessertsTable)
 		.set({
@@ -43,16 +46,18 @@ export async function updateDessert(id: number, data: Omit<Dessert, "id">) {
 			price: data.price,
 		})
 		.where(eq(dessertsTable.id, id));
-	console.timeEnd("updateDessert");
+	const duration = performance.now() - start;
+	console.log(`updateDessert: ${duration}ms`);
 	revalidateTag("desserts");
 }
 
 export async function deleteDessert(id: number) {
-	console.time("deleteDessert");
+	const start = performance.now();
 	await db
 		.update(dessertsTable)
 		.set({ isDeleted: true })
 		.where(eq(dessertsTable.id, id));
-	console.timeEnd("deleteDessert");
+	const duration = performance.now() - start;
+	console.log(`deleteDessert: ${duration}ms`);
 	revalidateTag("desserts");
 }

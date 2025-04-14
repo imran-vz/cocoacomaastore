@@ -6,6 +6,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { orderItemsTable, ordersTable } from "@/db/schema";
 import type { CartItem } from "@/lib/types";
+import { performance } from "node:perf_hooks";
 
 interface CreateOrderData {
 	customerName: string;
@@ -16,7 +17,7 @@ interface CreateOrderData {
 async function getOrders() {
 	const startOfDay = new Date();
 	startOfDay.setHours(0, 0, 0, 0);
-	console.time("getOrders");
+	const start = performance.now();
 	const orders = await db.query.ordersTable.findMany({
 		columns: {
 			isDeleted: false,
@@ -40,7 +41,8 @@ async function getOrders() {
 			},
 		},
 	});
-	console.timeEnd("getOrders");
+	const duration = performance.now() - start;
+	console.log(`getOrders: ${duration}ms`);
 
 	return orders;
 }
@@ -51,7 +53,7 @@ export const getCachedOrders = unstable_cache(getOrders, ["orders"], {
 });
 
 export async function createOrder(data: CreateOrderData) {
-	console.time("createOrder");
+	const start = performance.now();
 
 	await db.transaction(async (tx) => {
 		// Create the order
@@ -82,7 +84,8 @@ export async function createOrder(data: CreateOrderData) {
 
 		return order;
 	});
-	console.timeEnd("createOrder");
+	const duration = performance.now() - start;
+	console.log(`createOrder: ${duration}ms`);
 	revalidateTag("orders");
 }
 
@@ -90,21 +93,23 @@ export async function updateOrderStatus(
 	orderId: number,
 	status: "pending" | "completed",
 ) {
-	console.time("updateOrderStatus");
+	const start = performance.now();
 	await db
 		.update(ordersTable)
 		.set({ status })
 		.where(eq(ordersTable.id, orderId));
-	console.timeEnd("updateOrderStatus");
+	const duration = performance.now() - start;
+	console.log(`updateOrderStatus: ${duration}ms`);
 	revalidateTag("orders");
 }
 
 export async function deleteOrder(orderId: number) {
-	console.time("deleteOrder");
+	const start = performance.now();
 	await db
 		.update(ordersTable)
 		.set({ isDeleted: true })
 		.where(eq(ordersTable.id, orderId));
-	console.timeEnd("deleteOrder");
+	const duration = performance.now() - start;
+	console.log(`deleteOrder: ${duration}ms`);
 	revalidateTag("orders");
 }
