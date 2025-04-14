@@ -7,7 +7,7 @@ import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import type { CartItem } from "@/lib/types";
-import type { cartFormSchema } from "./home";
+import type { cartFormSchema } from "./form-schema/cart";
 import {
 	Form,
 	FormControl,
