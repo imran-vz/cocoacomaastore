@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Sans, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -7,9 +7,10 @@ import Navbar from "@/components/navbar";
 
 import "./globals.css";
 
-const geistSans = Geist({
-	variable: "--font-geist-sans",
+const poppinsSans = IBM_Plex_Sans({
+	variable: "--font-poppins-sans",
 	subsets: ["latin"],
+	weight: ["400", "500", "600", "700"],
 });
 
 const geistMono = Geist_Mono({
@@ -63,7 +64,7 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body
-				className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[url(/bg-grid.svg)]`}
+				className={`${poppinsSans.variable} ${geistMono.variable} antialiased bg-[url(/bg-grid.svg)]`}
 			>
 				<Analytics />
 				<Navbar />
