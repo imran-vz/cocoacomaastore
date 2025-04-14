@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, Geist_Mono } from "next/font/google";
+import { Nunito_Sans, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -7,8 +7,8 @@ import Navbar from "@/components/navbar";
 
 import "./globals.css";
 
-const poppinsSans = IBM_Plex_Sans({
-	variable: "--font-poppins-sans",
+const nunitoSans = Nunito_Sans({
+	variable: "--font-nunito-sans",
 	subsets: ["latin"],
 	weight: ["400", "500", "600", "700"],
 });
@@ -64,7 +64,7 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body
-				className={`${poppinsSans.variable} ${geistMono.variable} antialiased bg-[url(/bg-grid.svg)]`}
+				className={`${nunitoSans.variable} ${geistMono.variable} antialiased bg-[url(/bg-grid.svg)]`}
 			>
 				<Analytics />
 				<Navbar />
