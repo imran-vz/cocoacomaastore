@@ -12,6 +12,7 @@ import type { CartItem, Dessert } from "@/lib/types";
 import Bill from "./bill";
 import { cartFormSchema } from "./form-schema/cart";
 import { Receipt } from "./receipt";
+import { toast } from "sonner";
 
 export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 	const items = use(desserts);
@@ -25,7 +26,7 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 		const existingDessert = cart.find((item) => item.id === dessert.id);
 
 		if (existingDessert) {
-			setCart(
+			setCart((cart) =>
 				cart.map((item) => {
 					if (item.id === dessert.id && item.quantity < 99) {
 						return {
@@ -38,12 +39,12 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 				}),
 			);
 		} else {
-			setCart([...cart, { ...dessert, quantity: 1 }]);
+			setCart((cart) => [...cart, { ...dessert, quantity: 1 }]);
 		}
 	};
 
 	const removeFromCart = (dessertId: number) => {
-		setCart(cart.filter((item) => item.id !== dessertId));
+		setCart((cart) => cart.filter((item) => item.id !== dessertId));
 	};
 
 	const updateQuantity = (dessertId: number, quantity: number) => {
@@ -52,7 +53,12 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 			return;
 		}
 
-		setCart(
+		if (quantity > 99) {
+			toast.error("Quantity cannot be greater than 99");
+			return;
+		}
+
+		setCart((cart) =>
 			cart.map((item) =>
 				item.id === dessertId ? { ...item, quantity } : item,
 			),
