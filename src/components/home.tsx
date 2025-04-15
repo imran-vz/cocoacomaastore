@@ -26,11 +26,16 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 
 		if (existingDessert) {
 			setCart(
-				cart.map((item) =>
-					item.id === dessert.id
-						? { ...item, quantity: item.quantity + 1 }
-						: item,
-				),
+				cart.map((item) => {
+					if (item.id === dessert.id && item.quantity < 99) {
+						return {
+							...item,
+							quantity: item.quantity + 1,
+						};
+					}
+
+					return item;
+				}),
 			);
 		} else {
 			setCart([...cart, { ...dessert, quantity: 1 }]);
