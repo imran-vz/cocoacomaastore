@@ -28,7 +28,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 							</div>
 						</CardContent>
 					</Card>
-				<Button>
+				</Button>
 			))}
 		</div>
 	);
