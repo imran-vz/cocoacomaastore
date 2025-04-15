@@ -3,6 +3,7 @@ export interface Dessert {
 	name: string;
 	description?: string | null;
 	price: number;
+	enabled: boolean;
 }
 
 export interface CartItem extends Dessert {

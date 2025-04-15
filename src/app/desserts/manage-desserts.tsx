@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { DessertForm } from "@/components/dessert-form";
@@ -24,6 +24,7 @@ import {
 	createDessert,
 	deleteDessert,
 	getCachedDesserts,
+	toggleDessert,
 	updateDessert,
 } from "./actions";
 
@@ -43,7 +44,15 @@ export default function ManageDesserts({
 		setOpenModal(false);
 	};
 
-	const handleSubmit = async (values: Omit<Dessert, "id">) => {
+	const refetch = useCallback(
+		() =>
+			getCachedDesserts({
+				shouldShowDisabled: true,
+			}).then(setDesserts),
+		[],
+	);
+
+	const handleSubmit = async (values: Omit<Dessert, "id" | "enabled">) => {
 		setIsLoading(true);
 		try {
 			const trimmedValues = {
@@ -54,12 +63,11 @@ export default function ManageDesserts({
 			if (editingDessert) {
 				await updateDessert(editingDessert.id, trimmedValues);
 			} else {
-				await createDessert(trimmedValues);
+				await createDessert({ ...trimmedValues, enabled: true });
 			}
 
 			// Refresh desserts
-			const updatedDesserts = await getCachedDesserts();
-			setDesserts(updatedDesserts);
+			await refetch();
 			setEditingDessert(null);
 			handleCloseModal();
 			toast.success("Dessert saved successfully");
@@ -76,8 +84,7 @@ export default function ManageDesserts({
 			try {
 				setIsLoading(true);
 				await deleteDessert(editingDessert.id);
-				const updatedDesserts = await getCachedDesserts();
-				setDesserts(updatedDesserts);
+				await refetch();
 				setEditingDessert(null);
 				handleCloseModal();
 				toast.success("Dessert deleted successfully");
@@ -88,6 +95,21 @@ export default function ManageDesserts({
 				setIsLoading(false);
 			}
 		}
+	};
+
+	const handleToggleDessert = async (dessert: Dessert) => {
+		try {
+			setDesserts(
+				desserts.map((d) =>
+					d.id === dessert.id ? { ...d, enabled: !d.enabled } : d,
+				),
+			);
+			await toggleDessert(dessert.id, !dessert.enabled);
+		} catch (error) {
+			toast.error("Failed to toggle dessert");
+			console.error("Failed to toggle dessert:", error);
+		}
+		await refetch();
 	};
 
 	return (
@@ -127,7 +149,7 @@ export default function ManageDesserts({
 					<TableHeader>
 						<TableRow>
 							<TableHead className="min-w-24">Name</TableHead>
-							<TableHead className="min-w-24">Price</TableHead>
+							<TableHead className="min-w-12">Price</TableHead>
 							<TableHead className="min-w-24">Actions</TableHead>
 						</TableRow>
 					</TableHeader>
@@ -136,7 +158,7 @@ export default function ManageDesserts({
 							<TableRow key={dessert.id}>
 								<TableCell className="font-medium">{dessert.name}</TableCell>
 								<TableCell>{dessert.price.toFixed(2)}</TableCell>
-								<TableCell>
+								<TableCell className="flex gap-2">
 									<Button
 										variant="outline"
 										onClick={() => {
@@ -145,6 +167,13 @@ export default function ManageDesserts({
 										}}
 									>
 										Edit
+									</Button>
+
+									<Button
+										variant="outline"
+										onClick={() => handleToggleDessert(dessert)}
+									>
+										{dessert.enabled ? "Disable" : "Enable"}
 									</Button>
 								</TableCell>
 							</TableRow>

@@ -14,7 +14,9 @@ export const metadata: Metadata = {
 };
 
 export default async function page() {
-	const desserts = getCachedDesserts();
+	const desserts = getCachedDesserts({
+		shouldShowDisabled: true,
+	});
 
 	return (
 		<main className="min-h-screen p-3 pb-6 max-w-md mx-auto">
