@@ -6,7 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
 		short_name: "Cocoa Comaa",
 		description: "Cocoa Comaa",
 		start_url: "/?from=pwa",
-		display: "minimal-ui",
+		display: "standalone",
 		background_color: "#ffffff",
 		theme_color: "#502922",
 		orientation: "portrait",
