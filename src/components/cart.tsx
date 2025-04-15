@@ -127,7 +127,6 @@ export function Cart({
 								</div>
 								<div className="flex items-center gap-2">
 									<Button
-										variant="outline"
 										size="icon"
 										className="h-7 w-7"
 										onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -140,7 +139,6 @@ export function Cart({
 									</span>
 									<Button
 										type="button"
-										variant="outline"
 										size="icon"
 										className="h-7 w-7"
 										onClick={() => updateQuantity(item.id, item.quantity + 1)}
