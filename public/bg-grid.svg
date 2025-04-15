@@ -3,18 +3,18 @@
     <defs>
         <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="rrreflection-grad">
             <stop stop-color="hsl(185, 53%, 55%)" stop-opacity="1" offset="45%"></stop>
-            <stop stop-color="hsl(0, 73%, 55%)" stop-opacity="1" offset="100%"></stop>
+            <stop stop-color="hsl(15, 39%, 14%)" stop-opacity="1" offset="100%"></stop>
         </linearGradient>
         <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="rrreflection-grad-2">
-            <stop stop-color="hsl(0, 73%, 55%)" stop-opacity="1" offset="0%"></stop>
+            <stop stop-color="hsl(15, 39%, 14%)" stop-opacity="1" offset="0%"></stop>
             <stop stop-color="hsl(185, 53%, 55%)" stop-opacity="1" offset="45%"></stop>
         </linearGradient>
         <linearGradient gradientTransform="rotate(270)" x1="50%" y1="0%" x2="50%" y2="100%" id="rrreflection-grad-3">
             <stop stop-color="hsl(185, 53%, 55%)" stop-opacity="1" offset="45%"></stop>
-            <stop stop-color="hsl(0, 73%, 55%)" stop-opacity="1" offset="100%"></stop>
+            <stop stop-color="hsl(15, 39%, 14%)" stop-opacity="1" offset="100%"></stop>
         </linearGradient>
         <linearGradient gradientTransform="rotate(270)" x1="50%" y1="0%" x2="50%" y2="100%" id="rrreflection-grad-4">
-            <stop stop-color="hsl(0, 73%, 55%)" stop-opacity="1" offset="0%"></stop>
+            <stop stop-color="hsl(15, 39%, 14%)" stop-opacity="1" offset="0%"></stop>
             <stop stop-color="hsl(185, 53%, 55%)" stop-opacity="1" offset="45%"></stop>
         </linearGradient>
     </defs>

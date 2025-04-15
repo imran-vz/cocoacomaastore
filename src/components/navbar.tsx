@@ -24,7 +24,7 @@ export default function Navbar() {
 							repeatType: "loop",
 							repeatDelay: 10,
 						}}
-						className="text-xl text-black font-bold dark:text-white"
+						className="text-xl text-primary font-bold dark:text-white"
 					>
 						Cocoa Comaa
 					</TextRoll>
@@ -36,7 +36,7 @@ export default function Navbar() {
 								<Link
 									className={cn(
 										"text-sm font-medium",
-										pathname.startsWith(link.href) && "underline",
+										pathname.startsWith(link.href) && "underline text-primary",
 									)}
 									href={link.href}
 								>
