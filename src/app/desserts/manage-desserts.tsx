@@ -1,9 +1,25 @@
 "use client";
 
-import { use, useCallback, useState } from "react";
+import {
+	DndContext,
+	type DragEndEvent,
+	KeyboardSensor,
+	PointerSensor,
+	closestCenter,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import {
+	SortableContext,
+	arrayMove,
+	sortableKeyboardCoordinates,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { use, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { DessertForm } from "@/components/dessert-form";
+import { DraggableTableRow } from "@/components/draggable-table-row";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -14,7 +30,6 @@ import {
 import {
 	Table,
 	TableBody,
-	TableCell,
 	TableHead,
 	TableHeader,
 	TableRow,
@@ -26,12 +41,15 @@ import {
 	getCachedDesserts,
 	toggleDessert,
 	updateDessert,
+	updateDessertSequence,
 } from "./actions";
 
 export default function ManageDesserts({
 	initialDesserts,
 }: { initialDesserts: Promise<Dessert[]> }) {
-	const [desserts, setDesserts] = useState<Dessert[]>(use(initialDesserts));
+	const initial = use(initialDesserts);
+
+	const [desserts, setDesserts] = useState<Dessert[]>(initial);
 	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
 	const [openModal, setOpenModal] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
@@ -48,11 +66,15 @@ export default function ManageDesserts({
 		() =>
 			getCachedDesserts({
 				shouldShowDisabled: true,
-			}).then(setDesserts),
+			}).then((newDesserts) => {
+				setDesserts(newDesserts);
+			}),
 		[],
 	);
 
-	const handleSubmit = async (values: Omit<Dessert, "id" | "enabled">) => {
+	const handleSubmit = async (
+		values: Omit<Dessert, "id" | "enabled" | "sequence">,
+	) => {
 		setIsLoading(true);
 		try {
 			const trimmedValues = {
@@ -63,7 +85,7 @@ export default function ManageDesserts({
 			if (editingDessert) {
 				await updateDessert(editingDessert.id, trimmedValues);
 			} else {
-				await createDessert({ ...trimmedValues, enabled: true });
+				await createDessert({ ...trimmedValues, enabled: true, sequence: -1 });
 			}
 
 			// Refresh desserts
@@ -112,6 +134,37 @@ export default function ManageDesserts({
 		await refetch();
 	};
 
+	const sensors = useSensors(
+		useSensor(PointerSensor),
+		useSensor(KeyboardSensor, {
+			coordinateGetter: sortableKeyboardCoordinates,
+		}),
+	);
+
+	const handleDragEnd = async (event: DragEndEvent) => {
+		const { active, over } = event;
+
+		if (active.id !== over?.id) {
+			const oldIndex = desserts.findIndex((item) => item.id === active.id);
+			const newIndex = desserts.findIndex((item) => item.id === over?.id);
+
+			const newItems = arrayMove(desserts, oldIndex, newIndex);
+			setDesserts(newItems);
+
+			try {
+				// Use the dragged item's ID and its target sequence
+				await updateDessertSequence(
+					Number(active.id),
+					desserts[newIndex].sequence,
+				);
+			} catch (error) {
+				toast.error("Failed to update order");
+				console.error("Failed to update order:", error);
+				await refetch();
+			}
+		}
+	};
+
 	return (
 		<div className="space-y-8">
 			<Dialog open={openModal} onOpenChange={handleCloseModal}>
@@ -144,43 +197,41 @@ export default function ManageDesserts({
 				</Button>
 			</div>
 
-			<div className="overflow-x-auto max-w-screen">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead className="min-w-24">Name</TableHead>
-							<TableHead className="min-w-12">Price</TableHead>
-							<TableHead className="min-w-24">Actions</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{desserts.map((dessert) => (
-							<TableRow key={dessert.id}>
-								<TableCell className="font-medium">{dessert.name}</TableCell>
-								<TableCell>{dessert.price.toFixed(2)}</TableCell>
-								<TableCell className="flex gap-2">
-									<Button
-										variant="outline"
-										onClick={() => {
+			<DndContext
+				sensors={sensors}
+				collisionDetection={closestCenter}
+				onDragEnd={handleDragEnd}
+			>
+				<div className="overflow-x-auto max-w-screen">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead className="min-w-24">Name</TableHead>
+								<TableHead className="min-w-12">Price</TableHead>
+								<TableHead className="min-w-24">Actions</TableHead>
+							</TableRow>
+						</TableHeader>
+						<SortableContext
+							items={desserts.map((d) => d.id)}
+							strategy={verticalListSortingStrategy}
+						>
+							<TableBody>
+								{desserts.map((dessert) => (
+									<DraggableTableRow
+										key={dessert.id}
+										dessert={dessert}
+										onEdit={(dessert) => {
 											setEditingDessert(dessert);
 											handleOpenModal();
 										}}
-									>
-										Edit
-									</Button>
-
-									<Button
-										variant="outline"
-										onClick={() => handleToggleDessert(dessert)}
-									>
-										{dessert.enabled ? "Disable" : "Enable"}
-									</Button>
-								</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
-			</div>
+										onToggle={handleToggleDessert}
+									/>
+								))}
+							</TableBody>
+						</SortableContext>
+					</Table>
+				</div>
+			</DndContext>
 		</div>
 	);
 }

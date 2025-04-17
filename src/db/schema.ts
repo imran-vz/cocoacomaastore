@@ -15,6 +15,7 @@ export const dessertsTable = pgTable("desserts", {
 	description: varchar({ length: 255 }),
 	isDeleted: boolean().notNull().default(false),
 	enabled: boolean().notNull().default(true),
+	sequence: integer().notNull().default(0),
 });
 
 export const ordersTable = pgTable("orders", {
