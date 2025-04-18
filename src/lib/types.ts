@@ -4,7 +4,6 @@ export interface Dessert {
 	description?: string | null;
 	price: number;
 	enabled: boolean;
-	sequence: number;
 }
 
 export interface CartItem extends Dessert {

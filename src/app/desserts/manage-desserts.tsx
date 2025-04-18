@@ -85,7 +85,7 @@ export default function ManageDesserts({
 			if (editingDessert) {
 				await updateDessert(editingDessert.id, trimmedValues);
 			} else {
-				await createDessert({ ...trimmedValues, enabled: true, sequence: -1 });
+				await createDessert({ ...trimmedValues, enabled: true });
 			}
 
 			// Refresh desserts
@@ -143,7 +143,10 @@ export default function ManageDesserts({
 
 	const handleDragEnd = async (event: DragEndEvent) => {
 		const { active, over } = event;
-
+		const dessertsWithSequence = desserts.map((dessert) => ({
+			...dessert,
+			sequence: (dessert as Dessert & { sequence: number }).sequence,
+		}));
 		if (active.id !== over?.id) {
 			const oldIndex = desserts.findIndex((item) => item.id === active.id);
 			const newIndex = desserts.findIndex((item) => item.id === over?.id);
@@ -152,11 +155,17 @@ export default function ManageDesserts({
 			setDesserts(newItems);
 
 			try {
-				// Use the dragged item's ID and its target sequence
-				await updateDessertSequence(
-					Number(active.id),
-					desserts[newIndex].sequence,
-				);
+				// Calculate new score
+				const prevScore =
+					newIndex > 0 ? dessertsWithSequence[newIndex - 1].sequence : 0;
+				const nextScore =
+					newIndex < dessertsWithSequence.length - 1
+						? dessertsWithSequence[newIndex].sequence
+						: prevScore + 1000;
+
+				const newScore = prevScore + (nextScore - prevScore) / 2;
+
+				await updateDessertSequence(Number(active.id), newScore);
 			} catch (error) {
 				toast.error("Failed to update order");
 				console.error("Failed to update order:", error);
