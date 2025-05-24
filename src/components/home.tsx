@@ -67,6 +67,7 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 
 	const clearCart = () => {
 		setCart([]);
+		form.reset();
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	};
 

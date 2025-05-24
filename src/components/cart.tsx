@@ -1,7 +1,6 @@
 "use client";
 
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import type { z } from "zod";
 
@@ -36,7 +35,7 @@ export function Cart({
 	clearCart,
 	form,
 }: CartProps) {
-	const [isLoading, setIsLoading] = useState(false);
+	// const [isLoading, setIsLoading] = useState(false);
 
 	// const handleCheckout = async (values: z.infer<typeof cartFormSchema>) => {
 	// 	setIsLoading(true);

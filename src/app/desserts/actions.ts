@@ -1,18 +1,18 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import { dessertsTable } from "@/db/schema";
-import type { Dessert } from "@/lib/types";
-import { performance } from "node:perf_hooks";
 import {
 	getAllSequences,
 	initializeSequence,
 	removeSequence,
 	updateSequence,
 } from "@/lib/sequence";
+import type { Dessert } from "@/lib/types";
+import { performance } from "node:perf_hooks";
 
 async function getDesserts({
 	shouldShowDisabled = false,
@@ -29,7 +29,6 @@ async function getDesserts({
 
 	// Get sequences from Redis
 	const sequences = await getAllSequences();
-	console.log(" :32 | sequences:", sequences);
 
 	// Sort desserts by sequence
 	const sortedDesserts = desserts
