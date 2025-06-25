@@ -27,6 +27,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
 	Table,
 	TableBody,
@@ -43,7 +44,6 @@ import {
 	updateDessert,
 	updateDessertSequence,
 } from "./actions";
-import { Input } from "@/components/ui/input";
 
 export default function ManageDesserts({
 	initialDesserts,
@@ -191,9 +191,9 @@ export default function ManageDesserts({
 	};
 
 	return (
-		<div className="space-y-8">
+		<div className="space-y-4 md:space-y-8 p-4 md:p-0">
 			<Dialog open={openModal} onOpenChange={handleCloseModal}>
-				<DialogContent className="-mt-28">
+				<DialogContent className="mx-4 max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 md:-mt-28">
 					<DialogHeader>
 						<DialogTitle>
 							{editingDessert ? "Edit Dessert" : "Add New Dessert"}
@@ -209,28 +209,34 @@ export default function ManageDesserts({
 				</DialogContent>
 			</Dialog>
 
-			<div className="flex justify-between items-center">
-				<h2 className="text-2xl font-bold">Desserts</h2>
+			<div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
+				<h2 className="text-xl md:text-2xl font-bold">Desserts</h2>
 				<Button
 					type="button"
 					onClick={() => {
 						setEditingDessert(null);
 						handleOpenModal();
 					}}
+					className="w-full md:w-auto"
 				>
 					Add Dessert
 				</Button>
 			</div>
 
-			<div className="flex gap-4 items-center">
+			<div className="flex flex-col space-y-3 md:flex-row md:gap-4 md:items-center md:space-y-0">
 				<Input
 					placeholder="Search desserts by name..."
 					value={searchTerm}
 					onChange={(e) => setSearchTerm(e.target.value)}
-					className="max-w-sm"
+					className="w-full md:max-w-sm"
 				/>
 				{searchTerm && (
-					<Button variant="outline" size="sm" onClick={() => setSearchTerm("")}>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setSearchTerm("")}
+						className="w-full md:w-auto"
+					>
 						Clear
 					</Button>
 				)}
@@ -241,34 +247,42 @@ export default function ManageDesserts({
 				collisionDetection={closestCenter}
 				onDragEnd={handleDragEnd}
 			>
-				<div className="overflow-x-auto max-w-screen">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead className="min-w-24">Name</TableHead>
-								<TableHead className="min-w-12">Price</TableHead>
-								<TableHead className="min-w-24">Actions</TableHead>
-							</TableRow>
-						</TableHeader>
-						<SortableContext
-							items={filteredDesserts.map((d) => d.id)}
-							strategy={verticalListSortingStrategy}
-						>
-							<TableBody>
-								{filteredDesserts.map((dessert) => (
-									<DraggableTableRow
-										key={dessert.id}
-										dessert={dessert}
-										onEdit={(dessert) => {
-											setEditingDessert(dessert);
-											handleOpenModal();
-										}}
-										onToggle={handleToggleDessert}
-									/>
-								))}
-							</TableBody>
-						</SortableContext>
-					</Table>
+				<div className="overflow-x-auto -mx-4 md:mx-0">
+					<div className="min-w-full md:min-w-0 px-4 md:px-0">
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead className="min-w-32 md:min-w-24 text-sm">
+										Name
+									</TableHead>
+									<TableHead className="min-w-20 md:min-w-12 text-sm">
+										Price
+									</TableHead>
+									<TableHead className="min-w-28 md:min-w-24 text-sm">
+										Actions
+									</TableHead>
+								</TableRow>
+							</TableHeader>
+							<SortableContext
+								items={filteredDesserts.map((d) => d.id)}
+								strategy={verticalListSortingStrategy}
+							>
+								<TableBody>
+									{filteredDesserts.map((dessert) => (
+										<DraggableTableRow
+											key={dessert.id}
+											dessert={dessert}
+											onEdit={(dessert) => {
+												setEditingDessert(dessert);
+												handleOpenModal();
+											}}
+											onToggle={handleToggleDessert}
+										/>
+									))}
+								</TableBody>
+							</SortableContext>
+						</Table>
+					</div>
 				</div>
 			</DndContext>
 		</div>
