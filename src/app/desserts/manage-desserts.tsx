@@ -43,6 +43,7 @@ import {
 	updateDessert,
 	updateDessertSequence,
 } from "./actions";
+import { Input } from "@/components/ui/input";
 
 export default function ManageDesserts({
 	initialDesserts,
@@ -53,6 +54,7 @@ export default function ManageDesserts({
 	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
 	const [openModal, setOpenModal] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
+	const [searchTerm, setSearchTerm] = useState("");
 
 	const handleOpenModal = () => {
 		setOpenModal(true);
@@ -141,6 +143,11 @@ export default function ManageDesserts({
 		}),
 	);
 
+	// Filter desserts based on search term
+	const filteredDesserts = desserts.filter((dessert) =>
+		dessert.name.toLowerCase().includes(searchTerm.toLowerCase()),
+	);
+
 	const handleDragEnd = async (event: DragEndEvent) => {
 		const { active, over } = event;
 		const dessertsWithSequence = desserts.map((dessert) => ({
@@ -148,11 +155,20 @@ export default function ManageDesserts({
 			sequence: (dessert as Dessert & { sequence: number }).sequence,
 		}));
 		if (active.id !== over?.id) {
-			const oldIndex = desserts.findIndex((item) => item.id === active.id);
-			const newIndex = desserts.findIndex((item) => item.id === over?.id);
+			const oldIndex = filteredDesserts.findIndex(
+				(item) => item.id === active.id,
+			);
+			const newIndex = filteredDesserts.findIndex(
+				(item) => item.id === over?.id,
+			);
 
-			const newItems = arrayMove(desserts, oldIndex, newIndex);
-			setDesserts(newItems);
+			const newItems = arrayMove(filteredDesserts, oldIndex, newIndex);
+			// Update the main desserts array
+			const updatedDesserts = desserts.map((dessert) => {
+				const updatedDessert = newItems.find((item) => item.id === dessert.id);
+				return updatedDessert || dessert;
+			});
+			setDesserts(updatedDesserts);
 
 			try {
 				// Calculate new score
@@ -206,6 +222,20 @@ export default function ManageDesserts({
 				</Button>
 			</div>
 
+			<div className="flex gap-4 items-center">
+				<Input
+					placeholder="Search desserts by name..."
+					value={searchTerm}
+					onChange={(e) => setSearchTerm(e.target.value)}
+					className="max-w-sm"
+				/>
+				{searchTerm && (
+					<Button variant="outline" size="sm" onClick={() => setSearchTerm("")}>
+						Clear
+					</Button>
+				)}
+			</div>
+
 			<DndContext
 				sensors={sensors}
 				collisionDetection={closestCenter}
@@ -221,11 +251,11 @@ export default function ManageDesserts({
 							</TableRow>
 						</TableHeader>
 						<SortableContext
-							items={desserts.map((d) => d.id)}
+							items={filteredDesserts.map((d) => d.id)}
 							strategy={verticalListSortingStrategy}
 						>
 							<TableBody>
-								{desserts.map((dessert) => (
+								{filteredDesserts.map((dessert) => (
 									<DraggableTableRow
 										key={dessert.id}
 										dessert={dessert}
