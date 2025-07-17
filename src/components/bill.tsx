@@ -81,14 +81,25 @@ export default function Bill({ order }: BillProps) {
 				img.src = url;
 			});
 
-			// add some padding on all sides to the canvas
-			canvas.width = img.width + 100;
-			canvas.height = img.height + 100;
+			// 1 inch padding on all sides (96 DPI = 96 pixels per inch)
+			const padding = 96;
+			canvas.width = img.width + padding * 2;
+			canvas.height = img.height + padding * 2;
 
-			// center the image on the canvas
-			ctx?.translate(canvas.width / 2, canvas.height / 2);
-			ctx?.translate(-img.width / 2, -img.height / 2);
-			ctx?.drawImage(img, 0, 0);
+			// Set white background
+			if (ctx) {
+				ctx.fillStyle = "white";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+				// Draw the QR code centered with padding
+				ctx.fillStyle = "black";
+				ctx.drawImage(img, padding, padding);
+
+				// Draw border around the image (after QR code so it's on top)
+				ctx.strokeStyle = "black";
+				ctx.lineWidth = 4;
+				ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+			}
 
 			// Convert to blob and copy to clipboard
 			canvas.toBlob(async (blob) => {
