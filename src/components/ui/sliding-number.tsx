@@ -10,7 +10,7 @@ import {
 import useMeasure from "react-use-measure";
 
 const TRANSITION = {
-	type: "spring",
+	type: "spring" as const,
 	stiffness: 280,
 	damping: 18,
 	mass: 0.3,
@@ -29,7 +29,14 @@ function Digit({ value, place }: { value: number; place: number }) {
 		<div className="relative inline-block w-[1ch] overflow-x-visible overflow-y-clip leading-none tabular-nums">
 			<div className="invisible">0</div>
 			{Array.from({ length: 10 }, (_, i) => (
-				<NumberComponent key={i} mv={animatedValue} number={i} />
+				<NumberComponent
+					key={`${value}-${
+						// biome-ignore lint/suspicious/noArrayIndexKey: this is a unique key
+						i
+					}`}
+					mv={animatedValue}
+					number={i}
+				/>
 			))}
 		</div>
 	);
@@ -113,7 +120,10 @@ export function SlidingNumber({
 					<span>{decimalSeparator}</span>
 					{decimalPart.split("").map((_, index) => (
 						<Digit
-							key={`decimal-${index}`}
+							key={`decimal-${
+								// biome-ignore lint/suspicious/noArrayIndexKey: this is a unique key
+								index
+							}`}
 							value={Number.parseInt(decimalPart, 10)}
 							place={10 ** (decimalPart.length - index - 1)}
 						/>
