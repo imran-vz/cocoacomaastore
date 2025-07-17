@@ -21,7 +21,7 @@ function capitalize(str: string) {
 }
 
 export default function Bill({ order }: BillProps) {
-	const UPI_STRING = `upi://pay?pa=Q525459501@ybl&pn=PhonePeMerchant&mc=0000&mode=02&purpose=00&am=${order.total}`;
+	const UPI_STRING = `upi://pay?pa=Q244703982@ybl&am=${order.total}&pn=CocoaComaa&tn=DessertOrder`;
 	const qrCodeRef = useRef<SVGSVGElement>(null);
 
 	const copyOrderDetails = () => {
