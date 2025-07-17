@@ -20,8 +20,23 @@ function capitalize(str: string) {
 		.join(" ");
 }
 
+function getUPIString(order: BillProps["order"]) {
+	const transactionNote = `${order.items
+		.map((item) => item.name)
+		.join(", ")
+		.slice(0, 30)}...`;
+
+	const urlParams = new URLSearchParams();
+	urlParams.set("pa", "Q244703982@ybl");
+	urlParams.set("am", order.total.toString());
+	urlParams.set("pn", "Cocoa Comaa");
+	urlParams.set("tn", transactionNote);
+
+	return `upi://pay?${urlParams.toString()}`;
+}
+
 export default function Bill({ order }: BillProps) {
-	const UPI_STRING = `upi://pay?pa=Q244703982@ybl&am=${order.total}&pn=CocoaComaa&tn=DessertOrder`;
+	const UPI_STRING = getUPIString(order);
 	const qrCodeRef = useRef<SVGSVGElement>(null);
 
 	const copyOrderDetails = () => {
