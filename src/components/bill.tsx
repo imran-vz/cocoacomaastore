@@ -27,7 +27,10 @@ function getUPIString(order: BillProps["order"]) {
 		.slice(0, 30)}...`;
 
 	const urlParams = new URLSearchParams();
-	urlParams.set("pa", "Q244703982@ybl");
+	urlParams.set(
+		"pa",
+		process.env.NEXT_PUBLIC_UPI_ID || "krithika647-1@okicici",
+	);
 	urlParams.set("am", order.total.toString());
 	urlParams.set("pn", "Cocoa Comaa");
 	urlParams.set("tn", transactionNote);
