@@ -62,7 +62,6 @@ export default function Bill({ order }: BillProps) {
 		if (!qrCodeRef.current) return;
 
 		try {
-			console.log(UPI_STRING);
 			// Create a canvas and draw the SVG on it
 			const canvas = document.createElement("canvas");
 			const ctx = canvas.getContext("2d");
