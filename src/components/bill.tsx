@@ -27,10 +27,7 @@ function getUPIString(order: BillProps["order"]) {
 		.slice(0, 30)}...`;
 
 	const urlParams = new URLSearchParams();
-	urlParams.set(
-		"pa",
-		process.env.NEXT_PUBLIC_UPI_ID || "krithika647-1@okicici",
-	);
+	urlParams.set("pa", process.env.NEXT_PUBLIC_UPI_ID || "");
 	urlParams.set("am", order.total.toString());
 	urlParams.set("pn", "Cocoa Comaa");
 	urlParams.set("tn", transactionNote);
@@ -65,12 +62,12 @@ export default function Bill({ order }: BillProps) {
 		if (!qrCodeRef.current) return;
 
 		try {
+			console.log(UPI_STRING);
 			// Create a canvas and draw the SVG on it
 			const canvas = document.createElement("canvas");
 			const ctx = canvas.getContext("2d");
 			const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
 			const img = new Image(500, 500);
-
 			// Convert SVG to data URL
 			const svgBlob = new Blob([svgData], {
 				type: "image/svg+xml;charset=utf-8",
