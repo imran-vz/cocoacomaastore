@@ -32,30 +32,30 @@ export function DraggableTableRow({ dessert, onEdit, onToggle }: Props) {
 	return (
 		<TableRow ref={setNodeRef} style={style}>
 			<TableCell>
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-1 sm:gap-2">
 					<Button
 						variant={"ghost"}
-						className="cursor-grab touch-none p-1 md:p-2"
+						className="cursor-grab touch-none p-0.5 sm:p-1 md:p-2"
 						{...attributes}
 						{...listeners}
 					>
-						<GripVertical className="h-4 w-4" />
+						<GripVertical className="h-3 w-3 sm:h-4 sm:w-4" />
 					</Button>
-					<span className="font-medium max-w-20 md:max-w-28 truncate text-sm md:text-base">
+					<span className="font-medium max-w-16 sm:max-w-20 md:max-w-28 truncate text-xs sm:text-sm md:text-base">
 						{dessert.name}
 					</span>
 				</div>
 			</TableCell>
-			<TableCell className="text-sm md:text-base">
+			<TableCell className="text-xs sm:text-sm md:text-base font-medium">
 				${dessert.price.toFixed(2)}
 			</TableCell>
 			<TableCell>
-				<div className="flex flex-col gap-1 md:flex-row md:gap-2">
+				<div className="flex flex-col gap-1 sm:flex-row sm:gap-1 md:gap-2">
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={() => onEdit(dessert)}
-						className="text-xs md:text-sm min-w-16 md:min-w-0"
+						className="text-xs h-6 sm:h-8 min-w-12 sm:min-w-16 md:min-w-0 px-1 sm:px-2"
 					>
 						Edit
 					</Button>
@@ -63,7 +63,7 @@ export function DraggableTableRow({ dessert, onEdit, onToggle }: Props) {
 						variant="outline"
 						size="sm"
 						onClick={() => onToggle(dessert)}
-						className="text-xs md:text-sm min-w-16 md:min-w-0"
+						className="text-xs h-6 sm:h-8 min-w-12 sm:min-w-16 md:min-w-0 px-1 sm:px-2"
 					>
 						{dessert.enabled ? "Disable" : "Enable"}
 					</Button>

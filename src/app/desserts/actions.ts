@@ -122,3 +122,14 @@ export async function updateDessertSequence(id: number, newScore: number) {
 	console.log(`updateDessertSequence: ${duration}ms`);
 	revalidateTag("desserts");
 }
+
+export async function disableAllDesserts() {
+	const start = performance.now();
+	await db
+		.update(dessertsTable)
+		.set({ enabled: false })
+		.where(eq(dessertsTable.isDeleted, false));
+	const duration = performance.now() - start;
+	console.log(`disableAllDesserts: ${duration}ms`);
+	revalidateTag("desserts");
+}

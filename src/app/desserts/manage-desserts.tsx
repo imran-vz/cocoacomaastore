@@ -39,6 +39,7 @@ import type { Dessert } from "@/lib/types";
 import {
 	createDessert,
 	deleteDessert,
+	disableAllDesserts,
 	getCachedDesserts,
 	toggleDessert,
 	updateDessert,
@@ -136,6 +137,22 @@ export default function ManageDesserts({
 		await refetch();
 	};
 
+	const handleDisableAll = async () => {
+		try {
+			setIsLoading(true);
+			setDesserts(desserts.map((d) => ({ ...d, enabled: false })));
+			await disableAllDesserts();
+			await refetch();
+			toast.success("All desserts disabled successfully");
+		} catch (error) {
+			toast.error("Failed to disable all desserts");
+			console.error("Failed to disable all desserts:", error);
+			await refetch();
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	const sensors = useSensors(
 		useSensor(PointerSensor),
 		useSensor(KeyboardSensor, {
@@ -191,9 +208,9 @@ export default function ManageDesserts({
 	};
 
 	return (
-		<div className="space-y-4 md:space-y-8 p-4 md:p-0">
+		<div className="space-y-4 md:space-y-6 lg:space-y-8 p-2 sm:p-4 md:p-0">
 			<Dialog open={openModal} onOpenChange={handleCloseModal}>
-				<DialogContent className="mx-4 max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 md:-mt-28">
+				<DialogContent className="mx-2 max-w-[calc(100vw-1rem)] sm:mx-4 sm:max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 md:-mt-28">
 					<DialogHeader>
 						<DialogTitle>
 							{editingDessert ? "Edit Dessert" : "Add New Dessert"}
@@ -209,33 +226,46 @@ export default function ManageDesserts({
 				</DialogContent>
 			</Dialog>
 
-			<div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
-				<h2 className="text-xl md:text-2xl font-bold">Desserts</h2>
-				<Button
-					type="button"
-					onClick={() => {
-						setEditingDessert(null);
-						handleOpenModal();
-					}}
-					className="w-full md:w-auto"
-				>
-					Add Dessert
-				</Button>
+			<div className="flex flex-col space-y-3 sm:space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
+				<h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">Desserts</h2>
+				<div className="flex flex-col space-y-2 sm:flex-row sm:gap-2 sm:space-y-0 md:gap-3">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={handleDisableAll}
+						disabled={isLoading || desserts.every((d) => !d.enabled)}
+						className="w-full sm:w-auto text-sm"
+						size="sm"
+					>
+						{isLoading ? "Disabling..." : "Disable All"}
+					</Button>
+					<Button
+						type="button"
+						onClick={() => {
+							setEditingDessert(null);
+							handleOpenModal();
+						}}
+						className="w-full sm:w-auto text-sm"
+						size="sm"
+					>
+						Add Dessert
+					</Button>
+				</div>
 			</div>
 
-			<div className="flex flex-col space-y-3 md:flex-row md:gap-4 md:items-center md:space-y-0">
+			<div className="flex flex-col space-y-2 sm:flex-row sm:gap-3 sm:items-center sm:space-y-0 md:gap-4">
 				<Input
 					placeholder="Search desserts by name..."
 					value={searchTerm}
 					onChange={(e) => setSearchTerm(e.target.value)}
-					className="w-full md:max-w-sm"
+					className="w-full sm:flex-1 md:max-w-sm text-sm"
 				/>
 				{searchTerm && (
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={() => setSearchTerm("")}
-						className="w-full md:w-auto"
+						className="w-full sm:w-auto text-xs"
 					>
 						Clear
 					</Button>
@@ -247,18 +277,18 @@ export default function ManageDesserts({
 				collisionDetection={closestCenter}
 				onDragEnd={handleDragEnd}
 			>
-				<div className="overflow-x-auto -mx-4 md:mx-0">
-					<div className="min-w-full md:min-w-0 px-4 md:px-0">
+				<div className="overflow-x-auto -mx-2 sm:-mx-4 md:mx-0">
+					<div className="min-w-full md:min-w-0 px-2 sm:px-4 md:px-0">
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead className="min-w-32 md:min-w-24 text-sm">
+									<TableHead className="min-w-28 sm:min-w-32 md:min-w-24 text-xs sm:text-sm font-medium">
 										Name
 									</TableHead>
-									<TableHead className="min-w-20 md:min-w-12 text-sm">
+									<TableHead className="min-w-16 sm:min-w-20 md:min-w-12 text-xs sm:text-sm font-medium">
 										Price
 									</TableHead>
-									<TableHead className="min-w-28 md:min-w-24 text-sm">
+									<TableHead className="min-w-24 sm:min-w-28 md:min-w-24 text-xs sm:text-sm font-medium">
 										Actions
 									</TableHead>
 								</TableRow>
