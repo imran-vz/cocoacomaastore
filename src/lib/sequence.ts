@@ -1,31 +1,25 @@
-import redis from "@/db/cache";
+import { eq } from "drizzle-orm";
 
-const DESSERT_SEQUENCE_KEY = "dessert:sequence";
+import { db } from "@/db";
+import { dessertsTable } from "@/db/schema";
 
 export async function getSequence(id: number): Promise<number> {
-	const score = await redis.zscore(DESSERT_SEQUENCE_KEY, id.toString());
-	return score ?? 0;
-}
-
-function chunkArray<T>(array: T[], size: number): T[][] {
-	return array.reduce((acc, item, index) => {
-		const chunkIndex = Math.floor(index / size);
-		if (!acc[chunkIndex]) {
-			acc[chunkIndex] = [];
-		}
-		acc[chunkIndex].push(item);
-		return acc;
-	}, [] as T[][]);
+	const dessert = await db.query.dessertsTable.findFirst({
+		where: eq(dessertsTable.id, id),
+		columns: { sequence: true },
+	});
+	return dessert?.sequence ?? 0;
 }
 
 export async function getAllSequences(): Promise<Record<number, number>> {
-	const items: number[] = await redis.zrange(DESSERT_SEQUENCE_KEY, 0, -1, {
-		withScores: true,
+	const desserts = await db.query.dessertsTable.findMany({
+		where: eq(dessertsTable.isDeleted, false),
+		columns: { id: true, sequence: true },
 	});
-	const chunks = chunkArray(items, 2);
-	return chunks.reduce(
-		(acc, item) => {
-			acc[item[0]] = item[1];
+
+	return desserts.reduce(
+		(acc, dessert) => {
+			acc[dessert.id] = dessert.sequence;
 			return acc;
 		},
 		{} as Record<number, number>,
@@ -33,18 +27,20 @@ export async function getAllSequences(): Promise<Record<number, number>> {
 }
 
 export async function updateSequence(id: number, score: number): Promise<void> {
-	await redis.zadd(DESSERT_SEQUENCE_KEY, { score, member: id.toString() });
+	await db
+		.update(dessertsTable)
+		.set({ sequence: score })
+		.where(eq(dessertsTable.id, id));
 }
 
 export async function initializeSequence(id: number): Promise<void> {
-	const maxScore = await redis.zrange(DESSERT_SEQUENCE_KEY, -1, -1, {
-		withScores: true,
+	// Get the current maximum sequence value
+	const maxSequenceDessert = await db.query.dessertsTable.findFirst({
+		where: eq(dessertsTable.isDeleted, false),
+		columns: { sequence: true },
+		orderBy: (desserts, { desc }) => [desc(desserts.sequence)],
 	});
-	const chunks = chunkArray(maxScore, 2);
-	const nextScore = chunks.length ? Number(chunks[0][1]) + 1 : 0;
-	await updateSequence(id, nextScore);
-}
 
-export async function removeSequence(id: number): Promise<void> {
-	await redis.zrem(DESSERT_SEQUENCE_KEY, id.toString());
+	const nextScore = maxSequenceDessert ? maxSequenceDessert.sequence + 1 : 0;
+	await updateSequence(id, nextScore);
 }

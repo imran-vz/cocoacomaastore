@@ -1,48 +1,33 @@
 "use server";
 
+import { performance } from "node:perf_hooks";
 import { and, eq } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import { dessertsTable } from "@/db/schema";
-import {
-	getAllSequences,
-	initializeSequence,
-	removeSequence,
-	updateSequence,
-} from "@/lib/sequence";
+import { initializeSequence, updateSequence } from "@/lib/sequence";
 import type { Dessert } from "@/lib/types";
-import { performance } from "node:perf_hooks";
 
 async function getDesserts({
 	shouldShowDisabled = false,
-}: { shouldShowDisabled?: boolean } = {}) {
+}: {
+	shouldShowDisabled?: boolean;
+} = {}) {
 	const start = performance.now();
 
-	// Get desserts from database
+	// Get desserts from database, sorted by sequence
 	const desserts = await db.query.dessertsTable.findMany({
 		where: and(
 			eq(dessertsTable.isDeleted, false),
 			shouldShowDisabled ? undefined : eq(dessertsTable.enabled, true),
 		),
+		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
 	});
 
-	// Get sequences from Redis
-	const sequences = await getAllSequences();
-
-	// Sort desserts by sequence
-	const sortedDesserts = desserts
-		.toSorted((a, b) => {
-			return (sequences[a.id] ?? 0) - (sequences[b.id] ?? 0);
-		})
-		.map((dessert) => ({
-			...dessert,
-			sequence: sequences[dessert.id] ?? 0,
-		}));
-
 	const duration = performance.now() - start;
-	console.log(`getDesserts: ${duration}ms`);
-	return sortedDesserts;
+	console.log(`getDesserts: ${duration.toFixed(2)}ms`);
+	return desserts;
 }
 
 export async function toggleDessert(id: number, enabled: boolean) {
@@ -52,7 +37,7 @@ export async function toggleDessert(id: number, enabled: boolean) {
 		.set({ enabled })
 		.where(eq(dessertsTable.id, id));
 	const duration = performance.now() - start;
-	console.log(`toggleDessert: ${duration}ms`);
+	console.log(`toggleDessert: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts");
 }
 
@@ -74,7 +59,7 @@ export async function createDessert(data: Omit<Dessert, "id">) {
 	await initializeSequence(newDessert.id);
 
 	const duration = performance.now() - start;
-	console.log(`createDessert: ${duration}ms`);
+	console.log(`createDessert: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts");
 }
 
@@ -92,7 +77,7 @@ export async function updateDessert(
 		})
 		.where(eq(dessertsTable.id, id));
 	const duration = performance.now() - start;
-	console.log(`updateDessert: ${duration}ms`);
+	console.log(`updateDessert: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts");
 }
 
@@ -104,11 +89,8 @@ export async function deleteDessert(id: number) {
 		.set({ isDeleted: true })
 		.where(eq(dessertsTable.id, id));
 
-	// Remove sequence from Redis
-	await removeSequence(id);
-
 	const duration = performance.now() - start;
-	console.log(`deleteDessert: ${duration}ms`);
+	console.log(`deleteDessert: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts");
 }
 
@@ -119,7 +101,7 @@ export async function updateDessertSequence(id: number, newScore: number) {
 	await updateSequence(id, newScore);
 
 	const duration = performance.now() - start;
-	console.log(`updateDessertSequence: ${duration}ms`);
+	console.log(`updateDessertSequence: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts");
 }
 
@@ -130,6 +112,6 @@ export async function disableAllDesserts() {
 		.set({ enabled: false })
 		.where(eq(dessertsTable.isDeleted, false));
 	const duration = performance.now() - start;
-	console.log(`disableAllDesserts: ${duration}ms`);
+	console.log(`disableAllDesserts: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts");
 }
