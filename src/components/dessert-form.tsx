@@ -77,7 +77,7 @@ export function DessertForm({
 					name="price"
 					render={({ field }) => (
 						<FormItem>
-							<FormLabel>Price (in cents)</FormLabel>
+							<FormLabel>Price (₹)</FormLabel>
 							<FormControl>
 								<Input
 									type="number"

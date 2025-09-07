@@ -1,21 +1,21 @@
 "use client";
 
 import {
+	closestCenter,
 	DndContext,
 	type DragEndEvent,
 	KeyboardSensor,
 	PointerSensor,
-	closestCenter,
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
 import {
-	SortableContext,
 	arrayMove,
+	SortableContext,
 	sortableKeyboardCoordinates,
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { DessertForm } from "@/components/dessert-form";
@@ -48,7 +48,9 @@ import {
 
 export default function ManageDesserts({
 	initialDesserts,
-}: { initialDesserts: Promise<Dessert[]> }) {
+}: {
+	initialDesserts: Promise<Dessert[]>;
+}) {
 	const initial = use(initialDesserts);
 
 	const [desserts, setDesserts] = useState<Dessert[]>(initial);
@@ -56,6 +58,9 @@ export default function ManageDesserts({
 	const [openModal, setOpenModal] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [searchTerm, setSearchTerm] = useState("");
+	const [toggleLoadingIds, setToggleLoadingIds] = useState<Set<number>>(
+		new Set(),
+	);
 
 	const handleOpenModal = () => {
 		setOpenModal(true);
@@ -123,18 +128,44 @@ export default function ManageDesserts({
 	};
 
 	const handleToggleDessert = async (dessert: Dessert) => {
+		const newEnabledState = !dessert.enabled;
+
+		// Add to loading set
+		setToggleLoadingIds((prev) => new Set(prev).add(dessert.id));
+
+		// Optimistic update
+		setDesserts((prev) =>
+			prev.map((d) =>
+				d.id === dessert.id ? { ...d, enabled: newEnabledState } : d,
+			),
+		);
+
 		try {
-			setDesserts(
-				desserts.map((d) =>
-					d.id === dessert.id ? { ...d, enabled: !d.enabled } : d,
-				),
+			await toggleDessert(dessert.id, newEnabledState);
+			toast.success(
+				`Dessert ${newEnabledState ? "enabled" : "disabled"} successfully`,
 			);
-			await toggleDessert(dessert.id, !dessert.enabled);
 		} catch (error) {
 			toast.error("Failed to toggle dessert");
 			console.error("Failed to toggle dessert:", error);
+
+			// Revert optimistic update on error
+			setDesserts((prev) =>
+				prev.map((d) =>
+					d.id === dessert.id ? { ...d, enabled: dessert.enabled } : d,
+				),
+			);
+		} finally {
+			// Remove from loading set
+			setToggleLoadingIds((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(dessert.id);
+				return newSet;
+			});
+
+			// Refetch to ensure consistency
+			await refetch();
 		}
-		await refetch();
 	};
 
 	const handleDisableAll = async () => {
@@ -307,6 +338,7 @@ export default function ManageDesserts({
 												handleOpenModal();
 											}}
 											onToggle={handleToggleDessert}
+											isToggleLoading={toggleLoadingIds.has(dessert.id)}
 										/>
 									))}
 								</TableBody>
