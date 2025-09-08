@@ -115,3 +115,57 @@ export async function disableAllDesserts() {
 	console.log(`disableAllDesserts: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts");
 }
+
+export async function moveDessertToTop(id: number) {
+	const start = performance.now();
+
+	// Get all enabled desserts ordered by sequence
+	const enabledDesserts = await db.query.dessertsTable.findMany({
+		where: and(
+			eq(dessertsTable.isDeleted, false),
+			eq(dessertsTable.enabled, true),
+		),
+		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
+	});
+
+	// Find the dessert to move
+	const dessertToMove = enabledDesserts.find((d) => d.id === id);
+	if (!dessertToMove || enabledDesserts.length <= 1) return;
+
+	// Get the minimum sequence value and subtract 1
+	const minSequence = Math.min(...enabledDesserts.map((d) => d.sequence));
+	const newSequence = minSequence - 1;
+
+	await updateSequence(id, newSequence);
+
+	const duration = performance.now() - start;
+	console.log(`moveDessertToTop: ${duration.toFixed(2)}ms`);
+	revalidateTag("desserts");
+}
+
+export async function moveDessertToBottom(id: number) {
+	const start = performance.now();
+
+	// Get all enabled desserts ordered by sequence
+	const enabledDesserts = await db.query.dessertsTable.findMany({
+		where: and(
+			eq(dessertsTable.isDeleted, false),
+			eq(dessertsTable.enabled, true),
+		),
+		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
+	});
+
+	// Find the dessert to move
+	const dessertToMove = enabledDesserts.find((d) => d.id === id);
+	if (!dessertToMove || enabledDesserts.length <= 1) return;
+
+	// Get the maximum sequence value and add 1
+	const maxSequence = Math.max(...enabledDesserts.map((d) => d.sequence));
+	const newSequence = maxSequence + 1;
+
+	await updateSequence(id, newSequence);
+
+	const duration = performance.now() - start;
+	console.log(`moveDessertToBottom: ${duration.toFixed(2)}ms`);
+	revalidateTag("desserts");
+}

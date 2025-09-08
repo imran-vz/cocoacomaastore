@@ -1,6 +1,12 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import {
+	ChevronDown,
+	ChevronsDown,
+	ChevronsUp,
+	ChevronUp,
+	Loader2,
+} from "lucide-react";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
@@ -13,8 +19,12 @@ interface DessertCardProps {
 	onToggle: (dessert: Dessert) => void;
 	onMoveUp: (dessert: Dessert) => void;
 	onMoveDown: (dessert: Dessert) => void;
+	onMoveToTop: (dessert: Dessert) => void;
+	onMoveToBottom: (dessert: Dessert) => void;
 	isToggleLoading?: boolean;
 	isMoving?: boolean;
+	enabledDessertIndex?: number;
+	enabledDessertCount?: number;
 }
 
 export function DessertCard({
@@ -25,8 +35,12 @@ export function DessertCard({
 	onToggle,
 	onMoveUp,
 	onMoveDown,
+	onMoveToTop,
+	onMoveToBottom,
 	isToggleLoading = false,
 	isMoving = false,
+	enabledDessertIndex,
+	enabledDessertCount,
 }: DessertCardProps) {
 	return (
 		<div
@@ -88,37 +102,81 @@ export function DessertCard({
 
 			{/* Actions */}
 			<div className="flex items-center justify-between">
-				{/* Reorder buttons */}
-				<div className="flex items-center gap-1">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => onMoveUp(dessert)}
-						disabled={index === 0 || isMoving}
-						className="h-8 w-8 p-0"
-						title="Move up"
-					>
-						{isMoving ? (
-							<Loader2 className="h-4 w-4 animate-spin" />
-						) : (
-							<ChevronUp className="h-4 w-4" />
-						)}
-					</Button>
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => onMoveDown(dessert)}
-						disabled={index === totalCount - 1 || isMoving}
-						className="h-8 w-8 p-0"
-						title="Move down"
-					>
-						{isMoving ? (
-							<Loader2 className="h-4 w-4 animate-spin" />
-						) : (
-							<ChevronDown className="h-4 w-4" />
-						)}
-					</Button>
-				</div>
+				{/* Reorder buttons - only show for enabled desserts */}
+				{dessert.enabled && (
+					<div className="flex items-center gap-1">
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => onMoveToTop(dessert)}
+							disabled={
+								(enabledDessertIndex ?? index) === 0 ||
+								isMoving ||
+								(enabledDessertCount ?? totalCount) <= 1
+							}
+							className="h-8 w-8 p-0"
+							title="Move to top"
+						>
+							{isMoving ? (
+								<Loader2 className="h-3 w-3 animate-spin" />
+							) : (
+								<ChevronsUp className="h-3 w-3" />
+							)}
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => onMoveUp(dessert)}
+							disabled={(enabledDessertIndex ?? index) === 0 || isMoving}
+							className="h-8 w-8 p-0"
+							title="Move up"
+						>
+							{isMoving ? (
+								<Loader2 className="h-3 w-3 animate-spin" />
+							) : (
+								<ChevronUp className="h-3 w-3" />
+							)}
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => onMoveDown(dessert)}
+							disabled={
+								(enabledDessertIndex ?? index) ===
+									(enabledDessertCount ?? totalCount) - 1 || isMoving
+							}
+							className="h-8 w-8 p-0"
+							title="Move down"
+						>
+							{isMoving ? (
+								<Loader2 className="h-3 w-3 animate-spin" />
+							) : (
+								<ChevronDown className="h-3 w-3" />
+							)}
+						</Button>
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => onMoveToBottom(dessert)}
+							disabled={
+								(enabledDessertIndex ?? index) ===
+									(enabledDessertCount ?? totalCount) - 1 ||
+								isMoving ||
+								(enabledDessertCount ?? totalCount) <= 1
+							}
+							className="h-8 w-8 p-0"
+							title="Move to bottom"
+						>
+							{isMoving ? (
+								<Loader2 className="h-3 w-3 animate-spin" />
+							) : (
+								<ChevronsDown className="h-3 w-3" />
+							)}
+						</Button>
+					</div>
+				)}
+				{/* Spacer for disabled desserts */}
+				{!dessert.enabled && <div />}
 
 				{/* Edit and toggle buttons */}
 				<div className="flex items-center gap-2">

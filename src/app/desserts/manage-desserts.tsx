@@ -19,6 +19,8 @@ import {
 	deleteDessert,
 	disableAllDesserts,
 	getCachedDesserts,
+	moveDessertToBottom,
+	moveDessertToTop,
 	toggleDessert,
 	updateDessert,
 	updateDessertSequence,
@@ -163,16 +165,20 @@ export default function ManageDesserts({
 		}
 	};
 
-	// Filter desserts based on search term
+	// Filter desserts based on search term and separate enabled/disabled
 	const filteredDesserts = desserts.filter((dessert) =>
 		dessert.name.toLowerCase().includes(searchTerm.toLowerCase()),
 	);
 
+	const enabledDesserts = filteredDesserts.filter((d) => d.enabled);
+	const disabledDesserts = filteredDesserts.filter((d) => !d.enabled);
+
 	const handleMoveUp = async (dessert: Dessert) => {
-		const currentIndex = filteredDesserts.findIndex((d) => d.id === dessert.id);
+		const enabledDesserts = filteredDesserts.filter((d) => d.enabled);
+		const currentIndex = enabledDesserts.findIndex((d) => d.id === dessert.id);
 		if (currentIndex <= 0) return; // Can't move up if already at top
 
-		const targetDessert = filteredDesserts[currentIndex - 1];
+		const targetDessert = enabledDesserts[currentIndex - 1];
 
 		setMovingIds((prev) => new Set(prev).add(dessert.id));
 
@@ -206,10 +212,11 @@ export default function ManageDesserts({
 	};
 
 	const handleMoveDown = async (dessert: Dessert) => {
-		const currentIndex = filteredDesserts.findIndex((d) => d.id === dessert.id);
-		if (currentIndex >= filteredDesserts.length - 1) return; // Can't move down if already at bottom
+		const enabledDesserts = filteredDesserts.filter((d) => d.enabled);
+		const currentIndex = enabledDesserts.findIndex((d) => d.id === dessert.id);
+		if (currentIndex >= enabledDesserts.length - 1) return; // Can't move down if already at bottom
 
-		const targetDessert = filteredDesserts[currentIndex + 1];
+		const targetDessert = enabledDesserts[currentIndex + 1];
 
 		setMovingIds((prev) => new Set(prev).add(dessert.id));
 
@@ -233,6 +240,48 @@ export default function ManageDesserts({
 		} catch (error) {
 			toast.error("Failed to move dessert down");
 			console.error("Failed to move dessert down:", error);
+		} finally {
+			setMovingIds((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(dessert.id);
+				return newSet;
+			});
+		}
+	};
+
+	const handleMoveToTop = async (dessert: Dessert) => {
+		if (!dessert.enabled) return;
+
+		setMovingIds((prev) => new Set(prev).add(dessert.id));
+
+		try {
+			await moveDessertToTop(dessert.id);
+			await refetch();
+			toast.success("Dessert moved to top");
+		} catch (error) {
+			toast.error("Failed to move dessert to top");
+			console.error("Failed to move dessert to top:", error);
+		} finally {
+			setMovingIds((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(dessert.id);
+				return newSet;
+			});
+		}
+	};
+
+	const handleMoveToBottom = async (dessert: Dessert) => {
+		if (!dessert.enabled) return;
+
+		setMovingIds((prev) => new Set(prev).add(dessert.id));
+
+		try {
+			await moveDessertToBottom(dessert.id);
+			await refetch();
+			toast.success("Dessert moved to bottom");
+		} catch (error) {
+			toast.error("Failed to move dessert to bottom");
+			console.error("Failed to move dessert to bottom:", error);
 		} finally {
 			setMovingIds((prev) => {
 				const newSet = new Set(prev);
@@ -307,31 +356,79 @@ export default function ManageDesserts({
 				)}
 			</div>
 
-			{/* Dessert Cards Grid */}
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-				{filteredDesserts.map((dessert, index) => (
-					<div
-						key={dessert.id}
-						className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300"
-						style={{ animationDelay: `${index * 50}ms` }}
-					>
-						<DessertCard
-							dessert={dessert}
-							index={index}
-							totalCount={filteredDesserts.length}
-							onEdit={(dessert) => {
-								setEditingDessert(dessert);
-								handleOpenModal();
-							}}
-							onToggle={handleToggleDessert}
-							onMoveUp={handleMoveUp}
-							onMoveDown={handleMoveDown}
-							isToggleLoading={toggleLoadingIds.has(dessert.id)}
-							isMoving={movingIds.has(dessert.id)}
-						/>
+			{/* Enabled Desserts Section */}
+			{enabledDesserts.length > 0 && (
+				<div>
+					<h3 className="text-lg font-semibold mb-4 text-green-700">
+						Available Desserts ({enabledDesserts.length})
+					</h3>
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+						{enabledDesserts.map((dessert, index) => (
+							<div
+								key={dessert.id}
+								className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300"
+								style={{ animationDelay: `${index * 50}ms` }}
+							>
+								<DessertCard
+									dessert={dessert}
+									index={index}
+									totalCount={enabledDesserts.length}
+									onEdit={(dessert) => {
+										setEditingDessert(dessert);
+										handleOpenModal();
+									}}
+									onToggle={handleToggleDessert}
+									onMoveUp={handleMoveUp}
+									onMoveDown={handleMoveDown}
+									onMoveToTop={handleMoveToTop}
+									onMoveToBottom={handleMoveToBottom}
+									isToggleLoading={toggleLoadingIds.has(dessert.id)}
+									isMoving={movingIds.has(dessert.id)}
+									enabledDessertIndex={index}
+									enabledDessertCount={enabledDesserts.length}
+								/>
+							</div>
+						))}
 					</div>
-				))}
-			</div>
+				</div>
+			)}
+
+			{/* Disabled Desserts Section */}
+			{disabledDesserts.length > 0 && (
+				<div>
+					<h3 className="text-lg font-semibold mb-4 text-red-700">
+						Disabled Desserts ({disabledDesserts.length})
+					</h3>
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+						{disabledDesserts.map((dessert, index) => (
+							<div
+								key={dessert.id}
+								className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300"
+								style={{
+									animationDelay: `${(enabledDesserts.length + index) * 50}ms`,
+								}}
+							>
+								<DessertCard
+									dessert={dessert}
+									index={index}
+									totalCount={disabledDesserts.length}
+									onEdit={(dessert) => {
+										setEditingDessert(dessert);
+										handleOpenModal();
+									}}
+									onToggle={handleToggleDessert}
+									onMoveUp={handleMoveUp}
+									onMoveDown={handleMoveDown}
+									onMoveToTop={handleMoveToTop}
+									onMoveToBottom={handleMoveToBottom}
+									isToggleLoading={toggleLoadingIds.has(dessert.id)}
+									isMoving={movingIds.has(dessert.id)}
+								/>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 
 			{/* Empty state */}
 			{filteredDesserts.length === 0 && (
