@@ -6,17 +6,14 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { TextRoll } from "./ui/text-roll";
 
-const navLinks = [
-	{ label: "Desserts", href: "/desserts" },
-	{ label: "Orders", href: "/orders" },
-];
+const navLinks = [{ label: "Desserts", href: "/desserts" }];
 
 export default function Navbar() {
 	const pathname = usePathname();
 
 	return (
 		<div className="shadow-md z-10 sticky top-0 bg-white">
-			<div className="flex justify-between px-4 py-3 items-center max-w-lg mx-auto">
+			<div className="flex justify-between px-3 sm:px-4 md:px-6 py-3 items-center max-w-7xl mx-auto">
 				<Link href="/">
 					<TextRoll
 						transition={{

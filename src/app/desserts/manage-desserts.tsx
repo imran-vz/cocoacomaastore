@@ -2,8 +2,8 @@
 
 import { use, useCallback, useState } from "react";
 import { toast } from "sonner";
-import { ChevronUp, ChevronDown, Loader2 } from "lucide-react";
 
+import { DessertCard } from "@/components/dessert-card";
 import { DessertForm } from "@/components/dessert-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,16 +13,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import type { Dessert } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import {
 	createDessert,
 	deleteDessert,
@@ -178,31 +169,35 @@ export default function ManageDesserts({
 	);
 
 	const handleMoveUp = async (dessert: Dessert) => {
-		const currentIndex = filteredDesserts.findIndex(d => d.id === dessert.id);
+		const currentIndex = filteredDesserts.findIndex((d) => d.id === dessert.id);
 		if (currentIndex <= 0) return; // Can't move up if already at top
-		
+
 		const targetDessert = filteredDesserts[currentIndex - 1];
-		
-		setMovingIds(prev => new Set(prev).add(dessert.id));
-		
+
+		setMovingIds((prev) => new Set(prev).add(dessert.id));
+
 		try {
 			// Swap sequences
 			await updateDessertSequence(dessert.id, targetDessert.sequence);
 			await updateDessertSequence(targetDessert.id, dessert.sequence);
-			
+
 			// Update local state optimistically
-			setDesserts(prev => prev.map(d => {
-				if (d.id === dessert.id) return { ...d, sequence: targetDessert.sequence };
-				if (d.id === targetDessert.id) return { ...d, sequence: dessert.sequence };
-				return d;
-			}));
-			
+			setDesserts((prev) =>
+				prev.map((d) => {
+					if (d.id === dessert.id)
+						return { ...d, sequence: targetDessert.sequence };
+					if (d.id === targetDessert.id)
+						return { ...d, sequence: dessert.sequence };
+					return d;
+				}),
+			);
+
 			await refetch();
 		} catch (error) {
 			toast.error("Failed to move dessert up");
 			console.error("Failed to move dessert up:", error);
 		} finally {
-			setMovingIds(prev => {
+			setMovingIds((prev) => {
 				const newSet = new Set(prev);
 				newSet.delete(dessert.id);
 				return newSet;
@@ -211,31 +206,35 @@ export default function ManageDesserts({
 	};
 
 	const handleMoveDown = async (dessert: Dessert) => {
-		const currentIndex = filteredDesserts.findIndex(d => d.id === dessert.id);
+		const currentIndex = filteredDesserts.findIndex((d) => d.id === dessert.id);
 		if (currentIndex >= filteredDesserts.length - 1) return; // Can't move down if already at bottom
-		
+
 		const targetDessert = filteredDesserts[currentIndex + 1];
-		
-		setMovingIds(prev => new Set(prev).add(dessert.id));
-		
+
+		setMovingIds((prev) => new Set(prev).add(dessert.id));
+
 		try {
 			// Swap sequences
 			await updateDessertSequence(dessert.id, targetDessert.sequence);
 			await updateDessertSequence(targetDessert.id, dessert.sequence);
-			
+
 			// Update local state optimistically
-			setDesserts(prev => prev.map(d => {
-				if (d.id === dessert.id) return { ...d, sequence: targetDessert.sequence };
-				if (d.id === targetDessert.id) return { ...d, sequence: dessert.sequence };
-				return d;
-			}));
-			
+			setDesserts((prev) =>
+				prev.map((d) => {
+					if (d.id === dessert.id)
+						return { ...d, sequence: targetDessert.sequence };
+					if (d.id === targetDessert.id)
+						return { ...d, sequence: dessert.sequence };
+					return d;
+				}),
+			);
+
 			await refetch();
 		} catch (error) {
 			toast.error("Failed to move dessert down");
 			console.error("Failed to move dessert down:", error);
 		} finally {
-			setMovingIds(prev => {
+			setMovingIds((prev) => {
 				const newSet = new Set(prev);
 				newSet.delete(dessert.id);
 				return newSet;
@@ -308,121 +307,52 @@ export default function ManageDesserts({
 				)}
 			</div>
 
-			<div className="overflow-x-auto -mx-2 sm:-mx-4 md:mx-0">
-				<div className="min-w-[320px] md:min-w-0 px-2 sm:px-4 md:px-0">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead className="w-12 text-xs font-medium p-1 sm:p-2">
-									Order
-								</TableHead>
-								<TableHead className="text-xs sm:text-sm font-medium p-1 sm:p-2">
-									Name
-								</TableHead>
-								<TableHead className="w-16 sm:w-20 text-xs sm:text-sm font-medium p-1 sm:p-2">
-									Price
-								</TableHead>
-								<TableHead className="w-16 sm:w-20 text-xs sm:text-sm font-medium p-1 sm:p-2">
-									Actions
-								</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{filteredDesserts.map((dessert, index) => (
-								<TableRow 
-									key={dessert.id}
-									className={cn(
-										!dessert.enabled && "opacity-50 bg-muted/30"
-									)}
-								>
-									<TableCell className="p-1 sm:p-2">
-										<div className="flex flex-col gap-0.5">
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => handleMoveUp(dessert)}
-												disabled={index === 0 || movingIds.has(dessert.id)}
-												className="h-4 w-4 p-0 hover:bg-accent"
-											>
-												{movingIds.has(dessert.id) ? (
-													<Loader2 className="h-2 w-2 animate-spin" />
-												) : (
-													<ChevronUp className="h-2 w-2" />
-												)}
-											</Button>
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() => handleMoveDown(dessert)}
-												disabled={index === filteredDesserts.length - 1 || movingIds.has(dessert.id)}
-												className="h-4 w-4 p-0 hover:bg-accent"
-											>
-												{movingIds.has(dessert.id) ? (
-													<Loader2 className="h-2 w-2 animate-spin" />
-												) : (
-													<ChevronDown className="h-2 w-2" />
-												)}
-											</Button>
-										</div>
-									</TableCell>
-									<TableCell className="p-1 sm:p-2 max-w-0">
-										<div className={cn(
-											"font-medium truncate text-xs sm:text-sm pr-2",
-											!dessert.enabled && "line-through text-muted-foreground"
-										)} title={dessert.name}>
-											{dessert.name}
-										</div>
-									</TableCell>
-									<TableCell className={cn(
-										"text-xs sm:text-sm font-medium p-1 sm:p-2",
-										!dessert.enabled && "text-muted-foreground"
-									)}>
-										₹{dessert.price.toFixed(2)}
-									</TableCell>
-									<TableCell className="p-1 sm:p-2">
-										<div className="flex flex-col gap-0.5">
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => {
-													setEditingDessert(dessert);
-													handleOpenModal();
-												}}
-												className="text-xs h-5 sm:h-6 px-1 sm:px-2 min-w-0"
-											>
-												Edit
-											</Button>
-											<Button
-												variant={dessert.enabled ? "outline" : "secondary"}
-												size="sm"
-												onClick={() => handleToggleDessert(dessert)}
-												disabled={toggleLoadingIds.has(dessert.id)}
-												className={cn(
-													"text-xs h-5 sm:h-6 px-1 sm:px-2 min-w-0",
-													dessert.enabled 
-														? "border-green-200 text-green-700 hover:bg-green-50" 
-														: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200"
-												)}
-											>
-												{toggleLoadingIds.has(dessert.id) ? (
-													<>
-														<Loader2 className="h-2 w-2 animate-spin mr-0.5" />
-														<span className="hidden sm:inline">
-															{dessert.enabled ? "Disabling" : "Enabling"}
-														</span>
-													</>
-												) : (
-													<>{dessert.enabled ? "Enabled" : "Disabled"}</>
-												)}
-											</Button>
-										</div>
-									</TableCell>
-								</TableRow>
-							))}
-						</TableBody>
-					</Table>
-				</div>
+			{/* Dessert Cards Grid */}
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+				{filteredDesserts.map((dessert, index) => (
+					<div
+						key={dessert.id}
+						className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300"
+						style={{ animationDelay: `${index * 50}ms` }}
+					>
+						<DessertCard
+							dessert={dessert}
+							index={index}
+							totalCount={filteredDesserts.length}
+							onEdit={(dessert) => {
+								setEditingDessert(dessert);
+								handleOpenModal();
+							}}
+							onToggle={handleToggleDessert}
+							onMoveUp={handleMoveUp}
+							onMoveDown={handleMoveDown}
+							isToggleLoading={toggleLoadingIds.has(dessert.id)}
+							isMoving={movingIds.has(dessert.id)}
+						/>
+					</div>
+				))}
 			</div>
+
+			{/* Empty state */}
+			{filteredDesserts.length === 0 && (
+				<div className="text-center py-12">
+					<div className="text-muted-foreground mb-4">
+						{searchTerm
+							? "No desserts found matching your search."
+							: "No desserts available."}
+					</div>
+					{!searchTerm && (
+						<Button
+							onClick={() => {
+								setEditingDessert(null);
+								handleOpenModal();
+							}}
+						>
+							Add Your First Dessert
+						</Button>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

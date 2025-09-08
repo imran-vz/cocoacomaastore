@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { dessertsTable } from "@/db/schema";
 
-
 export async function updateSequence(id: number, score: number): Promise<void> {
 	await db
 		.update(dessertsTable)
