@@ -10,7 +10,7 @@ export default async function page() {
 	const desserts = getCachedDesserts();
 
 	return (
-		<main className="min-h-screen p-3 pb-6 max-w-md mx-auto">
+		<main className="min-h-screen p-3 pb-6 max-w-7xl mx-auto">
 			<Suspense
 				fallback={
 					<div className="flex flex-col gap-4">

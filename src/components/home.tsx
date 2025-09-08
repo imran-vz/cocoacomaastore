@@ -82,55 +82,59 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 	}, [cart, deliveryCost]);
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div>
+		<div className="flex flex-col md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 md:items-start">
+			{/* Desserts Section - Takes 1 column on MD+, 2 columns on XL+ */}
+			<div className="xl:col-span-2">
 				<DessertList desserts={items} addToCart={addToCart} />
 			</div>
 
-			<Card className="gap-2">
-				<CardHeader>
-					<CardTitle className="text-lg">Cart</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<Cart
-						cart={cart}
-						updateQuantity={updateQuantity}
-						removeFromCart={removeFromCart}
-						total={total}
-						clearCart={clearCart}
-						form={form}
-					/>
-				</CardContent>
-			</Card>
-
-			<Card className="gap-2">
-				<CardHeader className="flex items-center justify-between">
-					<CardTitle className="text-lg">Receipt</CardTitle>
-					<div className="max-w-52 w-full">
-						<Bill
-							order={{
-								items: cart,
-								total: total,
-								deliveryCost: Number.parseFloat(deliveryCost || "0"),
-							}}
-						/>
-					</div>
-				</CardHeader>
-				<CardContent>
-					{cart.length > 0 ? (
-						<Receipt
+			{/* Cart & Receipt Section - Takes 1 column on MD+ screens */}
+			<div className="flex flex-col gap-4 md:sticky md:top-20">
+				<Card className="gap-2">
+					<CardHeader>
+						<CardTitle className="text-lg">Cart</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<Cart
 							cart={cart}
+							updateQuantity={updateQuantity}
+							removeFromCart={removeFromCart}
 							total={total}
 							clearCart={clearCart}
-							deliveryCost={Number.parseFloat(deliveryCost || "0")}
+							form={form}
 						/>
-					) : (
-						<div className="text-center py-6 text-muted-foreground">
-							<p>Add items to cart to see receipt</p>
+					</CardContent>
+				</Card>
+
+				<Card className="gap-2">
+					<CardHeader className="flex items-center justify-between">
+						<CardTitle className="text-lg">Receipt</CardTitle>
+						<div className="max-w-52 w-full">
+							<Bill
+								order={{
+									items: cart,
+									total: total,
+									deliveryCost: Number.parseFloat(deliveryCost || "0"),
+								}}
+							/>
 						</div>
-					)}
-				</CardContent>
-			</Card>
+					</CardHeader>
+					<CardContent>
+						{cart.length > 0 ? (
+							<Receipt
+								cart={cart}
+								total={total}
+								clearCart={clearCart}
+								deliveryCost={Number.parseFloat(deliveryCost || "0")}
+							/>
+						) : (
+							<div className="text-center py-6 text-muted-foreground">
+								<p>Add items to cart to see receipt</p>
+							</div>
+						)}
+					</CardContent>
+				</Card>
+			</div>
 		</div>
 	);
 }
