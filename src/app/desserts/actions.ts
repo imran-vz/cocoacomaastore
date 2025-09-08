@@ -46,7 +46,7 @@ export const getCachedDesserts = unstable_cache(getDesserts, ["desserts"], {
 	tags: ["desserts"],
 });
 
-export async function createDessert(data: Omit<Dessert, "id">) {
+export async function createDessert(data: Omit<Dessert, "id" | "sequence">) {
 	const start = performance.now();
 
 	// Create dessert in database
