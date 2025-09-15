@@ -15,16 +15,15 @@ interface DessertCardProps {
 	dessert: Dessert;
 	index: number;
 	totalCount: number;
-	onEdit: (dessert: Dessert) => void;
-	onToggle: (dessert: Dessert) => void;
+	onEdit?: (dessert: Dessert) => void;
+	onToggle?: (dessert: Dessert) => void;
 	onMoveUp: (dessert: Dessert) => void;
 	onMoveDown: (dessert: Dessert) => void;
 	onMoveToTop: (dessert: Dessert) => void;
 	onMoveToBottom: (dessert: Dessert) => void;
 	isToggleLoading?: boolean;
 	isMoving?: boolean;
-	enabledDessertIndex?: number;
-	enabledDessertCount?: number;
+	showEditControls?: boolean;
 }
 
 export function DessertCard({
@@ -39,8 +38,7 @@ export function DessertCard({
 	onMoveToBottom,
 	isToggleLoading = false,
 	isMoving = false,
-	enabledDessertIndex,
-	enabledDessertCount,
+	showEditControls = true,
 }: DessertCardProps) {
 	return (
 		<div
@@ -102,116 +100,104 @@ export function DessertCard({
 
 			{/* Actions */}
 			<div className="flex items-center justify-between">
-				{/* Reorder buttons - only show for enabled desserts */}
-				{dessert.enabled && (
-					<div className="flex items-center gap-1">
+				{/* Reorder buttons */}
+				<div className="flex items-center gap-1">
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onMoveToTop(dessert)}
+						disabled={index === 0 || isMoving || totalCount <= 1}
+						className="h-8 w-8 p-0"
+						title="Move to top"
+					>
+						{isMoving ? (
+							<Loader2 className="h-3 w-3 animate-spin" />
+						) : (
+							<ChevronsUp className="h-3 w-3" />
+						)}
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onMoveUp(dessert)}
+						disabled={index === 0 || isMoving}
+						className="h-8 w-8 p-0"
+						title="Move up"
+					>
+						{isMoving ? (
+							<Loader2 className="h-3 w-3 animate-spin" />
+						) : (
+							<ChevronUp className="h-3 w-3" />
+						)}
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onMoveDown(dessert)}
+						disabled={index === totalCount - 1 || isMoving}
+						className="h-8 w-8 p-0"
+						title="Move down"
+					>
+						{isMoving ? (
+							<Loader2 className="h-3 w-3 animate-spin" />
+						) : (
+							<ChevronDown className="h-3 w-3" />
+						)}
+					</Button>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => onMoveToBottom(dessert)}
+						disabled={index === totalCount - 1 || isMoving || totalCount <= 1}
+						className="h-8 w-8 p-0"
+						title="Move to bottom"
+					>
+						{isMoving ? (
+							<Loader2 className="h-3 w-3 animate-spin" />
+						) : (
+							<ChevronsDown className="h-3 w-3" />
+						)}
+					</Button>
+				</div>
+
+				{/* Edit and toggle buttons */}
+				{showEditControls && onEdit && onToggle && (
+					<div className="flex items-center gap-2">
 						<Button
-							variant="ghost"
+							variant="outline"
 							size="sm"
-							onClick={() => onMoveToTop(dessert)}
-							disabled={
-								(enabledDessertIndex ?? index) === 0 ||
-								isMoving ||
-								(enabledDessertCount ?? totalCount) <= 1
-							}
-							className="h-8 w-8 p-0"
-							title="Move to top"
+							onClick={() => onEdit(dessert)}
+							className="text-xs"
 						>
-							{isMoving ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
-							) : (
-								<ChevronsUp className="h-3 w-3" />
-							)}
+							Edit
 						</Button>
 						<Button
-							variant="ghost"
+							variant={dessert.enabled ? "outline" : "secondary"}
 							size="sm"
-							onClick={() => onMoveUp(dessert)}
-							disabled={(enabledDessertIndex ?? index) === 0 || isMoving}
-							className="h-8 w-8 p-0"
-							title="Move up"
-						>
-							{isMoving ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
-							) : (
-								<ChevronUp className="h-3 w-3" />
+							onClick={() => onToggle(dessert)}
+							disabled={isToggleLoading}
+							className={cn(
+								"text-xs min-w-16",
+								dessert.enabled
+									? "border-green-200 text-green-700 hover:bg-green-50"
+									: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
 							)}
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => onMoveDown(dessert)}
-							disabled={
-								(enabledDessertIndex ?? index) ===
-									(enabledDessertCount ?? totalCount) - 1 || isMoving
-							}
-							className="h-8 w-8 p-0"
-							title="Move down"
 						>
-							{isMoving ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
+							{isToggleLoading ? (
+								<>
+									<Loader2 className="h-3 w-3 animate-spin mr-1" />
+									<span className="hidden sm:inline">
+										{dessert.enabled ? "Disabling" : "Enabling"}
+									</span>
+								</>
+							) : dessert.enabled ? (
+								"Enabled"
 							) : (
-								<ChevronDown className="h-3 w-3" />
-							)}
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => onMoveToBottom(dessert)}
-							disabled={
-								(enabledDessertIndex ?? index) ===
-									(enabledDessertCount ?? totalCount) - 1 ||
-								isMoving ||
-								(enabledDessertCount ?? totalCount) <= 1
-							}
-							className="h-8 w-8 p-0"
-							title="Move to bottom"
-						>
-							{isMoving ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
-							) : (
-								<ChevronsDown className="h-3 w-3" />
+								"Disabled"
 							)}
 						</Button>
 					</div>
 				)}
-				{/* Spacer for disabled desserts */}
-				{!dessert.enabled && <div />}
-
-				{/* Edit and toggle buttons */}
-				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => onEdit(dessert)}
-						className="text-xs"
-					>
-						Edit
-					</Button>
-					<Button
-						variant={dessert.enabled ? "outline" : "secondary"}
-						size="sm"
-						onClick={() => onToggle(dessert)}
-						disabled={isToggleLoading}
-						className={cn(
-							"text-xs min-w-16",
-							dessert.enabled
-								? "border-green-200 text-green-700 hover:bg-green-50"
-								: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
-						)}
-					>
-						{isToggleLoading ? (
-							<>
-								<Loader2 className="h-3 w-3 animate-spin mr-1" />
-								<span className="hidden sm:inline">
-									{dessert.enabled ? "Disabling" : "Enabling"}
-								</span>
-							</>
-						) : (
-							<>{dessert.enabled ? "Enabled" : "Disabled"}</>
-						)}
-					</Button>
-				</div>
 			</div>
 		</div>
 	);

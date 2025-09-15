@@ -384,8 +384,6 @@ export default function ManageDesserts({
 									onMoveToBottom={handleMoveToBottom}
 									isToggleLoading={toggleLoadingIds.has(dessert.id)}
 									isMoving={movingIds.has(dessert.id)}
-									enabledDessertIndex={index}
-									enabledDessertCount={enabledDesserts.length}
 								/>
 							</div>
 						))}
