@@ -1,13 +1,9 @@
 "use client";
 
-import { Edit3, Save } from "lucide-react";
-import { useState, useTransition } from "react";
+import { Edit3, Save, X } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import {
-	moveDessertToBottom,
-	moveDessertToTop,
-	updateDessertSequence,
-} from "@/app/desserts/actions";
+import { batchUpdateDessertSequences } from "@/app/desserts/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Dessert } from "@/lib/types";
@@ -20,74 +16,110 @@ interface DessertListProps {
 
 export function DessertList({ desserts, addToCart }: DessertListProps) {
 	const [isEditMode, setIsEditMode] = useState(false);
-	const [, startTransition] = useTransition();
-	const [movingDessertId, setMovingDessertId] = useState<number | null>(null);
+	const [isPending, startTransition] = useTransition();
+	const [localDesserts, setLocalDesserts] = useState(desserts);
+	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+	// Update local desserts when prop changes
+	useEffect(() => {
+		setLocalDesserts(desserts);
+		setHasUnsavedChanges(false);
+	}, [desserts]);
 
 	const handleMoveToTop = (dessert: Dessert) => {
-		setMovingDessertId(dessert.id);
-		startTransition(async () => {
-			try {
-				await moveDessertToTop(dessert.id);
-			} catch (error) {
-				console.error(error);
-				toast.error("Failed to move dessert to top");
-			} finally {
-				setMovingDessertId(null);
-			}
-		});
+		const currentIndex = localDesserts.findIndex((d) => d.id === dessert.id);
+		if (currentIndex > 0) {
+			const newOrder = [...localDesserts];
+			const [movedItem] = newOrder.splice(currentIndex, 1);
+			newOrder.unshift(movedItem);
+			setLocalDesserts(newOrder);
+			setHasUnsavedChanges(true);
+		}
 	};
 
 	const handleMoveToBottom = (dessert: Dessert) => {
-		setMovingDessertId(dessert.id);
-		startTransition(async () => {
-			try {
-				await moveDessertToBottom(dessert.id);
-			} catch (error) {
-				console.error(error);
-				toast.error("Failed to move dessert to bottom");
-			} finally {
-				setMovingDessertId(null);
-			}
-		});
+		const currentIndex = localDesserts.findIndex((d) => d.id === dessert.id);
+		if (currentIndex < localDesserts.length - 1) {
+			const newOrder = [...localDesserts];
+			const [movedItem] = newOrder.splice(currentIndex, 1);
+			newOrder.push(movedItem);
+			setLocalDesserts(newOrder);
+			setHasUnsavedChanges(true);
+		}
 	};
 
 	const handleMoveUp = (dessert: Dessert) => {
-		const currentIndex = desserts.findIndex((d) => d.id === dessert.id);
+		const currentIndex = localDesserts.findIndex((d) => d.id === dessert.id);
 		if (currentIndex > 0) {
-			const prevDessert = desserts[currentIndex - 1];
-			const newScore = prevDessert.sequence - 1;
-
-			setMovingDessertId(dessert.id);
-			startTransition(async () => {
-				try {
-					await updateDessertSequence(dessert.id, newScore);
-				} catch (error) {
-					console.error(error);
-					toast.error("Failed to move dessert up");
-				} finally {
-					setMovingDessertId(null);
-				}
-			});
+			const newOrder = [...localDesserts];
+			[newOrder[currentIndex], newOrder[currentIndex - 1]] = [
+				newOrder[currentIndex - 1],
+				newOrder[currentIndex],
+			];
+			setLocalDesserts(newOrder);
+			setHasUnsavedChanges(true);
 		}
 	};
 
 	const handleMoveDown = (dessert: Dessert) => {
-		const currentIndex = desserts.findIndex((d) => d.id === dessert.id);
-		if (currentIndex < desserts.length - 1) {
-			const nextDessert = desserts[currentIndex + 1];
-			const newScore = nextDessert.sequence + 1;
+		const currentIndex = localDesserts.findIndex((d) => d.id === dessert.id);
+		if (currentIndex < localDesserts.length - 1) {
+			const newOrder = [...localDesserts];
+			[newOrder[currentIndex], newOrder[currentIndex + 1]] = [
+				newOrder[currentIndex + 1],
+				newOrder[currentIndex],
+			];
+			setLocalDesserts(newOrder);
+			setHasUnsavedChanges(true);
+		}
+	};
 
-			setMovingDessertId(dessert.id);
-			startTransition(async () => {
-				try {
-					await updateDessertSequence(dessert.id, newScore);
-				} catch (error) {
-					console.error(error);
-					toast.error("Failed to move dessert down");
-				} finally {
-					setMovingDessertId(null);
+	const handleSaveChanges = async () => {
+		if (!hasUnsavedChanges) {
+			setIsEditMode(false);
+			return;
+		}
+
+		startTransition(async () => {
+			try {
+				// Collect all sequence updates that need to be made
+				const updates: Array<{ id: number; newScore: number }> = [];
+
+				for (let i = 0; i < localDesserts.length; i++) {
+					const dessert = localDesserts[i];
+					const originalDessert = desserts.find((d) => d.id === dessert.id);
+					if (originalDessert && originalDessert.sequence !== i) {
+						updates.push({ id: dessert.id, newScore: i });
+					}
 				}
-			});
+
+				// Only call the batch update if there are changes
+				if (updates.length > 0) {
+					await batchUpdateDessertSequences(updates);
+				}
+
+				setHasUnsavedChanges(false);
+				setIsEditMode(false);
+				toast.success("Dessert order saved successfully");
+			} catch (error) {
+				console.error(error);
+				toast.error("Failed to save dessert order");
+			}
+		});
+	};
+
+	const handleCancelChanges = () => {
+		setLocalDesserts(desserts);
+		setHasUnsavedChanges(false);
+		setIsEditMode(false);
+	};
+
+	const handleToggleEditMode = () => {
+		if (isEditMode && hasUnsavedChanges) {
+			// Show confirmation or just save automatically
+			handleSaveChanges();
+		} else {
+			setIsEditMode(!isEditMode);
 		}
 	};
 
@@ -95,45 +127,64 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 		<div>
 			<div className="flex items-center justify-between mb-6">
 				<h2 className="text-2xl font-bold">Our Desserts</h2>
-				<Button
-					onClick={() => setIsEditMode(!isEditMode)}
-					variant={isEditMode ? "default" : "outline"}
-					size="sm"
-					className="flex items-center gap-2"
-				>
+				<div className="flex items-center gap-2">
 					{isEditMode ? (
 						<>
-							<Save className="h-4 w-4" />
-							Done
+							{hasUnsavedChanges && (
+								<Button
+									onClick={handleCancelChanges}
+									variant="outline"
+									size="sm"
+									className="flex items-center gap-2"
+									disabled={isPending}
+								>
+									<X className="h-4 w-4" />
+									Cancel
+								</Button>
+							)}
+							<Button
+								onClick={handleSaveChanges}
+								variant="default"
+								size="sm"
+								className="flex items-center gap-2"
+								disabled={isPending}
+							>
+								<Save className="h-4 w-4" />
+								{isPending ? "Saving..." : "Done"}
+							</Button>
 						</>
 					) : (
-						<>
+						<Button
+							onClick={handleToggleEditMode}
+							variant="outline"
+							size="sm"
+							className="flex items-center gap-2"
+						>
 							<Edit3 className="h-4 w-4" />
 							Edit Order
-						</>
+						</Button>
 					)}
-				</Button>
+				</div>
 			</div>
 			{isEditMode ? (
 				<div className="space-y-4">
-					{desserts.map((dessert, index) => (
+					{localDesserts.map((dessert, index) => (
 						<DessertCard
 							key={dessert.id}
 							dessert={dessert}
 							index={index}
-							totalCount={desserts.length}
+							totalCount={localDesserts.length}
 							onMoveUp={handleMoveUp}
 							onMoveDown={handleMoveDown}
 							onMoveToTop={handleMoveToTop}
 							onMoveToBottom={handleMoveToBottom}
-							isMoving={movingDessertId === dessert.id}
 							showEditControls={false}
 						/>
 					))}
 				</div>
 			) : (
 				<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-					{desserts.map((dessert) => (
+					{localDesserts.map((dessert) => (
 						<Button
 							asChild
 							key={dessert.id}
@@ -162,7 +213,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 					))}
 				</div>
 			)}
-			{desserts.length === 0 && (
+			{localDesserts.length === 0 && (
 				<div className="text-center py-12">
 					<div className="text-muted-foreground">
 						No desserts available at the moment.

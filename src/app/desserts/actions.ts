@@ -105,6 +105,25 @@ export async function updateDessertSequence(id: number, newScore: number) {
 	revalidateTag("desserts");
 }
 
+export async function batchUpdateDessertSequences(
+	updates: Array<{ id: number; newScore: number }>,
+) {
+	const start = performance.now();
+
+	// Update all sequences in batch without revalidating
+	await Promise.all(
+		updates.map(({ id, newScore }) => updateSequence(id, newScore)),
+	);
+
+	const duration = performance.now() - start;
+	console.log(
+		`batchUpdateDessertSequences: ${updates.length} updates in ${duration.toFixed(2)}ms`,
+	);
+
+	// Only revalidate once at the end
+	revalidateTag("desserts");
+}
+
 export async function disableAllDesserts() {
 	const start = performance.now();
 	await db
