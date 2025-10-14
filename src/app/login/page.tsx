@@ -26,18 +26,12 @@ export default function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
 
 	useEffect(() => {
-		console.log("🚀 | :29 | LoginPage | session?.user:", session?.user);
 		if (session?.user.id) {
 			if (session.user.role === "admin") {
-				router.push("/admin");
+				router.replace("/admin");
 			} else {
-				router.push("/");
+				router.replace("/");
 			}
-
-			setTimeout(() => {
-				window.location.reload();
-			}, 2000);
-			router.refresh();
 		}
 	}, [router, session?.user]);
 
@@ -48,15 +42,11 @@ export default function LoginPage() {
 		try {
 			await signIn.email({ email, password, rememberMe: true });
 			toast.success("Logged in successfully");
-			router.push("/");
+			// The useEffect hook will handle redirection based on user role
 		} catch (error) {
 			console.error("Login error:", error);
 			toast.error("Invalid email or password");
-		} finally {
-			setTimeout(() => {
-				setIsLoading(false);
-				window.location.reload();
-			}, 2000);
+			setIsLoading(false);
 		}
 	};
 

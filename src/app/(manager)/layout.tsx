@@ -10,7 +10,7 @@ export default async function ManagerLayout({
 }) {
 	const data = await auth.api.getSession({ headers: await headers() });
 
-	if (!data?.session) {
+	if (!data || !data.session) {
 		redirect("/login", RedirectType.replace);
 	}
 

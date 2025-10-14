@@ -34,28 +34,29 @@ export default function Navbar() {
 						Cocoa Comaa
 					</TextRoll>
 				</Link>
-				<div className="flex items-center gap-4">
-					<nav>
-						<ul className="flex gap-4">
-							{navLinks.map((link) => (
-								<li key={link.href}>
-									<Link
-										className={cn(
-											"text-sm font-medium inline-flex items-center gap-1",
-											pathname.startsWith(link.href) &&
-												"underline text-primary",
-										)}
-										href={link.href}
-									>
-										{link.icon && <link.icon />}
-										{link.label}
-									</Link>
-								</li>
-							))}
-						</ul>
-					</nav>
 
-					{session?.user.id && (
+				{session?.user.id && (
+					<div className="flex items-center gap-4">
+						<nav>
+							<ul className="flex gap-4">
+								{navLinks.map((link) => (
+									<li key={link.href}>
+										<Link
+											className={cn(
+												"text-sm font-medium inline-flex items-center gap-1",
+												pathname.startsWith(link.href) &&
+													"underline text-primary",
+											)}
+											href={link.href}
+										>
+											{link.icon && <link.icon />}
+											{link.label}
+										</Link>
+									</li>
+								))}
+							</ul>
+						</nav>
+
 						<Button
 							onClick={async () => {
 								await signOut();
@@ -65,8 +66,8 @@ export default function Navbar() {
 							<IconLogout />
 							Log out
 						</Button>
-					)}
-				</div>
+					</div>
+				)}
 			</div>
 		</div>
 	);
