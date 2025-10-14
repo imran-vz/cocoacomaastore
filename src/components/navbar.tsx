@@ -41,7 +41,7 @@ export default function Navbar() {
 								<li key={link.href}>
 									<Link
 										className={cn(
-											"text-sm font-medium",
+											"text-sm font-medium inline-flex items-center gap-1",
 											pathname.startsWith(link.href) &&
 												"underline text-primary",
 										)}
