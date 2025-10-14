@@ -11,6 +11,10 @@ const navLinks = [{ label: "Desserts", href: "/desserts" }];
 export default function Navbar() {
 	const pathname = usePathname();
 
+	if (pathname.startsWith("/admin")) {
+		return null;
+	}
+
 	return (
 		<div className="shadow-md z-10 sticky top-0 bg-white">
 			<div className="flex justify-between px-3 sm:px-4 md:px-6 py-3 items-center max-w-7xl mx-auto">

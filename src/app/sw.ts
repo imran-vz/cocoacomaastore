@@ -35,9 +35,7 @@ self.addEventListener("activate", (event) => {
 			const cacheNames = await caches.keys();
 			await Promise.all(
 				cacheNames
-					.filter(
-						(name) => name !== STATIC_CACHE && name !== IMAGE_CACHE,
-					)
+					.filter((name) => name !== STATIC_CACHE && name !== IMAGE_CACHE)
 					.map((name) => {
 						console.log("[SW] Deleting old cache:", name);
 						return caches.delete(name);

@@ -8,6 +8,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import type { DBOrder } from "./orders-page";
+import { Spinner } from "@/components/ui/spinner";
 
 interface OrderModalProps {
 	order: DBOrder;
@@ -84,7 +85,7 @@ export default function OrderModal({
 							onClick={done}
 							disabled={isLoading || order.status === "completed"}
 						>
-							{isLoading ? "Loading..." : "Done"}
+							{isLoading ? <Spinner /> : "Done"}
 						</Button>
 					</div>
 				</DialogFooter>

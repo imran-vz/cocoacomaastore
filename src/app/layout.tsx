@@ -4,7 +4,6 @@ import { Geist_Mono, Nunito_Sans } from "next/font/google";
 
 import Navbar from "@/components/navbar";
 import { OfflineIndicator } from "@/components/offline-indicator";
-import { ServiceWorkerProvider } from "@/components/service-worker-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +72,6 @@ export default function RootLayout({
 					"antialiased bg-[url(/bg-grid.svg)]",
 				)}
 			>
-				<ServiceWorkerProvider />
 				<OfflineIndicator />
 				<Analytics />
 				<Navbar />

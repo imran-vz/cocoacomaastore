@@ -1,5 +1,5 @@
 import { revalidateTag } from "next/cache";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 const serverSecret = process.env.REVALIDATE_SECRET || "my-secret";
 

@@ -1,13 +1,13 @@
 "use client";
 import {
 	motion,
-	type VariantLabels,
 	type Target,
 	type TargetAndTransition,
 	type Transition,
+	type VariantLabels,
 } from "motion/react";
 
-export type TextRollProps = {
+type TextRollProps = {
 	children: string;
 	duration?: number;
 	getEnterDelay?: (index: number) => number;

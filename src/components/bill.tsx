@@ -1,9 +1,17 @@
+import { ChevronDown } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import type { UpiAccount } from "@/db/schema";
 import type { CartItem } from "@/lib/types";
 import { Button } from "./ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 interface BillProps {
 	order: {
@@ -11,6 +19,7 @@ interface BillProps {
 		total: number;
 		deliveryCost: number;
 	};
+	upiAccounts: UpiAccount[];
 }
 
 function capitalize(str: string) {
@@ -20,14 +29,14 @@ function capitalize(str: string) {
 		.join(" ");
 }
 
-function getUPIString(order: BillProps["order"]) {
+function getUPIString(order: BillProps["order"], upiId: string) {
 	const transactionNote = `${order.items
 		.map((item) => item.name)
 		.join(", ")
 		.slice(0, 30)}...`;
 
 	const urlParams = new URLSearchParams();
-	urlParams.set("pa", process.env.NEXT_PUBLIC_UPI_ID || "");
+	urlParams.set("pa", upiId);
 	urlParams.set("am", order.total.toString());
 	urlParams.set("pn", "Cocoa Comaa");
 	urlParams.set("tn", transactionNote);
@@ -35,9 +44,43 @@ function getUPIString(order: BillProps["order"]) {
 	return `upi://pay?${urlParams.toString()}`;
 }
 
-export default function Bill({ order }: BillProps) {
-	const UPI_STRING = getUPIString(order);
+const SELECTED_UPI_STORAGE_KEY = "cocoacomaa-selected-upi-id";
+
+export default function Bill({ order, upiAccounts }: BillProps) {
+	const [selectedUpiId, setSelectedUpiId] = useState(() => {
+		// Try to load from localStorage
+		if (typeof window !== "undefined") {
+			const savedUpiId = localStorage.getItem(SELECTED_UPI_STORAGE_KEY);
+			if (savedUpiId) {
+				// Validate that the saved UPI account exists and is not deleted
+				const isValid = upiAccounts.some(
+					(account) => account.id.toString() === savedUpiId,
+				);
+				if (isValid) {
+					return savedUpiId;
+				}
+			}
+		}
+
+		// Default to first available account
+		return upiAccounts[0]?.id.toString() || "1";
+	});
 	const qrCodeRef = useRef<SVGSVGElement>(null);
+
+	// Save to localStorage whenever selectedUpiId changes
+	useEffect(() => {
+		if (typeof window !== "undefined") {
+			localStorage.setItem(SELECTED_UPI_STORAGE_KEY, selectedUpiId);
+		}
+	}, [selectedUpiId]);
+
+	const selectedAccount = upiAccounts.find(
+		(account) => account.id.toString() === selectedUpiId,
+	);
+	const UPI_STRING = getUPIString(
+		order,
+		selectedAccount?.upiId || upiAccounts[0]?.upiId || "",
+	);
 
 	const copyOrderDetails = () => {
 		if (order.items.length === 0) return navigator.clipboard.writeText("");
@@ -124,7 +167,7 @@ export default function Bill({ order }: BillProps) {
 	return (
 		<div>
 			{/* Order Details Section */}
-			<div className="flex gap-4 items-center justify-between">
+			<div className="flex gap-4 items-start justify-between">
 				<Button
 					onClick={copyOrderDetails}
 					type="button"
@@ -133,14 +176,47 @@ export default function Bill({ order }: BillProps) {
 				>
 					Copy Order
 				</Button>
-				<Button
-					onClick={copyQrCodeToClipboard}
-					type="button"
-					size="sm"
-					variant="outline"
-				>
-					Copy UPI
-				</Button>
+				<div className="flex flex-col gap-1 items-end">
+					<div className="flex gap-0 items-center">
+						<Button
+							onClick={copyQrCodeToClipboard}
+							type="button"
+							size="sm"
+							variant="outline"
+							className="rounded-r-none border-r-0"
+						>
+							Copy UPI
+						</Button>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									className="rounded-l-none px-2"
+								>
+									<ChevronDown className="h-4 w-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								{upiAccounts.map((account) => (
+									<DropdownMenuItem
+										key={account.id}
+										onClick={() => setSelectedUpiId(account.id.toString())}
+										className={
+											selectedUpiId === account.id.toString() ? "bg-accent" : ""
+										}
+									>
+										{account.label}
+									</DropdownMenuItem>
+								))}
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
+					<p className="text-xs text-muted-foreground">
+						{selectedAccount?.label || "No UPI selected"}
+					</p>
+				</div>
 			</div>
 
 			{/* QR Code Section */}

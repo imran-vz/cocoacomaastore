@@ -3,19 +3,27 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { use, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 import type { z } from "zod";
 
 import { Cart } from "@/components/cart";
 import { DessertList } from "@/components/dessert-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { UpiAccount } from "@/db/schema";
 import type { CartItem, Dessert } from "@/lib/types";
 import Bill from "./bill";
 import { cartFormSchema } from "./form-schema/cart";
 import { Receipt } from "./receipt";
-import { toast } from "sonner";
 
-export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
+export default function Home({
+	desserts,
+	upiAccounts,
+}: {
+	desserts: Promise<Dessert[]>;
+	upiAccounts: Promise<UpiAccount[]>;
+}) {
 	const items = use(desserts);
+	const upiAccountsList = use(upiAccounts);
 	const [cart, setCart] = useState<CartItem[]>([]);
 	const form = useForm<z.infer<typeof cartFormSchema>>({
 		resolver: zodResolver(cartFormSchema),
@@ -107,15 +115,16 @@ export default function Home({ desserts }: { desserts: Promise<Dessert[]> }) {
 				</Card>
 
 				<Card className="gap-2">
-					<CardHeader className="flex items-center justify-between">
+					<CardHeader className="flex gap-3 items-start justify-between">
 						<CardTitle className="text-lg">Receipt</CardTitle>
-						<div className="max-w-52 w-full">
+						<div className="">
 							<Bill
 								order={{
 									items: cart,
 									total: total,
 									deliveryCost: Number.parseFloat(deliveryCost || "0"),
 								}}
+								upiAccounts={upiAccountsList}
 							/>
 						</div>
 					</CardHeader>

@@ -40,4 +40,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# admin seed script (contains sensitive credentials)
+scripts/seed-admin.ts
+
 certificates
