@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "pnpm build:sw && next build",
+    "build:sw": "tsc src/app/sw.ts --outDir public --lib es2015,webworker --target es2015 --skipLibCheck --module esnext --moduleResolution bundler",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",

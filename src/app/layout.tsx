@@ -1,9 +1,12 @@
-import type { Metadata, Viewport } from "next";
-import { Nunito_Sans, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
+import type { Metadata, Viewport } from "next";
+import { Geist_Mono, Nunito_Sans } from "next/font/google";
 
-import { Toaster } from "@/components/ui/sonner";
 import Navbar from "@/components/navbar";
+import { OfflineIndicator } from "@/components/offline-indicator";
+import { ServiceWorkerProvider } from "@/components/service-worker-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 import "./globals.css";
 
@@ -64,8 +67,14 @@ export default function RootLayout({
 	return (
 		<html lang="en">
 			<body
-				className={`${nunitoSans.variable} ${geistMono.variable} antialiased bg-[url(/bg-grid.svg)]`}
+				className={cn(
+					nunitoSans.variable,
+					geistMono.variable,
+					"antialiased bg-[url(/bg-grid.svg)]",
+				)}
 			>
+				<ServiceWorkerProvider />
+				<OfflineIndicator />
 				<Analytics />
 				<Navbar />
 				{children}
