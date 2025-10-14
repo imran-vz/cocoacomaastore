@@ -1,14 +1,18 @@
 "use client";
 
+import { IconLogout } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { authClient, signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
 import { TextRoll } from "./ui/text-roll";
 
 const navLinks = [{ label: "Desserts", href: "/desserts" }];
 
 export default function Navbar() {
+	const { data: session } = authClient.useSession();
 	const pathname = usePathname();
 
 	if (pathname.startsWith("/admin")) {
@@ -47,6 +51,18 @@ export default function Navbar() {
 						))}
 					</ul>
 				</nav>
+
+				{session?.user.id && (
+					<Button
+						onClick={async () => {
+							await signOut();
+							window.location.href = "/login";
+						}}
+					>
+						<IconLogout />
+						Log out
+					</Button>
+				)}
 			</div>
 		</div>
 	);
