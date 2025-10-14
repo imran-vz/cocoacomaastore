@@ -14,8 +14,8 @@ export default async function ManagerLayout({
 		redirect("/login", RedirectType.replace);
 	}
 
-	if (data?.user.role !== "admin") {
-		redirect("/", RedirectType.replace);
+	if (data?.user.role === "admin") {
+		redirect("/admin", RedirectType.replace);
 	}
 
 	return (
