@@ -20,7 +20,7 @@ export default function AdminLayout({
 				<AppSidebar variant="inset" />
 				<SidebarInset>
 					<SiteHeader />
-					<div className="px-4 py-6">{children}</div>
+					<div className="md:px-4 md:py-6">{children}</div>
 				</SidebarInset>
 			</SidebarProvider>
 		</div>
