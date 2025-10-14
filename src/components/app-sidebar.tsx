@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	IconDashboard,
 	IconDatabase,
 	IconFileDescription,
 	IconInnerShadowTop,
@@ -23,6 +24,7 @@ import { authClient } from "@/lib/auth-client";
 
 const data = {
 	navMain: [
+		{ title: "Dashboard", url: "/admin", icon: IconDashboard },
 		{ title: "Desserts", url: "/admin/desserts", icon: IconFileDescription },
 		{ title: "Managers", url: "/admin/managers", icon: IconUsers },
 		{ title: "UPI Accounts", url: "/admin/upi", icon: IconDatabase },
