@@ -6,6 +6,16 @@ import { unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { upiAccountsTable } from "@/db/schema";
 
+async function getUPIAccountsForAdmin() {
+	// Get enabled UPI accounts from database, sorted by sequence
+	const accounts = await db.query.upiAccountsTable.findMany({
+		where: eq(upiAccountsTable.isDeleted, false),
+		orderBy: (accounts, { asc }) => [asc(accounts.sequence)],
+	});
+
+	return accounts;
+}
+
 async function getUPIAccounts() {
 	// Get enabled UPI accounts from database, sorted by sequence
 	const accounts = await db.query.upiAccountsTable.findMany({
@@ -21,6 +31,15 @@ async function getUPIAccounts() {
 
 export const getCachedUPIAccounts = unstable_cache(
 	getUPIAccounts,
+	["upi-accounts"],
+	{
+		revalidate: 60 * 60 * 24, // 24 hours
+		tags: ["upi-accounts"],
+	},
+);
+
+export const getCachedUPIAccountsForAdmin = unstable_cache(
+	getUPIAccountsForAdmin,
 	["upi-accounts"],
 	{
 		revalidate: 60 * 60 * 24, // 24 hours

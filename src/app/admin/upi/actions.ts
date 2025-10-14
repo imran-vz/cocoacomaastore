@@ -5,16 +5,6 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/db";
 import { type UpiAccount, upiAccountsTable } from "@/db/schema";
 
-export async function getUpiAccounts() {
-	const accounts = await db
-		.select()
-		.from(upiAccountsTable)
-		.where(eq(upiAccountsTable.isDeleted, false))
-		.orderBy(upiAccountsTable.sequence);
-
-	return accounts;
-}
-
 export async function createUpiAccount(data: {
 	label: string;
 	upiId: string;
@@ -29,6 +19,7 @@ export async function createUpiAccount(data: {
 		});
 
 		revalidateTag("upi-accounts");
+		revalidateTag("upi-accounts-admin");
 		revalidatePath("/admin/upi");
 		return { success: true };
 	} catch (error) {
@@ -48,6 +39,7 @@ export async function updateUpiAccount(
 			.where(eq(upiAccountsTable.id, id));
 
 		revalidateTag("upi-accounts");
+		revalidateTag("upi-accounts-admin");
 		revalidatePath("/admin/upi");
 		return { success: true };
 	} catch (error) {
@@ -64,6 +56,7 @@ export async function deleteUpiAccount(id: UpiAccount["id"]) {
 			.where(eq(upiAccountsTable.id, id));
 
 		revalidateTag("upi-accounts");
+		revalidateTag("upi-accounts-admin");
 		revalidatePath("/admin/upi");
 		return { success: true };
 	} catch (error) {

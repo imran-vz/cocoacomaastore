@@ -5,11 +5,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { authClient, signOut } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
-import { Button } from "./ui/button";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import { TextRoll } from "./ui/text-roll";
-
-const navLinks = [{ label: "Desserts", href: "/desserts", icon: IconCakeRoll }];
 
 export default function Navbar() {
 	const { data: session } = authClient.useSession();
@@ -18,6 +22,15 @@ export default function Navbar() {
 	if (pathname.startsWith("/admin")) {
 		return null;
 	}
+
+	const getInitials = (name: string) => {
+		return name
+			.split(" ")
+			.slice(0, 2)
+			.map((n) => n[0])
+			.join("")
+			.toUpperCase();
+	};
 
 	return (
 		<div className="shadow-md z-10 sticky top-0 bg-white">
@@ -36,37 +49,40 @@ export default function Navbar() {
 				</Link>
 
 				{session?.user.id && (
-					<div className="flex items-center gap-4">
-						<nav>
-							<ul className="flex gap-4">
-								{navLinks.map((link) => (
-									<li key={link.href}>
-										<Link
-											className={cn(
-												"text-sm font-medium inline-flex items-center gap-1",
-												pathname.startsWith(link.href) &&
-													"underline text-primary",
-											)}
-											href={link.href}
-										>
-											{link.icon && <link.icon />}
-											{link.label}
-										</Link>
-									</li>
-								))}
-							</ul>
-						</nav>
-
-						<Button
-							onClick={async () => {
-								await signOut();
-								window.location.href = "/login";
-							}}
-						>
-							<IconLogout />
-							Log out
-						</Button>
-					</div>
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<button
+								className="focus:outline-none focus:ring-2 focus:ring-primary rounded-full"
+								type="button"
+							>
+								<Avatar>
+									<AvatarFallback>
+										{getInitials(session.user.name)}
+									</AvatarFallback>
+								</Avatar>
+							</button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end" className="w-56">
+							<DropdownMenuItem asChild>
+								<Link href="/desserts" className="cursor-pointer">
+									<IconCakeRoll />
+									Desserts
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem
+								variant="destructive"
+								onClick={async () => {
+									await signOut();
+									window.location.href = "/login";
+								}}
+								className="cursor-pointer"
+							>
+								<IconLogout />
+								Log out
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				)}
 			</div>
 		</div>
