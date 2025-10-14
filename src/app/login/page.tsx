@@ -47,7 +47,9 @@ export default function LoginPage() {
 			console.error("Login error:", error);
 			toast.error("Invalid email or password");
 		} finally {
-			setIsLoading(false);
+			setTimeout(() => {
+				setIsLoading(false);
+			}, 2000);
 		}
 	};
 

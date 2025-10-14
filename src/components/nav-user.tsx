@@ -18,6 +18,9 @@ import {
 	useSidebar,
 } from "@/components/ui/sidebar";
 import { signOut } from "@/lib/auth-client";
+import { useState } from "react";
+import { Spinner } from "./ui/spinner";
+import { toast } from "sonner";
 
 export function NavUser({
 	user,
@@ -27,6 +30,7 @@ export function NavUser({
 		email: string;
 	};
 }) {
+	const [isLoading, setIsLoading] = useState(false);
 	const { isMobile } = useSidebar();
 
 	return (
@@ -76,10 +80,21 @@ export function NavUser({
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							onClick={async () => {
-								await signOut();
-								window.location.href = "/login";
+								try {
+									setIsLoading(true);
+									await signOut();
+									window.location.href = "/login";
+								} catch (error) {
+									console.error("Logout error:", error);
+									toast.error("Failed to logout");
+								} finally {
+									setTimeout(() => {
+										setIsLoading(false);
+									}, 2000);
+								}
 							}}
 						>
+							{isLoading ? <Spinner /> : null}
 							<IconLogout />
 							Log out
 						</DropdownMenuItem>
