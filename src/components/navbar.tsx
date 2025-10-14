@@ -34,8 +34,8 @@ export default function Navbar() {
 						Cocoa Comaa
 					</TextRoll>
 				</Link>
-				<div>
-					<nav className="mr-4">
+				<div className="flex items-center gap-4">
+					<nav>
 						<ul className="flex gap-4">
 							{navLinks.map((link) => (
 								<li key={link.href}>

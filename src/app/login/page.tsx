@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,10 +13,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signIn } from "@/lib/auth-client";
 import { Spinner } from "@/components/ui/spinner";
+import { signIn } from "@/lib/auth-client";
 
 export default function LoginPage() {
+	const router = useRouter();
 	const emailID = useId();
 	const passwordID = useId();
 	const [email, setEmail] = useState("");
@@ -29,7 +31,7 @@ export default function LoginPage() {
 		try {
 			await signIn.email({ email, password, rememberMe: true });
 			toast.success("Logged in successfully");
-			window.location.href = "/";
+			router.push("/");
 		} catch (error) {
 			console.error("Login error:", error);
 			toast.error("Invalid email or password");
