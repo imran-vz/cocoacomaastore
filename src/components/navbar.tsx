@@ -1,6 +1,6 @@
 "use client";
 
-import { IconLogout } from "@tabler/icons-react";
+import { IconCakeRoll, IconLogout } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { TextRoll } from "./ui/text-roll";
 
-const navLinks = [{ label: "Desserts", href: "/desserts" }];
+const navLinks = [{ label: "Desserts", href: "/desserts", icon: IconCakeRoll }];
 
 export default function Navbar() {
 	const { data: session } = authClient.useSession();
@@ -34,35 +34,39 @@ export default function Navbar() {
 						Cocoa Comaa
 					</TextRoll>
 				</Link>
-				<nav>
-					<ul className="flex gap-4">
-						{navLinks.map((link) => (
-							<li key={link.href}>
-								<Link
-									className={cn(
-										"text-sm font-medium",
-										pathname.startsWith(link.href) && "underline text-primary",
-									)}
-									href={link.href}
-								>
-									{link.label}
-								</Link>
-							</li>
-						))}
-					</ul>
-				</nav>
+				<div>
+					<nav className="mr-4">
+						<ul className="flex gap-4">
+							{navLinks.map((link) => (
+								<li key={link.href}>
+									<Link
+										className={cn(
+											"text-sm font-medium",
+											pathname.startsWith(link.href) &&
+												"underline text-primary",
+										)}
+										href={link.href}
+									>
+										{link.icon && <link.icon />}
+										{link.label}
+									</Link>
+								</li>
+							))}
+						</ul>
+					</nav>
 
-				{session?.user.id && (
-					<Button
-						onClick={async () => {
-							await signOut();
-							window.location.href = "/login";
-						}}
-					>
-						<IconLogout />
-						Log out
-					</Button>
-				)}
+					{session?.user.id && (
+						<Button
+							onClick={async () => {
+								await signOut();
+								window.location.href = "/login";
+							}}
+						>
+							<IconLogout />
+							Log out
+						</Button>
+					)}
+				</div>
 			</div>
 		</div>
 	);
