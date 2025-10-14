@@ -26,6 +26,7 @@ export default function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
 
 	useEffect(() => {
+		console.log("🚀 | :29 | LoginPage | session?.user:", session?.user);
 		if (session?.user.id) {
 			if (session.user.role === "admin") {
 				router.push("/admin");

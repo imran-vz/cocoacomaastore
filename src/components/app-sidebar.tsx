@@ -4,9 +4,9 @@ import {
 	IconDashboard,
 	IconDatabase,
 	IconFileDescription,
-	IconInnerShadowTop,
 	IconUsers,
 } from "@tabler/icons-react";
+import Image from "next/image";
 import type * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
@@ -21,6 +21,7 @@ import {
 	SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
+import { TextRoll } from "./ui/text-roll";
 
 const data = {
 	navMain: [
@@ -44,10 +45,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							className="data-[slot=sidebar-menu-button]:!p-1.5"
 						>
 							<a href="/admin">
-								<IconInnerShadowTop className="!size-5" />
-								<span className="text-base font-semibold">
-									Cocoacomaa Store
+								<span className="flex items-center object-cover size-8 rounded-full overflow-hidden">
+									<Image
+										src="/logo.png"
+										alt="Cocoacomaa Store"
+										width={32}
+										height={32}
+									/>
 								</span>
+								<TextRoll
+									transition={{
+										repeat: Number.POSITIVE_INFINITY,
+										repeatType: "loop",
+										repeatDelay: 10,
+									}}
+									className="text-base text-primary min-w-32 font-bold dark:text-white"
+								>
+									Cocoa Comaa
+								</TextRoll>
 							</a>
 						</SidebarMenuButton>
 					</SidebarMenuItem>

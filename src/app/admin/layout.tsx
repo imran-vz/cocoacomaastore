@@ -1,12 +1,26 @@
+import { headers } from "next/headers";
+import { RedirectType, redirect } from "next/navigation";
+
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { auth } from "@/lib/auth";
 
-export default function AdminLayout({
+export default async function AdminLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	const data = await auth.api.getSession({ headers: await headers() });
+
+	if (!data?.session) {
+		redirect("/login", RedirectType.replace);
+	}
+
+	if (data?.user.role !== "admin") {
+		redirect("/", RedirectType.replace);
+	}
+
 	return (
 		<div className="flex min-h-[calc(100vh-52px)] flex-col">
 			<SidebarProvider
