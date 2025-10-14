@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,15 +14,26 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { signIn } from "@/lib/auth-client";
+import { authClient, signIn } from "@/lib/auth-client";
 
 export default function LoginPage() {
 	const router = useRouter();
+	const { data: session } = authClient.useSession();
 	const emailID = useId();
 	const passwordID = useId();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+
+	useEffect(() => {
+		if (session?.user.id) {
+			if (session.user.role === "admin") {
+				router.push("/admin");
+			} else {
+				router.push("/");
+			}
+		}
+	}, [router, session?.user]);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
