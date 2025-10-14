@@ -32,6 +32,11 @@ export default function LoginPage() {
 			} else {
 				router.push("/");
 			}
+
+			setTimeout(() => {
+				window.location.reload();
+			}, 2000);
+			router.refresh();
 		}
 	}, [router, session?.user]);
 
@@ -49,6 +54,7 @@ export default function LoginPage() {
 		} finally {
 			setTimeout(() => {
 				setIsLoading(false);
+				window.location.reload();
 			}, 2000);
 		}
 	};
