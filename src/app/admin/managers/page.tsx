@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -31,7 +32,6 @@ import {
 } from "@/components/ui/table";
 import type { User } from "@/db/schema";
 import { createManager, deleteManager, getManagers } from "./actions";
-import { Badge } from "@/components/ui/badge";
 
 export default function ManagersPage() {
 	const nameID = useId();
@@ -92,7 +92,7 @@ export default function ManagersPage() {
 	};
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 p-2 md:p-0">
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl font-bold">Managers</h1>

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Spinner } from "@/components/ui/spinner";
 import {
 	Table,
 	TableBody,
@@ -22,14 +23,13 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import type { UpiAccount } from "@/db/schema";
 import {
 	createUpiAccount,
 	deleteUpiAccount,
 	getUpiAccounts,
 	updateUpiAccount,
 } from "./actions";
-import { Spinner } from "@/components/ui/spinner";
-import type { UpiAccount } from "@/db/schema";
 
 export default function UpiPage() {
 	const labelID = useId();
@@ -110,7 +110,7 @@ export default function UpiPage() {
 	};
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 p-2 md:p-0">
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl font-bold">UPI Accounts</h1>
