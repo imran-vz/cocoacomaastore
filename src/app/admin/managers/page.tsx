@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import type { User } from "@/db/schema";
 import { createManager, deleteManager, getManagers } from "./actions";
+import { Badge } from "@/components/ui/badge";
 
 export default function ManagersPage() {
 	const nameID = useId();
@@ -192,7 +193,13 @@ export default function ManagersPage() {
 							<TableRow key={manager.id}>
 								<TableCell className="font-medium">{manager.name}</TableCell>
 								<TableCell>{manager.email}</TableCell>
-								<TableCell className="capitalize">{manager.role}</TableCell>
+								<TableCell className="capitalize">
+									<Badge
+										variant={manager.role === "admin" ? "default" : "secondary"}
+									>
+										{manager.role}
+									</Badge>
+								</TableCell>
 								<TableCell>
 									{new Date(manager.createdAt).toLocaleDateString()}
 								</TableCell>
