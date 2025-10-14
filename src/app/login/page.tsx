@@ -1,11 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
+import { useId, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Card,
 	CardContent,
@@ -13,27 +10,26 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { signIn } from "@/lib/auth-client";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function LoginPage() {
+	const emailID = useId();
+	const passwordID = useId();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
-	const router = useRouter();
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 		setIsLoading(true);
 
 		try {
-			await signIn.email({
-				email,
-				password,
-			});
-
+			await signIn.email({ email, password, rememberMe: true });
 			toast.success("Logged in successfully");
-			router.push("/");
-			router.refresh();
+			window.location.href = "/";
 		} catch (error) {
 			console.error("Login error:", error);
 			toast.error("Invalid email or password");
@@ -54,9 +50,9 @@ export default function LoginPage() {
 				<CardContent>
 					<form onSubmit={handleSubmit} className="space-y-4">
 						<div className="space-y-2">
-							<Label htmlFor="email">Email</Label>
+							<Label htmlFor={emailID}>Email</Label>
 							<Input
-								id="email"
+								id={emailID}
 								type="email"
 								placeholder="you@example.com"
 								value={email}
@@ -66,9 +62,9 @@ export default function LoginPage() {
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="password">Password</Label>
+							<Label htmlFor={passwordID}>Password</Label>
 							<Input
-								id="password"
+								id={passwordID}
 								type="password"
 								placeholder="••••••••"
 								value={password}
@@ -78,7 +74,7 @@ export default function LoginPage() {
 							/>
 						</div>
 						<Button type="submit" className="w-full" disabled={isLoading}>
-							{isLoading ? "Logging in..." : "Login"}
+							{isLoading ? <Spinner /> : "Login"}
 						</Button>
 					</form>
 				</CardContent>
