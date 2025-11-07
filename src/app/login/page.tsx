@@ -40,9 +40,21 @@ export default function LoginPage() {
 		setIsLoading(true);
 
 		try {
-			await signIn.email({ email, password, rememberMe: true });
-			toast.success("Logged in successfully");
-			// The useEffect hook will handle redirection based on user role
+			await signIn.email(
+				{ email, password, rememberMe: true },
+				{
+					onSuccess: () => {
+						toast.success("Logged in successfully");
+						setIsLoading(false);
+						router.refresh();
+					},
+					onError: (error) => {
+						console.error("Login error:", error);
+						toast.error("Invalid email or password");
+						setIsLoading(false);
+					},
+				},
+			);
 		} catch (error) {
 			console.error("Login error:", error);
 			toast.error("Invalid email or password");
