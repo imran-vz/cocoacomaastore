@@ -36,7 +36,7 @@ export default function Home({
 		if (existingDessert) {
 			setCart((cart) =>
 				cart.map((item) => {
-					if (item.id === dessert.id && item.quantity < 99) {
+					if (item.id === dessert.id && item.quantity < 199) {
 						return {
 							...item,
 							quantity: item.quantity + 1,
