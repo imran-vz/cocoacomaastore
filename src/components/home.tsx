@@ -61,7 +61,7 @@ export default function Home({
 			return;
 		}
 
-		if (quantity > 99) {
+		if (quantity > 199) {
 			toast.error("Quantity cannot be greater than 99");
 			return;
 		}
