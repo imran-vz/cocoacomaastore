@@ -19,6 +19,6 @@ export default async function ManagerLayout({
 	}
 
 	return (
-		<div className="flex min-h-[calc(100vh-52px)] flex-col">{children}</div>
+		<div className="min-h-[calc(100vh-52px)] md:px-4 md:py-6">{children}</div>
 	);
 }
