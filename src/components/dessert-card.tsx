@@ -17,11 +17,13 @@ interface DessertCardProps {
 	totalCount: number;
 	onEdit?: (dessert: Dessert) => void;
 	onToggle?: (dessert: Dessert) => void;
+	onToggleStock?: (dessert: Dessert) => void;
 	onMoveUp: (dessert: Dessert) => void;
 	onMoveDown: (dessert: Dessert) => void;
 	onMoveToTop: (dessert: Dessert) => void;
 	onMoveToBottom: (dessert: Dessert) => void;
 	isToggleLoading?: boolean;
+	isStockToggleLoading?: boolean;
 	isMoving?: boolean;
 	showEditControls?: boolean;
 }
@@ -32,11 +34,13 @@ export function DessertCard({
 	totalCount,
 	onEdit,
 	onToggle,
+	onToggleStock,
 	onMoveUp,
 	onMoveDown,
 	onMoveToTop,
 	onMoveToBottom,
 	isToggleLoading = false,
+	isStockToggleLoading = false,
 	isMoving = false,
 	showEditControls = true,
 }: DessertCardProps) {
@@ -47,6 +51,7 @@ export function DessertCard({
 					"bg-card border rounded-lg p-3 @sm/card:p-4 shadow-sm hover:shadow-md transition-all duration-200 group",
 					"hover:scale-[1.02] hover:border-primary/20",
 					!dessert.enabled && "opacity-60 bg-muted",
+					dessert.isOutOfStock && "opacity-50 bg-muted",
 					isMoving && "scale-95 shadow-lg ring-2 ring-primary/20",
 				)}
 			>
@@ -55,7 +60,8 @@ export function DessertCard({
 					<h3
 						className={cn(
 							"font-semibold text-base @sm/card:text-lg leading-tight break-words",
-							!dessert.enabled && "line-through text-muted-foreground",
+							(!dessert.enabled || dessert.isOutOfStock) &&
+								"line-through text-muted-foreground",
 						)}
 						title={dessert.name}
 					>
@@ -68,21 +74,29 @@ export function DessertCard({
 					<div
 						className={cn(
 							"text-xl @sm/card:text-2xl font-bold",
-							!dessert.enabled && "text-muted-foreground",
+							(!dessert.enabled || dessert.isOutOfStock) &&
+								"text-muted-foreground",
 						)}
 					>
 						₹{dessert.price.toFixed(2)}
 					</div>
 
-					<div
-						className={cn(
-							"px-2 py-1 rounded-full text-xs font-medium w-fit",
-							dessert.enabled
-								? "bg-green-100 text-green-700"
-								: "bg-red-100 text-red-700",
+					<div className="flex flex-wrap gap-1.5">
+						{dessert.isOutOfStock && (
+							<div className="px-2 py-1 rounded-full text-xs font-medium w-fit bg-orange-100 text-orange-700">
+								Out of Stock
+							</div>
 						)}
-					>
-						{dessert.enabled ? "Available" : "Disabled"}
+						<div
+							className={cn(
+								"px-2 py-1 rounded-full text-xs font-medium w-fit",
+								dessert.enabled
+									? "bg-green-100 text-green-700"
+									: "bg-red-100 text-red-700",
+							)}
+						>
+							{dessert.enabled ? "Available" : "Disabled"}
+						</div>
 					</div>
 				</div>
 
@@ -162,7 +176,7 @@ export function DessertCard({
 
 					{/* Edit and toggle buttons */}
 					{showEditControls && onEdit && onToggle && (
-						<div className="flex items-center gap-1.5 @sm/card:gap-2">
+						<div className="flex items-center gap-1.5 @sm/card:gap-2 flex-wrap">
 							<Button
 								variant="outline"
 								size="sm"
@@ -171,6 +185,38 @@ export function DessertCard({
 							>
 								Edit
 							</Button>
+							{onToggleStock && (
+								<Button
+									variant={dessert.isOutOfStock ? "secondary" : "outline"}
+									size="sm"
+									onClick={() => onToggleStock(dessert)}
+									disabled={isStockToggleLoading}
+									className={cn(
+										"text-xs min-w-[4rem] @sm/card:min-w-16 flex-1 @sm/card:flex-none",
+										dessert.isOutOfStock
+											? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
+											: "border-gray-200 text-gray-700 hover:bg-gray-50",
+									)}
+									title={
+										dessert.isOutOfStock
+											? "Mark as back in stock"
+											: "Mark as out of stock"
+									}
+								>
+									{isStockToggleLoading ? (
+										<>
+											<Loader2 className="h-3 w-3 animate-spin mr-1" />
+											<span className="hidden @sm/card:inline">
+												{dessert.isOutOfStock ? "Restocking" : "Stocking Out"}
+											</span>
+										</>
+									) : dessert.isOutOfStock ? (
+										"In Stock"
+									) : (
+										"Out Stock"
+									)}
+								</Button>
+							)}
 							<Button
 								variant={dessert.enabled ? "outline" : "secondary"}
 								size="sm"

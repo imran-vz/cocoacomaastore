@@ -4,6 +4,7 @@ export interface Dessert {
 	description?: string | null;
 	price: number;
 	enabled: boolean;
+	isOutOfStock: boolean;
 	sequence: number;
 }
 

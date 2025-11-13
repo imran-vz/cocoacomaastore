@@ -1,9 +1,12 @@
 "use client";
 
 import { Edit3, Save, X } from "lucide-react";
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { batchUpdateDessertSequences } from "@/app/desserts/actions";
+import {
+	batchUpdateDessertSequences,
+	toggleOutOfStock,
+} from "@/app/desserts/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Dessert } from "@/lib/types";
@@ -19,12 +22,57 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 	const [isPending, startTransition] = useTransition();
 	const [localDesserts, setLocalDesserts] = useState(desserts);
 	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+	const [stockToggleLoadingIds, setStockToggleLoadingIds] = useState<
+		Set<number>
+	>(new Set());
 
 	// Update local desserts when prop changes
 	useEffect(() => {
 		setLocalDesserts(desserts);
 		setHasUnsavedChanges(false);
 	}, [desserts]);
+
+	const handleToggleOutOfStock = useCallback(
+		async (e: React.MouseEvent, dessert: Dessert) => {
+			e.stopPropagation();
+
+			const newOutOfStockState = !dessert.isOutOfStock;
+			setStockToggleLoadingIds((prev) => new Set(prev).add(dessert.id));
+
+			// Optimistic update
+			setLocalDesserts((prev) =>
+				prev.map((d) =>
+					d.id === dessert.id ? { ...d, isOutOfStock: newOutOfStockState } : d,
+				),
+			);
+
+			try {
+				await toggleOutOfStock(dessert.id, newOutOfStockState);
+				toast.success(
+					`Marked as ${newOutOfStockState ? "out of stock" : "back in stock"}`,
+				);
+			} catch (error) {
+				toast.error("Failed to update stock status");
+				console.error("Failed to toggle stock status:", error);
+
+				// Revert optimistic update on error
+				setLocalDesserts((prev) =>
+					prev.map((d) =>
+						d.id === dessert.id
+							? { ...d, isOutOfStock: dessert.isOutOfStock }
+							: d,
+					),
+				);
+			} finally {
+				setStockToggleLoadingIds((prev) => {
+					const newSet = new Set(prev);
+					newSet.delete(dessert.id);
+					return newSet;
+				});
+			}
+		},
+		[],
+	);
 
 	const handleMoveToTop = (dessert: Dessert) => {
 		const currentIndex = localDesserts.findIndex((d) => d.id === dessert.id);
@@ -123,6 +171,12 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 		}
 	};
 
+	// Sort desserts: available first, out of stock at the bottom
+	const sortedDesserts = [...localDesserts].sort((a, b) => {
+		if (a.isOutOfStock === b.isOutOfStock) return 0;
+		return a.isOutOfStock ? 1 : -1;
+	});
+
 	return (
 		<div>
 			<div className="flex items-center justify-between mb-6">
@@ -184,32 +238,66 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 				</div>
 			) : (
 				<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-					{localDesserts.map((dessert) => (
-						<Button
-							asChild
-							key={dessert.id}
-							variant={"outline"}
-							onClick={() => addToCart(dessert)}
-							className="py-2 h-auto items-start hover:shadow-md transition-all duration-200 hover:scale-[1.02]"
-						>
-							<Card className="w-full shadow-none py-3 gap-2 cursor-pointer">
-								<CardContent className="px-3 py-0 w-full">
-									<div className="flex flex-col items-start text-left">
-										<h4 className="font-medium text-sm text-primary capitalize line-clamp-2 mb-1 max-w-[90%] truncate">
-											{dessert.name}
-										</h4>
-										{dessert.description && (
-											<p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-												{dessert.description}
-											</p>
-										)}
-										<p className="text-sm font-semibold text-green-700">
-											₹{dessert.price.toFixed(2)}
-										</p>
-									</div>
-								</CardContent>
-							</Card>
-						</Button>
+					{sortedDesserts.map((dessert) => (
+						<div key={dessert.id} className="relative flex flex-col gap-2">
+							<Button
+								asChild
+								variant={"outline"}
+								onClick={() => !dessert.isOutOfStock && addToCart(dessert)}
+								disabled={dessert.isOutOfStock}
+								className="py-2 h-auto items-start hover:shadow-md transition-all duration-200 hover:scale-[1.02] disabled:hover:scale-100 w-full flex-1"
+							>
+								<Card className="w-full shadow-none py-2 px-3 gap-2 cursor-pointer">
+									<CardContent className="px-0 w-full">
+										<div className="flex flex-col items-start text-left">
+											<h4
+												className={`font-medium text-sm text-primary capitalize line-clamp-2 mb-1 max-w-[90%] truncate ${dessert.isOutOfStock ? "line-through text-muted-foreground" : ""}`}
+											>
+												{dessert.name}
+											</h4>
+											{dessert.description && (
+												<p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+													{dessert.description}
+												</p>
+											)}
+											<div className="flex items-center gap-2 w-full">
+												<p
+													className={`text-sm font-semibold ${dessert.isOutOfStock ? "text-muted-foreground" : "text-green-700"}`}
+												>
+													₹{dessert.price.toFixed(2)}
+												</p>
+												{dessert.isOutOfStock && (
+													<span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-100 text-orange-700 whitespace-nowrap">
+														Out of Stock
+													</span>
+												)}
+											</div>
+										</div>
+									</CardContent>
+								</Card>
+							</Button>
+
+							{/* Stock toggle button - always visible */}
+							<Button
+								size="sm"
+								variant={dessert.isOutOfStock ? "secondary" : "outline"}
+								onClick={(e) => handleToggleOutOfStock(e, dessert)}
+								disabled={stockToggleLoadingIds.has(dessert.id)}
+								className={`w-full text-xs h-8 ${
+									dessert.isOutOfStock
+										? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
+										: "border-gray-200"
+								}`}
+							>
+								{stockToggleLoadingIds.has(dessert.id) ? (
+									<span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent" />
+								) : dessert.isOutOfStock ? (
+									"Back In Stock"
+								) : (
+									"Mark Out of Stock"
+								)}
+							</Button>
+						</div>
 					))}
 				</div>
 			)}

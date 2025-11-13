@@ -41,6 +41,17 @@ export async function toggleDessert(id: number, enabled: boolean) {
 	revalidateTag("desserts");
 }
 
+export async function toggleOutOfStock(id: number, isOutOfStock: boolean) {
+	const start = performance.now();
+	await db
+		.update(dessertsTable)
+		.set({ isOutOfStock })
+		.where(eq(dessertsTable.id, id));
+	const duration = performance.now() - start;
+	console.log(`toggleOutOfStock: ${duration.toFixed(2)}ms`);
+	revalidateTag("desserts");
+}
+
 export const getCachedDesserts = unstable_cache(getDesserts, ["desserts"], {
 	revalidate: 60 * 60 * 24,
 	tags: ["desserts"],
@@ -74,6 +85,7 @@ export async function updateDessert(
 			name: data.name,
 			description: data.description,
 			price: data.price,
+			isOutOfStock: data.isOutOfStock,
 		})
 		.where(eq(dessertsTable.id, id));
 	const duration = performance.now() - start;

@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 import { dessertFormSchema } from "./form-schema/dessert";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type DessertFormProps = {
 	initialData?: Dessert;
@@ -35,6 +36,7 @@ export function DessertForm({
 		name: initialData?.name || "",
 		description: initialData?.description || "",
 		price: initialData?.price || 0,
+		isOutOfStock: initialData?.isOutOfStock || false,
 	};
 	const form = useForm<z.infer<typeof dessertFormSchema>>({
 		resolver: zodResolver(dessertFormSchema),
@@ -92,6 +94,24 @@ export function DessertForm({
 								/>
 							</FormControl>
 							<FormMessage />
+						</FormItem>
+					)}
+				/>
+
+				<FormField
+					control={form.control}
+					name="isOutOfStock"
+					render={({ field }) => (
+						<FormItem className="flex flex-row items-center space-x-3 space-y-0">
+							<FormControl>
+								<Checkbox
+									checked={field.value}
+									onCheckedChange={field.onChange}
+								/>
+							</FormControl>
+							<FormLabel className="font-normal cursor-pointer">
+								Mark as out of stock
+							</FormLabel>
 						</FormItem>
 					)}
 				/>

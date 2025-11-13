@@ -17,6 +17,7 @@ export const dessertsTable = pgTable("desserts", {
 	description: varchar({ length: 255 }),
 	isDeleted: boolean().notNull().default(false),
 	enabled: boolean().notNull().default(true),
+	isOutOfStock: boolean().notNull().default(false),
 	sequence: integer().notNull().default(0),
 });
 

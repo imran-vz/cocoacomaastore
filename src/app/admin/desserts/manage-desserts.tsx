@@ -22,6 +22,7 @@ import {
 	moveDessertToBottom,
 	moveDessertToTop,
 	toggleDessert,
+	toggleOutOfStock,
 	updateDessert,
 	updateDessertSequence,
 } from "./actions";
@@ -48,6 +49,9 @@ export default function ManageDesserts({
 	const [toggleLoadingIds, setToggleLoadingIds] = useState<Set<number>>(
 		new Set(),
 	);
+	const [stockToggleLoadingIds, setStockToggleLoadingIds] = useState<
+		Set<number>
+	>(new Set());
 	const [movingIds, setMovingIds] = useState<Set<number>>(new Set());
 
 	const handleOpenModal = () => {
@@ -146,6 +150,49 @@ export default function ManageDesserts({
 		} finally {
 			// Remove from loading set
 			setToggleLoadingIds((prev) => {
+				const newSet = new Set(prev);
+				newSet.delete(dessert.id);
+				return newSet;
+			});
+
+			// Refetch to ensure consistency
+			await refetch();
+		}
+	};
+
+	const handleToggleOutOfStock = async (dessert: Dessert) => {
+		const newOutOfStockState = !dessert.isOutOfStock;
+
+		// Add to loading set
+		setStockToggleLoadingIds((prev) => new Set(prev).add(dessert.id));
+
+		// Optimistic update
+		setDesserts((prev) =>
+			prev.map((d) =>
+				d.id === dessert.id ? { ...d, isOutOfStock: newOutOfStockState } : d,
+			),
+		);
+
+		try {
+			await toggleOutOfStock(dessert.id, newOutOfStockState);
+			toast.success(
+				`Dessert marked as ${newOutOfStockState ? "out of stock" : "back in stock"} successfully`,
+			);
+		} catch (error) {
+			toast.error("Failed to toggle stock status");
+			console.error("Failed to toggle stock status:", error);
+
+			// Revert optimistic update on error
+			setDesserts((prev) =>
+				prev.map((d) =>
+					d.id === dessert.id
+						? { ...d, isOutOfStock: dessert.isOutOfStock }
+						: d,
+				),
+			);
+		} finally {
+			// Remove from loading set
+			setStockToggleLoadingIds((prev) => {
 				const newSet = new Set(prev);
 				newSet.delete(dessert.id);
 				return newSet;
@@ -388,11 +435,13 @@ export default function ManageDesserts({
 											handleOpenModal();
 										}}
 										onToggle={handleToggleDessert}
+										onToggleStock={handleToggleOutOfStock}
 										onMoveUp={handleMoveUp}
 										onMoveDown={handleMoveDown}
 										onMoveToTop={handleMoveToTop}
 										onMoveToBottom={handleMoveToBottom}
 										isToggleLoading={toggleLoadingIds.has(dessert.id)}
+										isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
 										isMoving={movingIds.has(dessert.id)}
 									/>
 								</div>
@@ -425,11 +474,13 @@ export default function ManageDesserts({
 											handleOpenModal();
 										}}
 										onToggle={handleToggleDessert}
+										onToggleStock={handleToggleOutOfStock}
 										onMoveUp={handleMoveUp}
 										onMoveDown={handleMoveDown}
 										onMoveToTop={handleMoveToTop}
 										onMoveToBottom={handleMoveToBottom}
 										isToggleLoading={toggleLoadingIds.has(dessert.id)}
+										isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
 										isMoving={movingIds.has(dessert.id)}
 									/>
 								</div>
