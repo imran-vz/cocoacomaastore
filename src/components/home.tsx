@@ -133,6 +133,7 @@ export default function Home({
 								total={total}
 								clearCart={clearCart}
 								deliveryCost={Number.parseFloat(deliveryCost || "0")}
+								upiAccounts={upiAccountsList}
 							/>
 						) : (
 							<div className="text-center py-6 text-muted-foreground">

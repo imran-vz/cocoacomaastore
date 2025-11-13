@@ -1,16 +1,23 @@
 "use client";
 
+import { Download } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import type { UpiAccount } from "@/db/schema";
+import { generateReceiptPDF } from "@/lib/pdf-generator";
 import type { CartItem } from "@/lib/types";
-import { Printer } from "lucide-react";
-import { useRef } from "react";
+import { useUpiStore } from "@/store/upi-store";
 
 interface ReceiptProps {
 	cart: CartItem[];
 	total: number;
 	clearCart: () => void;
 	deliveryCost: number;
+	upiAccounts: UpiAccount[];
 }
 
 export function Receipt({
@@ -18,178 +25,119 @@ export function Receipt({
 	total,
 	clearCart,
 	deliveryCost,
+	upiAccounts,
 }: ReceiptProps) {
 	const receiptRef = useRef<HTMLDivElement>(null);
+	const qrCodeRef = useRef<SVGSVGElement>(null);
+	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
 
-	const handlePrint = () => {
-		const content = receiptRef.current;
-		if (!content) return;
+	// Initialize with first available account if selectedUpiId is invalid
+	useEffect(() => {
+		const isValid = upiAccounts.some(
+			(account) => account.id.toString() === selectedUpiId,
+		);
+		if (!isValid && upiAccounts.length > 0) {
+			setSelectedUpiId(upiAccounts[0].id.toString());
+		}
+	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
 
-		const printWindow = window.open("", "_blank");
-		if (!printWindow) return;
+	const selectedAccount = upiAccounts.find(
+		(account) => account.id.toString() === selectedUpiId,
+	);
 
-		const printDocument = printWindow.document;
-		printDocument.write(`
-      <html>
-        <head>
-          <title>Receipt</title>
-          <style>
-            /* Page setup for printing */
-            @page {
-              size: ISO A6;
-              margin: 0;
-            }
+	const getUPIString = () => {
+		const transactionNote = cart
+			.map((item) => item.name)
+			.join(", ")
+			.slice(0, 30);
 
-            @media print {
-              html, body {
-                height:100%; 
-                margin: 0 !important; 
-                padding: 0 !important;
-                overflow: hidden;
-              }
-            }
+		const urlParams = new URLSearchParams();
+		urlParams.set("pa", selectedAccount?.upiId || "");
+		urlParams.set("am", total.toString());
+		urlParams.set("pn", "Cocoa Comaa");
+		urlParams.set("tn", transactionNote + "...");
 
-            /* Base styles */
-            body {
-              font-family: 'Courier New', monospace;
-              padding: 0;
-              margin: 0;
-              line-height: 1.5;
-              color: #000;
-              width: 100%;
-              height:100%;
-            }
+		return `upi://pay?${urlParams.toString()}`;
+	};
 
-            /* Tailwind reset */
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
+	const getQrCodeDataUrl = async (): Promise<string> => {
+		if (!qrCodeRef.current) return "";
 
-            /* Tailwind-like utility classes */
-            .flex { display: flex; }
-            .flex-col { flex-direction: column; }
-            .items-center { align-items: center; }
-            .justify-between { justify-content: space-between; }
-            .justify-center { justify-content: center; }
-            .text-center { text-align: center; }
-            .text-right { text-align: right; }
-            .font-bold { font-weight: bold; }
-            .text-xs { font-size: 0.75rem; }
-            .text-sm { font-size: 0.875rem; }
-            .text-base { font-size: 1rem; }
-            .text-lg { font-size: 1.125rem; }
-            .mt-1 { margin-top: 0.25rem; }
-            .mt-2 { margin-top: 0.5rem; }
-            .mt-4 { margin-top: 1rem; }
-            .mb-1 { margin-bottom: 0.25rem; }
-            .mb-2 { margin-bottom: 0.5rem; }
-            .mb-3 { margin-bottom: 0.75rem; }
-            .mb-4 { margin-bottom: 1rem; }
-            .my-2 { margin-top: 0.5rem; margin-bottom: 0.5rem; }
-            .my-4 { margin-top: 1rem; margin-bottom: 1rem; }
-            .p-2 { padding: 0.5rem; }
-            .p-3 { padding: 0.75rem; }
-            .p-4 { padding: 1rem; }
-            .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
-            .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-            .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-            .w-full { width: 100%; }
-            .w-8 { width: 2rem; }
-            .w-16 { width: 4rem; }
-            .max-w-xs { max-width: 20rem; }
-            .border { border: 1px solid #e2e8f0; }
-            .border-dashed { border-style: dashed; }
-            .border-t { border: 0px dashed #e2e8f0; border-top-width: 1px;  }
-            .border-b { border-bottom-width: 1px; }
-            .border-gray-300 { border-color: #d1d5db; }
-            .rounded-md { border-radius: 0.375rem; }
-            .bg-white { background-color: #ffffff; }
-            .space-y-1 > * + * { margin-top: 0.25rem; }
-            .space-y-2 > * + * { margin-top: 0.5rem; }
-            .truncate {
-              overflow: hidden;
-              text-overflow: ellipsis;
-              white-space: nowrap;
-            }
-            .gap-4 { gap: 1rem; }
-            .text-left { text-align: left; }
-            .h-px { height: 1px; }
-            .bg-slate-300 { background-color: #d1d5db; }
+		const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
+		const svgBlob = new Blob([svgData], {
+			type: "image/svg+xml;charset=utf-8",
+		});
+		const url = URL.createObjectURL(svgBlob);
 
-            /* Receipt specific styles */
-            .receipt-container {
-              width: 100%;
-              max-width: 400px;
-              margin: 0 auto;
-              padding: 20px;
-            }
-            .receipt-header {
-              text-align: center;
-              margin-bottom: 20px;
-            }
-            .receipt-item {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 8px;
-            }
-            .receipt-total {
-              margin-top: 12px;
-              font-weight: bold;
-              border-top: 1px dashed #000;
-              padding-top: 8px;
-            }
-            .receipt-footer {
-              text-align: center;
-              margin-top: 30px;
-              font-size: 12px;
-            }
-            .divider {
-              border-top: 1px dashed #000;
-              margin: 15px 0;
-              width: 100%;
-            }
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
+		const img = new Image(500, 500);
 
-            /* Print specific styles */
-            @media print {
-              html, body {
-                width: 148mm; /* A5 width */
-                height: 210mm; /* A5 height */
-                transform: scale(1.2);
-                transform-origin: top left;
-              }
+		await new Promise((resolve, reject) => {
+			img.onload = resolve;
+			img.onerror = reject;
+			img.src = url;
+		});
 
-              .receipt-container {
-                width: 100%;
-                padding: 10mm;
-                box-sizing: border-box;
-              }
+		const padding = 96;
+		canvas.width = img.width + padding * 2;
+		canvas.height = img.height + padding * 2;
 
-              .no-print {
-                display: none !important;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="receipt-container">
-            <div class="bg-white p-3 font-mono text-xs border border-dashed border-gray-300 rounded-md">
-              ${content.innerHTML}
-            </div>
-          </div>
+		if (ctx) {
+			ctx.fillStyle = "white";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = "black";
+			ctx.drawImage(img, padding, padding);
+			ctx.strokeStyle = "black";
+			ctx.lineWidth = 4;
+			ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+		}
 
-          <script>
-            // Auto-print when loaded
-            window.onload = function() {
-              window.print();
-            }
-          </script>
-        </body>
-      </html>
-    `);
+		URL.revokeObjectURL(url);
+		return canvas.toDataURL("image/png");
+	};
 
-		printDocument.close();
+	const handleDownloadPDF = async () => {
+		if (cart.length === 0 || !selectedAccount) return;
+
+		try {
+			toast.info("Generating PDF...", {
+				duration: 2000,
+				icon: "⏳",
+				richColors: false,
+			});
+
+			const qrCodeDataUrl = await getQrCodeDataUrl();
+
+			const pdfBlob = await generateReceiptPDF({
+				order: {
+					items: cart,
+					total,
+					deliveryCost,
+				},
+				selectedAccount,
+				qrCodeDataUrl,
+			});
+
+			// Create download link
+			const url = URL.createObjectURL(pdfBlob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `receipt-${Date.now()}.pdf`;
+			document.body.appendChild(a);
+			a.click();
+			document.body.removeChild(a);
+			URL.revokeObjectURL(url);
+
+			toast.success("PDF downloaded successfully", {
+				duration: 1000,
+				icon: "✓",
+				richColors: false,
+			});
+		} catch (err) {
+			console.error("Failed to generate PDF:", err);
+			toast.error("Failed to generate PDF");
+		}
 	};
 
 	const handleNewOrder = () => {
@@ -253,12 +201,20 @@ export function Receipt({
 				</div>
 			</div>
 
+			{/* Hidden QR Code for PDF generation */}
+			<QRCodeSVG
+				ref={qrCodeRef}
+				value={getUPIString()}
+				size={500}
+				className="hidden"
+			/>
+
 			<div className="flex gap-2 mt-4">
-				<Button onClick={handlePrint} className="flex-1">
-					<Printer className="mr-2 h-4 w-4" />
-					Print Receipt
+				<Button onClick={handleDownloadPDF} variant="outline">
+					<Download className="mr-2 h-4 w-4" />
+					PDF
 				</Button>
-				<Button onClick={handleNewOrder} variant="outline" className="flex-1">
+				<Button onClick={handleNewOrder} className="flex-1">
 					New Order
 				</Button>
 			</div>

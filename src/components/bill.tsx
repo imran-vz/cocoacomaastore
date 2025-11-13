@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import type { UpiAccount } from "@/db/schema";
 import type { CartItem } from "@/lib/types";
+import { useUpiStore } from "@/store/upi-store";
 import { Button } from "./ui/button";
 import {
 	DropdownMenu,
@@ -45,35 +46,19 @@ function getUPIString(order: BillProps["order"], upiId: string) {
 	return `upi://pay?${urlParams.toString()}`;
 }
 
-const SELECTED_UPI_STORAGE_KEY = "cocoacomaa-selected-upi-id";
-
 export default function Bill({ order, upiAccounts }: BillProps) {
-	const [selectedUpiId, setSelectedUpiId] = useState(() => {
-		// Try to load from localStorage
-		if (typeof window !== "undefined") {
-			const savedUpiId = localStorage.getItem(SELECTED_UPI_STORAGE_KEY);
-			if (savedUpiId) {
-				// Validate that the saved UPI account exists and is not deleted
-				const isValid = upiAccounts.some(
-					(account) => account.id.toString() === savedUpiId,
-				);
-				if (isValid) {
-					return savedUpiId;
-				}
-			}
-		}
-
-		// Default to first available account
-		return upiAccounts[0]?.id.toString() || "1";
-	});
+	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
 	const qrCodeRef = useRef<SVGSVGElement>(null);
 
-	// Save to localStorage whenever selectedUpiId changes
+	// Initialize with first available account if selectedUpiId is invalid
 	useEffect(() => {
-		if (typeof window !== "undefined") {
-			localStorage.setItem(SELECTED_UPI_STORAGE_KEY, selectedUpiId);
+		const isValid = upiAccounts.some(
+			(account) => account.id.toString() === selectedUpiId,
+		);
+		if (!isValid && upiAccounts.length > 0) {
+			setSelectedUpiId(upiAccounts[0].id.toString());
 		}
-	}, [selectedUpiId]);
+	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
 
 	const selectedAccount = upiAccounts.find(
 		(account) => account.id.toString() === selectedUpiId,
@@ -102,58 +87,55 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 		});
 	};
 
+	const getQrCodeDataUrl = async (): Promise<string> => {
+		if (!qrCodeRef.current) return "";
+
+		const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
+		const svgBlob = new Blob([svgData], {
+			type: "image/svg+xml;charset=utf-8",
+		});
+		const url = URL.createObjectURL(svgBlob);
+
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
+		const img = new Image(500, 500);
+
+		await new Promise((resolve, reject) => {
+			img.onload = resolve;
+			img.onerror = reject;
+			img.src = url;
+		});
+
+		const padding = 96;
+		canvas.width = img.width + padding * 2;
+		canvas.height = img.height + padding * 2;
+
+		if (ctx) {
+			ctx.fillStyle = "white";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = "black";
+			ctx.drawImage(img, padding, padding);
+			ctx.strokeStyle = "black";
+			ctx.lineWidth = 4;
+			ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+		}
+
+		URL.revokeObjectURL(url);
+		return canvas.toDataURL("image/png");
+	};
+
 	const copyQrCodeToClipboard = async () => {
 		if (!qrCodeRef.current) return;
 
 		try {
-			// Create a canvas and draw the SVG on it
-			const canvas = document.createElement("canvas");
-			const ctx = canvas.getContext("2d");
-			const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
-			const img = new Image(500, 500);
-			// Convert SVG to data URL
-			const svgBlob = new Blob([svgData], {
-				type: "image/svg+xml;charset=utf-8",
-			});
-			const url = URL.createObjectURL(svgBlob);
+			const dataUrl = await getQrCodeDataUrl();
+			const response = await fetch(dataUrl);
+			const blob = await response.blob();
 
-			// Wait for image to load then copy to clipboard
-			await new Promise((resolve, reject) => {
-				img.onload = resolve;
-				img.onerror = reject;
-				img.src = url;
-			});
+			await navigator.clipboard.write([
+				new ClipboardItem({ "image/png": blob }),
+			]);
 
-			// 1 inch padding on all sides (96 DPI = 96 pixels per inch)
-			const padding = 96;
-			canvas.width = img.width + padding * 2;
-			canvas.height = img.height + padding * 2;
-
-			// Set white background
-			if (ctx) {
-				ctx.fillStyle = "white";
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-				// Draw the QR code centered with padding
-				ctx.fillStyle = "black";
-				ctx.drawImage(img, padding, padding);
-
-				// Draw border around the image (after QR code so it's on top)
-				ctx.strokeStyle = "black";
-				ctx.lineWidth = 4;
-				ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
-			}
-
-			// Convert to blob and copy to clipboard
-			canvas.toBlob(async (blob) => {
-				if (blob) {
-					await navigator.clipboard.write([
-						new ClipboardItem({ "image/png": blob }),
-					]);
-				}
-			}, "image/png");
-
-			URL.revokeObjectURL(url);
 			toast.info("QR code copied to clipboard", {
 				duration: 1000,
 				icon: "👍",
@@ -180,6 +162,7 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 				>
 					Copy Order
 				</Button>
+
 				<div className="flex flex-col gap-1 items-end">
 					<div className="flex gap-0 items-center">
 						<Button
