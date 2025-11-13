@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
 	return {
-		name: "Cocoa Comaa",
+		name: "Cocoa Comaa - Store",
 		short_name: "Cocoa Comaa",
-		description: "Cocoa Comaa",
+		description: "Cocoa Comaa - Store",
 		start_url: "/?from=pwa",
 		display: "standalone",
 		background_color: "#ffffff",
