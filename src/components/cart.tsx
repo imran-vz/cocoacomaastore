@@ -1,13 +1,13 @@
 "use client";
 
+import { useLongPress } from "@react-aria/interactions";
 import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import type { z } from "zod";
 
 import { Button } from "@/components/ui/button";
-import { useLongPress } from "@/hooks/use-long-press";
 import type { CartItem } from "@/lib/types";
 import type { cartFormSchema } from "./form-schema/cart";
 import {
@@ -110,54 +110,44 @@ function QuantityControls({
 	removeFromCart,
 }: QuantityControlsProps) {
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
-	const currentQuantityRef = useRef(item.quantity);
-	const previousQuantityRef = useRef(item.quantity);
 
-	// Keep ref in sync with current quantity
-	useEffect(() => {
-		currentQuantityRef.current = item.quantity;
-		previousQuantityRef.current = item.quantity;
-	}, [item.quantity]);
-
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-			}
+	const createQuantityHandler = (delta: number) => {
+		const handlePress = () => {
+			updateQuantity(item.id, item.quantity + delta);
 		};
-	}, []);
 
-	const createQuantityHandler = (delta: number) => ({
-		onCancel: () => {
-			const newQuantity = currentQuantityRef.current + delta;
-			currentQuantityRef.current = newQuantity;
-			updateQuantity(item.id, newQuantity);
-		},
-		onLongPress: () => {
+		const handleLongPressStart = () => {
 			intervalRef.current = setInterval(() => {
-				const nextQuantity = currentQuantityRef.current + delta;
-				currentQuantityRef.current = nextQuantity;
-				updateQuantity(item.id, nextQuantity);
-			}, 200);
-		},
-		onFinish: () => {
+				updateQuantity(item.id, item.quantity + delta);
+			}, 100);
+		};
+
+		const handleLongPressEnd = () => {
 			if (intervalRef.current) {
 				clearInterval(intervalRef.current);
 				intervalRef.current = null;
 			}
-		},
+		};
+
+		return { handlePress, handleLongPressStart, handleLongPressEnd };
+	};
+
+	const decrementHandler = createQuantityHandler(-1);
+	const incrementHandler = createQuantityHandler(1);
+
+	const { longPressProps: decrementLongPressProps } = useLongPress({
+		onLongPressStart: decrementHandler.handleLongPressStart,
+		onLongPressEnd: decrementHandler.handleLongPressEnd,
+		onLongPress: decrementHandler.handlePress,
+		threshold: 300,
 	});
 
-	const decrementHandlers = useLongPress(
-		createQuantityHandler(-1).onLongPress,
-		createQuantityHandler(-1),
-	);
-
-	const incrementHandlers = useLongPress(
-		createQuantityHandler(1).onLongPress,
-		createQuantityHandler(1),
-	);
+	const { longPressProps: incrementLongPressProps } = useLongPress({
+		onLongPressStart: incrementHandler.handleLongPressStart,
+		onLongPressEnd: incrementHandler.handleLongPressEnd,
+		onLongPress: incrementHandler.handlePress,
+		threshold: 300,
+	});
 
 	return (
 		<motion.div
@@ -177,7 +167,8 @@ function QuantityControls({
 						size="icon"
 						className="h-7 w-7"
 						type="button"
-						{...decrementHandlers}
+						{...decrementLongPressProps}
+						onClick={decrementHandler.handlePress}
 					>
 						<Minus className="h-3 w-3" />
 					</Button>
@@ -194,7 +185,8 @@ function QuantityControls({
 						type="button"
 						size="icon"
 						className="h-7 w-7"
-						{...incrementHandlers}
+						{...incrementLongPressProps}
+						onClick={incrementHandler.handlePress}
 					>
 						<Plus className="h-3 w-3" />
 					</Button>
