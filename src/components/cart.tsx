@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { UseFormReturn } from "react-hook-form";
@@ -18,7 +19,6 @@ import {
 	FormMessage,
 } from "./ui/form";
 import { Input } from "./ui/input";
-import { SlidingNumber } from "./ui/sliding-number";
 
 interface CartProps {
 	cart: CartItem[];
@@ -76,16 +76,22 @@ export function Cart({
 						/>
 					</div>
 
-					<div className="overflow-auto max-h-[220px]">
-						{cart.map((item) => (
-							<QuantityControls
-								key={item.id}
-								item={item}
-								updateQuantity={updateQuantity}
-								removeFromCart={removeFromCart}
-							/>
-						))}
-					</div>
+					<motion.div
+						className="overflow-y-auto overflow-x-hidden max-h-[220px]"
+						animate={{ height: cart.length > 0 ? "auto" : 0 }}
+						transition={{ duration: 0.3 }}
+					>
+						<AnimatePresence mode="popLayout">
+							{cart.map((item) => (
+								<QuantityControls
+									key={item.id}
+									item={item}
+									updateQuantity={updateQuantity}
+									removeFromCart={removeFromCart}
+								/>
+							))}
+						</AnimatePresence>
+					</motion.div>
 				</form>
 			</Form>
 		</div>
@@ -105,10 +111,12 @@ function QuantityControls({
 }: QuantityControlsProps) {
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 	const currentQuantityRef = useRef(item.quantity);
+	const previousQuantityRef = useRef(item.quantity);
 
 	// Keep ref in sync with current quantity
 	useEffect(() => {
 		currentQuantityRef.current = item.quantity;
+		previousQuantityRef.current = item.quantity;
 	}, [item.quantity]);
 
 	// Cleanup on unmount
@@ -152,7 +160,13 @@ function QuantityControls({
 	);
 
 	return (
-		<div className="flex items-center py-2 border-b last:border-b-0">
+		<motion.div
+			className="flex items-center py-2 border-b last:border-b-0"
+			initial={{ opacity: 0, x: -20 }}
+			animate={{ opacity: 1, x: 0 }}
+			exit={{ opacity: 0, x: 20 }}
+			transition={{ duration: 0.3 }}
+		>
 			<div className="flex-1">
 				<h4 className="font-medium text-sm capitalize">{item.name}</h4>
 				<p className="text-xs text-muted-foreground">{item.price.toFixed(2)}</p>
@@ -167,9 +181,15 @@ function QuantityControls({
 					>
 						<Minus className="h-3 w-3" />
 					</Button>
-					<span className="w-6 text-center text-sm">
-						<SlidingNumber value={item.quantity} />
-					</span>
+					<motion.span
+						className="w-6 text-center text-sm"
+						key={item.quantity}
+						initial={{ scale: 1.3 }}
+						animate={{ scale: 1 }}
+						transition={{ duration: 0.2 }}
+					>
+						{item.quantity}
+					</motion.span>
 					<Button
 						type="button"
 						size="icon"
@@ -189,6 +209,6 @@ function QuantityControls({
 					<Trash2 className="h-4 w-4" />
 				</Button>
 			</div>
-		</div>
+		</motion.div>
 	);
 }

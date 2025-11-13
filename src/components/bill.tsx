@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
@@ -165,7 +166,10 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 	};
 
 	return (
-		<div>
+		<motion.div
+			animate={{ height: order.items.length > 0 ? "auto" : 0 }}
+			transition={{ duration: 0.3 }}
+		>
 			{/* Order Details Section */}
 			<div className="flex gap-4 items-start justify-between">
 				<Button
@@ -206,16 +210,29 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 										className={
 											selectedUpiId === account.id.toString() ? "bg-accent" : ""
 										}
+										asChild
 									>
-										{account.label}
+										<motion.div
+											initial={{ opacity: 0, x: -10 }}
+											animate={{ opacity: 1, x: 0 }}
+											transition={{ duration: 0.2 }}
+										>
+											{account.label}
+										</motion.div>
 									</DropdownMenuItem>
 								))}
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>
-					<p className="text-xs text-muted-foreground">
+					<motion.p
+						key={selectedUpiId}
+						initial={{ opacity: 0, y: -5 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.2 }}
+						className="text-xs text-muted-foreground"
+					>
 						{selectedAccount?.label || "No UPI selected"}
-					</p>
+					</motion.p>
 				</div>
 			</div>
 
@@ -226,6 +243,6 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 				size={500}
 				className="hidden"
 			/>
-		</div>
+		</motion.div>
 	);
 }
