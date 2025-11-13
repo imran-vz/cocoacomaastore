@@ -1,16 +1,24 @@
 "use client";
 
-import { Edit3, Save, X } from "lucide-react";
+import { IconCake } from "@tabler/icons-react";
 import { useCallback, useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
 	batchUpdateDessertSequences,
 	toggleOutOfStock,
 } from "@/app/desserts/actions";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import type { Dessert } from "@/lib/types";
 import { DessertCard } from "./dessert-card";
+import { DessertGrid } from "./dessert-grid";
+import { DessertListHeader } from "./dessert-list-header";
+import { OutOfStockSection } from "./out-of-stock-section";
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyMedia,
+	EmptyTitle,
+} from "./ui/empty";
 
 interface DessertListProps {
 	desserts: Dessert[];
@@ -25,6 +33,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 	const [stockToggleLoadingIds, setStockToggleLoadingIds] = useState<
 		Set<number>
 	>(new Set());
+	const [searchQuery, setSearchQuery] = useState("");
 
 	// Update local desserts when prop changes
 	useEffect(() => {
@@ -171,55 +180,28 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 		}
 	};
 
-	// Sort desserts: available first, out of stock at the bottom
-	const sortedDesserts = [...localDesserts].sort((a, b) => {
-		if (a.isOutOfStock === b.isOutOfStock) return 0;
-		return a.isOutOfStock ? 1 : -1;
-	});
+	// Filter desserts based on search query
+	const filteredDesserts = localDesserts.filter((dessert) =>
+		dessert.name.toLowerCase().includes(searchQuery.toLowerCase()),
+	);
+
+	// Separate in-stock and out-of-stock desserts
+	const inStockDesserts = filteredDesserts.filter((d) => !d.isOutOfStock);
+	const outOfStockDesserts = filteredDesserts.filter((d) => d.isOutOfStock);
 
 	return (
 		<div>
-			<div className="flex items-center justify-between mb-6">
-				<h2 className="text-2xl font-bold">Our Desserts</h2>
-				<div className="flex items-center gap-2">
-					{isEditMode ? (
-						<>
-							{hasUnsavedChanges && (
-								<Button
-									onClick={handleCancelChanges}
-									variant="outline"
-									size="sm"
-									className="flex items-center gap-2"
-									disabled={isPending}
-								>
-									<X className="h-4 w-4" />
-									Cancel
-								</Button>
-							)}
-							<Button
-								onClick={handleSaveChanges}
-								variant="default"
-								size="sm"
-								className="flex items-center gap-2"
-								disabled={isPending}
-							>
-								<Save className="h-4 w-4" />
-								{isPending ? "Saving..." : "Done"}
-							</Button>
-						</>
-					) : (
-						<Button
-							onClick={handleToggleEditMode}
-							variant="outline"
-							size="sm"
-							className="flex items-center gap-2"
-						>
-							<Edit3 className="h-4 w-4" />
-							Edit Order
-						</Button>
-					)}
-				</div>
-			</div>
+			<DessertListHeader
+				isEditMode={isEditMode}
+				hasUnsavedChanges={hasUnsavedChanges}
+				isPending={isPending}
+				searchQuery={searchQuery}
+				onSearchChange={setSearchQuery}
+				onToggleEditMode={handleToggleEditMode}
+				onSaveChanges={handleSaveChanges}
+				onCancelChanges={handleCancelChanges}
+			/>
+
 			{isEditMode ? (
 				<div className="space-y-4">
 					{localDesserts.map((dessert, index) => (
@@ -237,76 +219,38 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 					))}
 				</div>
 			) : (
-				<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-					{sortedDesserts.map((dessert) => (
-						<div key={dessert.id} className="relative flex flex-col gap-2">
-							<Button
-								asChild
-								variant={"outline"}
-								onClick={() => !dessert.isOutOfStock && addToCart(dessert)}
-								disabled={dessert.isOutOfStock}
-								className="py-2 h-auto items-start hover:shadow-md transition-all duration-200 hover:scale-[1.02] disabled:hover:scale-100 w-full flex-1"
-							>
-								<Card className="w-full shadow-none py-2 px-3 gap-2 cursor-pointer">
-									<CardContent className="px-0 w-full">
-										<div className="flex flex-col items-start text-left">
-											<h4
-												className={`font-medium text-sm text-primary capitalize line-clamp-2 mb-1 max-w-[90%] truncate ${dessert.isOutOfStock ? "line-through text-muted-foreground" : ""}`}
-											>
-												{dessert.name}
-											</h4>
-											{dessert.description && (
-												<p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-													{dessert.description}
-												</p>
-											)}
-											<div className="flex items-center gap-2 w-full">
-												<p
-													className={`text-sm font-semibold ${dessert.isOutOfStock ? "text-muted-foreground" : "text-green-700"}`}
-												>
-													₹{dessert.price.toFixed(2)}
-												</p>
-												{dessert.isOutOfStock && (
-													<span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-100 text-orange-700 whitespace-nowrap">
-														Out of Stock
-													</span>
-												)}
-											</div>
-										</div>
-									</CardContent>
-								</Card>
-							</Button>
+				<>
+					{/* In-stock desserts */}
+					<DessertGrid
+						desserts={inStockDesserts}
+						onAddToCart={addToCart}
+						onToggleStock={handleToggleOutOfStock}
+						stockToggleLoadingIds={stockToggleLoadingIds}
+					/>
 
-							{/* Stock toggle button - always visible */}
-							<Button
-								size="sm"
-								variant={dessert.isOutOfStock ? "secondary" : "outline"}
-								onClick={(e) => handleToggleOutOfStock(e, dessert)}
-								disabled={stockToggleLoadingIds.has(dessert.id)}
-								className={`w-full text-xs h-8 ${
-									dessert.isOutOfStock
-										? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
-										: "border-gray-200"
-								}`}
-							>
-								{stockToggleLoadingIds.has(dessert.id) ? (
-									<span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent" />
-								) : dessert.isOutOfStock ? (
-									"Back In Stock"
-								) : (
-									"Mark Out of Stock"
-								)}
-							</Button>
-						</div>
-					))}
-				</div>
+					{/* Out-of-stock desserts in accordion */}
+					<OutOfStockSection
+						desserts={outOfStockDesserts}
+						onAddToCart={addToCart}
+						onToggleStock={handleToggleOutOfStock}
+						stockToggleLoadingIds={stockToggleLoadingIds}
+					/>
+				</>
 			)}
-			{localDesserts.length === 0 && (
-				<div className="text-center py-12">
-					<div className="text-muted-foreground">
-						No desserts available at the moment.
-					</div>
-				</div>
+			{filteredDesserts.length === 0 && (
+				<Empty>
+					<EmptyHeader>
+						<EmptyMedia variant="icon">
+							<IconCake />
+						</EmptyMedia>
+						<EmptyTitle>No Desserts Found</EmptyTitle>
+						<EmptyDescription>
+							{searchQuery
+								? "No desserts match your search. Try a different search term."
+								: "No desserts available at the moment."}
+						</EmptyDescription>
+					</EmptyHeader>
+				</Empty>
 			)}
 		</div>
 	);
