@@ -188,12 +188,16 @@ export function Receipt({
 
 				<Separator className="my-4 h-px border-t border-gray-300" />
 
-				<div className="flex justify-between font-bold text-sm">
-					<span>Delivery Cost:</span>
-					<span>₹{deliveryCost.toFixed(2)}</span>
-				</div>
+				{deliveryCost > 0 && (
+					<>
+						<div className="flex justify-between font-bold text-sm">
+							<span>Delivery Cost:</span>
+							<span>₹{deliveryCost.toFixed(2)}</span>
+						</div>
 
-				<Separator className="my-4 h-px border-t border-gray-300" />
+						<Separator className="my-4 h-px border-t border-gray-300" />
+					</>
+				)}
 
 				<div className="flex justify-between font-bold text-sm">
 					<span>Total:</span>
