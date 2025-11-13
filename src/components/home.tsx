@@ -107,8 +107,6 @@ export default function Home({
 							cart={cart}
 							updateQuantity={updateQuantity}
 							removeFromCart={removeFromCart}
-							total={total}
-							clearCart={clearCart}
 							form={form}
 						/>
 					</CardContent>
