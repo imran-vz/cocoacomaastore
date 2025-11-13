@@ -50,6 +50,11 @@ export function useLongPress(
 				return;
 			}
 
+			// Prevent mouse events after touch events on mobile
+			if (isTouchEvent(event)) {
+				event.preventDefault();
+			}
+
 			if (onStart) {
 				onStart(event);
 			}
