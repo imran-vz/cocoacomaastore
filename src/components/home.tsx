@@ -80,6 +80,7 @@ export default function Home({
 	};
 
 	const deliveryCost = form.watch("deliveryCost");
+	const name = form.watch("name");
 	const total = useMemo(() => {
 		const itemCost = cart.reduce(
 			(sum, item) => sum + item.price * item.quantity,
