@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 	title: "Cocoa Comaa",
 	description: "Cocoa Comaa",
 	icons: {
-		icon: "/icon-192x192.png",
+		icon: "/favicon.png",
 	},
 	robots: {
 		index: false,

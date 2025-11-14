@@ -134,6 +134,7 @@ export default function Home({
 								clearCart={clearCart}
 								deliveryCost={Number.parseFloat(deliveryCost || "0")}
 								upiAccounts={upiAccountsList}
+								customerName={name}
 							/>
 						) : (
 							<div className="text-center py-6 text-muted-foreground">

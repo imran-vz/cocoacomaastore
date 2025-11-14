@@ -18,6 +18,7 @@ interface ReceiptProps {
 	clearCart: () => void;
 	deliveryCost: number;
 	upiAccounts: UpiAccount[];
+	customerName: string;
 }
 
 export function Receipt({
@@ -26,6 +27,7 @@ export function Receipt({
 	clearCart,
 	deliveryCost,
 	upiAccounts,
+	customerName,
 }: ReceiptProps) {
 	const receiptRef = useRef<HTMLDivElement>(null);
 	const qrCodeRef = useRef<SVGSVGElement>(null);
@@ -122,7 +124,17 @@ export function Receipt({
 			const url = URL.createObjectURL(pdfBlob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = `receipt-${Date.now()}.pdf`;
+
+			// Generate filename with customer name if available
+			const sanitizedName =
+				customerName
+					?.trim()
+					?.replace(/[^a-z0-9]/gi, "_")
+					?.toLowerCase() || "";
+
+			const timestamp = Date.now();
+			a.download = `receipt-${sanitizedName ? `${sanitizedName}-` : ""}${timestamp}.pdf`;
+
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);

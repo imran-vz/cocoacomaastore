@@ -1,4 +1,3 @@
-import satori, { type SatoriOptions } from "satori";
 import { blobStream, PDFDocument } from "./pdfkit";
 import type { CartItem } from "./types";
 
@@ -11,375 +10,269 @@ interface ReceiptData {
 	qrCodeDataUrl: string;
 }
 
-// Generate receipt SVG with UPI QR code
-async function generateReceiptSVG(
+const MAX_ITEMS_WITH_QR = 14; // Max items that fit on page with QR code
+const ITEMS_PER_PAGE = 15; // Items per page when QR is on separate page
+const PAGE_WIDTH = 595; // A4 width in points
+const PAGE_HEIGHT = 842; // A4 height in points
+const FONT_NAME = "GeistMono";
+const FONT_PATH = "/GeistMono-Regular.ttf";
+
+// Utility: draw a light separator line
+function drawSeparator(
+	doc: PDFKit.PDFDocument,
+	x: number,
+	y: number,
+	width: number,
+) {
+	doc
+		.save()
+		.lineWidth(1)
+		.strokeColor("#d1d5db")
+		.moveTo(x, y)
+		.lineTo(x + width, y)
+		.stroke()
+		.restore();
+}
+
+// Utility: draw one page (header, border, items/summary)
+function drawReceiptPage(
+	doc: PDFKit.PDFDocument,
 	data: ReceiptData,
 	items: CartItem[],
 	isLastPage: boolean,
 ) {
 	const { order, qrCodeDataUrl } = data;
-
-	// Fetch font data
-	const fontData = await fetch("/GeistMono-Regular.ttf").then((res) =>
-		res.arrayBuffer(),
-	);
-
 	const currentDate = new Date();
 	const dateStr = currentDate.toLocaleDateString();
 	const timeStr = currentDate.toLocaleTimeString();
 
-	// Shared styles
-	const separatorStyle = {
-		width: "100%",
-		height: "1px",
-		backgroundColor: "#d1d5db",
-		margin: "20px 0",
-	};
+	const padding = 40;
+	const containerX = padding;
+	const containerY = padding;
+	const containerWidth = PAGE_WIDTH - padding * 2;
+	const containerHeight = PAGE_HEIGHT - padding * 2;
 
-	const config = {
-		width: 595,
-		height: 842,
-		fonts: [
-			{
-				name: "GeistMono",
-				data: fontData,
-				weight: 400,
-				style: "normal",
-			},
-		],
-	} satisfies SatoriOptions;
+	doc
+		.save()
+		.lineWidth(2)
+		.strokeColor("#d1d5db")
+		.roundedRect(containerX, containerY, containerWidth, containerHeight, 8)
+		.dash(4, { space: 4 })
+		.stroke()
+		.undash()
+		.restore();
 
-	const svg = await satori(
-		<div
-			style={{
-				display: "flex",
-				flexDirection: "column",
-				width: "100%",
-				height: "100%",
-				padding: "40px",
-				backgroundColor: "white",
-				fontFamily: "GeistMono",
-			}}
-		>
-			<div
-				style={{
-					display: "flex",
-					flexDirection: "column",
-					border: "2px dashed #d1d5db",
-					borderRadius: "8px",
-					padding: "30px",
-					backgroundColor: "white",
-				}}
-			>
-				{/* Header */}
-				<div
-					style={{
-						display: "flex",
-						justifyContent: "center",
-						marginBottom: "20px",
-					}}
-				>
-					<h1 style={{ fontSize: "32px", fontWeight: "bold", margin: 0 }}>
-						COCOA COMAA
-					</h1>
-				</div>
+	doc.font(FONT_NAME).fillColor("#000");
 
-				<div style={separatorStyle} />
+	// Header
+	doc.fontSize(32).text("COCOA COMAA", containerX, containerY + 20, {
+		width: containerWidth,
+		align: "center",
+	});
 
-				{/* Date and Time */}
-				<div
-					style={{
-						display: "flex",
-						flexDirection: "column",
-						fontSize: "14px",
-						marginBottom: "15px",
-					}}
-				>
-					<div style={{ display: "flex", marginBottom: "4px" }}>
-						Date: {dateStr}
-					</div>
-					<div style={{ display: "flex" }}>Time: {timeStr}</div>
-				</div>
+	let y = containerY + 70;
+	drawSeparator(doc, containerX, y, containerWidth);
+	y += 20;
 
-				<div style={separatorStyle} />
+	// Date & Time block
+	doc.fontSize(14);
+	doc.text(`Date: ${dateStr}`, containerX + 10, y);
+	y += 18;
+	doc.text(`Time: ${timeStr}`, containerX + 10, y);
+	y += 24;
 
-				{/* Items Table - only show if there are items */}
-				{items.length > 0 && (
-					<>
-						<div
-							style={{
-								display: "flex",
-								flexDirection: "column",
-								marginBottom: "15px",
-							}}
-						>
-							{/* Table Header */}
-							<div
-								style={{
-									display: "flex",
-									fontWeight: "bold",
-									fontSize: "14px",
-									marginBottom: "10px",
-								}}
-							>
-								<div style={{ display: "flex", width: "280px" }}>Item</div>
-								<div
-									style={{
-										display: "flex",
-										width: "50px",
-										justifyContent: "center",
-									}}
-								>
-									Qty
-								</div>
-								<div
-									style={{
-										display: "flex",
-										width: "100px",
-										justifyContent: "flex-end",
-									}}
-								>
-									Price
-								</div>
-							</div>
+	drawSeparator(doc, containerX, y, containerWidth);
+	y += 20;
 
-							{/* Table Rows */}
-							{items.map((item) => (
-								<div
-									key={item.id}
-									style={{
-										display: "flex",
-										fontSize: "14px",
-										marginBottom: "6px",
-									}}
-								>
-									<div
-										style={{
-											display: "flex",
-											width: "280px",
-											overflow: "hidden",
-										}}
-									>
-										{item.name}
-									</div>
-									<div
-										style={{
-											display: "flex",
-											width: "50px",
-											justifyContent: "center",
-										}}
-									>
-										{item.quantity}
-									</div>
-									<div
-										style={{
-											display: "flex",
-											width: "100px",
-											justifyContent: "flex-end",
-										}}
-									>
-										₹{(item.price * item.quantity).toFixed(2)}
-									</div>
-								</div>
-							))}
-						</div>
+	// Items table (only if this page has items)
+	if (items.length > 0) {
+		const leftPadding = 10;
+		const contentPadding = 40;
+		const itemColWidth = 280;
+		const qtyColWidth = 50;
+		const priceColWidth = 120;
 
-						<div style={separatorStyle} />
-					</>
-				)}
+		// Header row
+		doc.fontSize(14).font(FONT_NAME, "bold");
 
-				{/* Show summary only on last page */}
-				{isLastPage && (
-					<>
-						{/* Delivery Cost - only if > 0 */}
-						{order.deliveryCost > 0 && (
-							<>
-								<div
-									style={{
-										display: "flex",
-										justifyContent: "space-between",
-										fontWeight: "bold",
-										fontSize: "16px",
-										marginBottom: "15px",
-									}}
-								>
-									<span>Delivery Cost:</span>
-									<span>₹{order.deliveryCost.toFixed(2)}</span>
-								</div>
-								<div style={separatorStyle} />
-							</>
-						)}
+		doc.text("Item", containerX + leftPadding, y, {
+			width: itemColWidth,
+			align: "left",
+		});
+		doc.text("Qty", containerX + contentPadding + itemColWidth, y, {
+			width: qtyColWidth,
+			align: "center",
+		});
+		doc.text(
+			"Price",
+			containerX + contentPadding + itemColWidth + qtyColWidth,
+			y,
+			{ width: priceColWidth, align: "right" },
+		);
 
-						{/* Total */}
-						<div
-							style={{
-								display: "flex",
-								justifyContent: "space-between",
-								fontWeight: "bold",
-								fontSize: "18px",
-								marginBottom: "20px",
-							}}
-						>
-							<span>Total:</span>
-							<span>₹{order.total.toFixed(2)}</span>
-						</div>
+		doc.font(FONT_NAME, "normal");
+		y += 18;
 
-						<div style={separatorStyle} />
+		// Separator after headers
+		drawSeparator(
+			doc,
+			containerX + leftPadding,
+			y,
+			containerWidth - leftPadding * 2,
+		);
+		y += 16;
 
-						{/* QR Code Section */}
-						<div
-							style={{
-								display: "flex",
-								flexDirection: "column",
-								alignItems: "center",
-								marginTop: "20px",
-							}}
-						>
-							<div
-								style={{
-									display: "flex",
-									fontSize: "16px",
-									marginBottom: "15px",
-									fontWeight: "bold",
-								}}
-							>
-								Pay with UPI
-							</div>
-							{/** biome-ignore lint/performance/noImgElement: This is a valid use case */}
-							<img
-								src={qrCodeDataUrl}
-								alt="UPI QR Code"
-								style={{
-									width: "180px",
-									height: "180px",
-									border: "3px solid #000",
-									padding: "10px",
-									backgroundColor: "white",
-								}}
-							/>
-						</div>
-					</>
-				)}
-			</div>
-		</div>,
-		config,
-	);
+		// Rows
+		for (const item of items) {
+			const lineHeight = 16;
 
-	return svg;
+			doc.text(item.name, containerX + leftPadding, y, {
+				width: itemColWidth,
+				align: "left",
+				ellipsis: true,
+			});
+
+			doc.text(
+				String(item.quantity),
+				containerX + contentPadding + itemColWidth,
+				y,
+				{ width: qtyColWidth, align: "center" },
+			);
+
+			const lineTotal = item.price * item.quantity;
+			doc.text(
+				`₹${lineTotal.toFixed(2)}`,
+				containerX + contentPadding + itemColWidth + qtyColWidth,
+				y,
+				{ width: priceColWidth, align: "right" },
+			);
+
+			y += lineHeight;
+		}
+
+		y += 12;
+		drawSeparator(doc, containerX, y, containerWidth);
+		y += 20;
+	}
+
+	// Summary & QR code only on last page
+	if (isLastPage) {
+		// Delivery cost (if > 0)
+		if (order.deliveryCost > 0) {
+			doc.fontSize(16).font(FONT_NAME, "bold");
+
+			doc.text("Delivery Cost:", containerX + 10, y, {
+				width: containerWidth / 2,
+				align: "left",
+			});
+			doc.text(
+				`₹${order.deliveryCost.toFixed(2)}`,
+				containerX + 10 + containerWidth / 2,
+				y,
+				{ width: containerWidth / 2 - 10, align: "right" },
+			);
+
+			y += 22;
+			drawSeparator(doc, containerX, y, containerWidth);
+			y += 20;
+		}
+
+		// Total
+		doc.fontSize(18).font(FONT_NAME, "bold");
+
+		doc.text("Total:", containerX + 10, y, {
+			width: containerWidth / 2,
+			align: "left",
+		});
+		doc.text(
+			`₹${order.total.toFixed(2)}`,
+			containerX + 10 + containerWidth / 2 - 20,
+			y,
+			{ width: containerWidth / 2 - 10, align: "right" },
+		);
+
+		y += 28;
+		drawSeparator(doc, containerX, y, containerWidth);
+		y += 20;
+
+		// QR section – centre aligned
+		const qrSectionTop = y + 10;
+		doc.fontSize(16).font(FONT_NAME, "bold");
+		doc.text("Pay with UPI", containerX, qrSectionTop, {
+			width: containerWidth,
+			align: "center",
+		});
+
+		const qrSize = 180;
+		const qrX = containerX + (containerWidth - qrSize) / 2;
+		const qrY = qrSectionTop + 40; // Increased gap from 30 to 40
+
+		if (qrCodeDataUrl) {
+			doc
+				.save()
+				.lineWidth(1)
+				.rect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 10)
+				.restore();
+
+			// PDFKit in browser accepts data URLs
+			doc.image(qrCodeDataUrl, qrX, qrY, {
+				width: qrSize,
+				height: qrSize,
+			});
+		}
+	}
 }
 
-const ITEMS_PER_PAGE = 7;
-
+// PDF generation using only PDFKit
 export async function generateReceiptPDF(data: ReceiptData): Promise<Blob> {
-	const { order } = data;
-
-	// Split items into pages
-	const itemChunks: CartItem[][] = [];
-	for (let i = 0; i < order.items.length; i += ITEMS_PER_PAGE) {
-		itemChunks.push(order.items.slice(i, i + ITEMS_PER_PAGE));
-	}
-
-	// Add extra page for summary if there are items
-	const totalPages = order.items.length > 0 ? itemChunks.length + 1 : 1;
-
-	// Generate all page SVGs and convert to data URLs
-	const pageDataUrls: string[] = [];
-	for (let i = 0; i < totalPages; i++) {
-		const isLastPage = i === totalPages - 1;
-
-		// For last page (summary page), pass empty items array
-		const pageItems = isLastPage ? [] : itemChunks[i];
-		const svg = await generateReceiptSVG(data, pageItems, isLastPage);
-
-		// Convert SVG to data URL
-		const svgBase64 = btoa(
-			new TextEncoder()
-				.encode(svg)
-				.reduce((data, byte) => data + String.fromCharCode(byte), ""),
-		);
-		pageDataUrls.push(`data:image/svg+xml;base64,${svgBase64}`);
-	}
-
-	// Use PDFKit in browser to generate PDF
+	const fontData = await fetch(FONT_PATH).then((res) => res.arrayBuffer());
 
 	return new Promise((resolve, reject) => {
 		try {
-			// Create PDF document (A4 size: 595 x 842 points)
-			const doc = new PDFDocument({
-				size: "A4",
-				margin: 0,
-			});
+			const doc = new PDFDocument({ size: "A4", margin: 0 });
 
-			// Create blob stream
 			const stream = doc.pipe(blobStream());
 
-			let pagesProcessed = 0;
+			doc.registerFont(FONT_NAME, fontData);
 
-			// Process pages sequentially
-			const processPage = (pageIndex: number) => {
-				const svgDataUrl = pageDataUrls[pageIndex];
+			// Pagination logic: if ≤6 items, show all + QR on one page
+			// If >6 items, paginate with 7 items per page, QR on last page
+			const itemCount = data.order.items.length;
 
-				// Load and embed the SVG image at high resolution
-				const img = new Image();
-				img.onload = () => {
-					// Use 2x resolution for sharper output
-					const canvas = document.createElement("canvas");
-					canvas.width = 595 * 2;
-					canvas.height = 842 * 2;
-					const ctx = canvas.getContext("2d");
+			if (itemCount <= MAX_ITEMS_WITH_QR) {
+				// Single page with all items + QR
+				drawReceiptPage(doc, data, data.order.items, true);
+			} else {
+				// Multiple pages: split items, QR on last page
+				const itemChunks: CartItem[][] = [];
+				for (let i = 0; i < itemCount; i += ITEMS_PER_PAGE) {
+					itemChunks.push(data.order.items.slice(i, i + ITEMS_PER_PAGE));
+				}
 
-					if (ctx) {
-						// Enable image smoothing for better quality
-						ctx.imageSmoothingEnabled = true;
-						ctx.imageSmoothingQuality = "high";
+				const totalPages = itemChunks.length + 1; // +1 for final page with QR
 
-						ctx.drawImage(img, 0, 0, 595 * 2, 842 * 2);
-						canvas.toBlob((blob) => {
-							if (blob) {
-								const reader = new FileReader();
-								reader.onload = () => {
-									// Add new page if not first
-									if (pageIndex > 0) {
-										doc.addPage();
-									}
-
-									// Scale down to A4 size while maintaining quality
-									doc.image(reader.result as ArrayBuffer, 0, 0, {
-										width: 595,
-										height: 842,
-									});
-
-									pagesProcessed++;
-
-									// Process next page or end document
-									if (pagesProcessed === totalPages) {
-										doc.end();
-									} else {
-										processPage(pagesProcessed);
-									}
-								};
-								reader.readAsArrayBuffer(blob);
-							}
-						}, "image/png");
+				for (let i = 0; i < totalPages; i++) {
+					if (i > 0) {
+						doc.addPage({ size: "A4", margin: 0 });
 					}
-				};
 
-				img.onerror = reject;
-				img.src = svgDataUrl;
-			};
+					const isLastPage = i === totalPages - 1;
+					const pageItems = isLastPage ? [] : itemChunks[i];
 
-			// Start with first page
-			processPage(0);
+					drawReceiptPage(doc, data, pageItems, isLastPage);
+				}
+			}
 
-			// When the stream is finished, resolve with the blob
+			doc.end();
+
 			stream.on("finish", () => {
 				const blob = stream.toBlob("application/pdf");
 				resolve(blob);
 			});
 
 			stream.on("error", reject);
-		} catch (error) {
-			reject(error);
+		} catch (err) {
+			reject(err);
 		}
 	});
 }
