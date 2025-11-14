@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useAnimation } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Dessert } from "@/lib/types";
@@ -19,6 +19,23 @@ export function DessertGridItem({
 	onToggleStock,
 	isStockToggleLoading,
 }: DessertGridItemProps) {
+	const overlayControls = useAnimation();
+
+	const handleClick = async () => {
+		if (!dessert.isOutOfStock) {
+			await overlayControls.start({
+				x: ["100%", "0%"],
+				transition: { duration: 0.3, ease: "easeInOut" },
+			});
+			await overlayControls.start({
+				x: "-100%",
+				transition: { duration: 0.3, ease: "easeInOut" },
+			});
+			overlayControls.set({ x: "100%" });
+			onAddToCart(dessert);
+		}
+	};
+
 	return (
 		<motion.div
 			key={dessert.id}
@@ -32,16 +49,24 @@ export function DessertGridItem({
 			<motion.div
 				whileTap={{ scale: 0.9 }}
 				transition={{ type: "spring", stiffness: 400, damping: 17 }}
+				className="relative overflow-hidden rounded-lg"
 			>
 				<Button
 					asChild
 					variant={"outline"}
-					onClick={() => !dessert.isOutOfStock && onAddToCart(dessert)}
+					onClick={handleClick}
 					disabled={dessert.isOutOfStock}
-					className="py-2 h-auto items-start hover:shadow-md transition-all duration-200 hover:scale-[1.02] disabled:hover:scale-100 w-full flex-1"
+					className="py-2 h-auto items-start hover:shadow-md transition-all duration-200 hover:scale-[1.02] disabled:hover:scale-100 w-full flex-1 relative"
 				>
-					<Card className="w-full rounded-b-none shadow-none py-2 px-3 gap-2 cursor-pointer">
-						<CardContent className="px-0 w-full">
+					<Card className="w-full rounded-b-none shadow-none py-2 px-3 gap-2 cursor-pointer overflow-hidden">
+						{/* Green slide overlay */}
+						<motion.div
+							className="absolute inset-0 bg-green-500/30 pointer-events-none"
+							initial={{ x: "100%" }}
+							animate={overlayControls}
+							style={{ zIndex: 0 }}
+						/>
+						<CardContent className="px-0 w-full relative z-10">
 							<div className="flex flex-col items-start text-left">
 								<h4
 									className={`font-medium text-sm text-primary capitalize line-clamp-2 mb-1 max-w-[90%] truncate ${dessert.isOutOfStock ? "line-through text-muted-foreground" : ""}`}
