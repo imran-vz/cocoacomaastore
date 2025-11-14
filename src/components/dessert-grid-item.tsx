@@ -49,7 +49,7 @@ export function DessertGridItem({
 			<motion.div
 				whileTap={{ scale: 0.9 }}
 				transition={{ type: "spring", stiffness: 400, damping: 17 }}
-				className="relative overflow-hidden rounded-lg"
+				className="relative overflow-hidden rounded-xl"
 			>
 				<Button
 					asChild
