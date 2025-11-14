@@ -115,7 +115,6 @@ export function Receipt({
 					total,
 					deliveryCost,
 				},
-				selectedAccount,
 				qrCodeDataUrl,
 			});
 

@@ -5,6 +5,7 @@ declare const self: ServiceWorkerGlobalScope;
 const CACHE_VERSION = "v2";
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const IMAGE_CACHE = `images-${CACHE_VERSION}`;
+const HEAVY_LIBS_CACHE = "heavy-libs-v1";
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -35,7 +36,12 @@ self.addEventListener("activate", (event) => {
 			const cacheNames = await caches.keys();
 			await Promise.all(
 				cacheNames
-					.filter((name) => name !== STATIC_CACHE && name !== IMAGE_CACHE)
+					.filter(
+						(name) =>
+							name !== STATIC_CACHE &&
+							name !== IMAGE_CACHE &&
+							name !== HEAVY_LIBS_CACHE,
+					)
 					.map((name) => {
 						console.log("[SW] Deleting old cache:", name);
 						return caches.delete(name);
@@ -148,6 +154,60 @@ self.addEventListener("message", (event) => {
 			(async () => {
 				const cacheNames = await caches.keys();
 				await Promise.all(cacheNames.map((name) => caches.delete(name)));
+			})(),
+		);
+	}
+
+	if (event.data && event.data.type === "PRELOAD_HEAVY_LIBS") {
+		console.log("[SW] Preloading heavy libraries...");
+		event.waitUntil(
+			(async () => {
+				try {
+					// Get all cached JS files from STATIC_CACHE
+					const cache = await caches.open(STATIC_CACHE);
+					const requests = await cache.keys();
+
+					// Find heavy library chunks
+					const heavyLibUrls: string[] = [];
+					for (const request of requests) {
+						const url = new URL(request.url);
+						// Match chunk filenames containing our heavy libraries
+						if (
+							url.pathname.includes("framer-motion") ||
+							url.pathname.includes("pdfkit") ||
+							url.pathname.includes("blob-stream")
+						) {
+							heavyLibUrls.push(request.url);
+						}
+					}
+
+					if (heavyLibUrls.length === 0) {
+						console.log("[SW] No heavy library chunks found yet");
+						return;
+					}
+
+					// Cache heavy library chunks
+					const heavyCache = await caches.open(HEAVY_LIBS_CACHE);
+					await Promise.all(
+						heavyLibUrls.map(async (url) => {
+							try {
+								const response = await fetch(url);
+								if (response.ok) {
+									await heavyCache.put(url, response);
+									console.log("[SW] Cached heavy lib:", url);
+								}
+							} catch (error) {
+								console.error("[SW] Failed to cache:", url, error);
+							}
+						}),
+					);
+
+					console.log(
+						`[SW] Preloaded ${heavyLibUrls.length} heavy library chunks`,
+					);
+				} catch (error) {
+					console.error("[SW] Preload failed:", error);
+				}
 			})(),
 		);
 	}

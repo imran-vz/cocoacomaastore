@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 const CACHE_VERSION = "v2";
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const IMAGE_CACHE = `images-${CACHE_VERSION}`;
+const HEAVY_LIBS_CACHE = "heavy-libs-v1";
 // Static assets to cache on install
 const STATIC_ASSETS = [
     "/icon-192x192.png",
@@ -34,7 +35,9 @@ self.addEventListener("activate", (event) => {
     event.waitUntil((() => __awaiter(void 0, void 0, void 0, function* () {
         const cacheNames = yield caches.keys();
         yield Promise.all(cacheNames
-            .filter((name) => name !== STATIC_CACHE && name !== IMAGE_CACHE)
+            .filter((name) => name !== STATIC_CACHE &&
+            name !== IMAGE_CACHE &&
+            name !== HEAVY_LIBS_CACHE)
             .map((name) => {
             console.log("[SW] Deleting old cache:", name);
             return caches.delete(name);
@@ -125,6 +128,49 @@ self.addEventListener("message", (event) => {
         event.waitUntil((() => __awaiter(void 0, void 0, void 0, function* () {
             const cacheNames = yield caches.keys();
             yield Promise.all(cacheNames.map((name) => caches.delete(name)));
+        }))());
+    }
+    if (event.data && event.data.type === "PRELOAD_HEAVY_LIBS") {
+        console.log("[SW] Preloading heavy libraries...");
+        event.waitUntil((() => __awaiter(void 0, void 0, void 0, function* () {
+            try {
+                // Get all cached JS files from STATIC_CACHE
+                const cache = yield caches.open(STATIC_CACHE);
+                const requests = yield cache.keys();
+                // Find heavy library chunks
+                const heavyLibUrls = [];
+                for (const request of requests) {
+                    const url = new URL(request.url);
+                    // Match chunk filenames containing our heavy libraries
+                    if (url.pathname.includes("framer-motion") ||
+                        url.pathname.includes("pdfkit") ||
+                        url.pathname.includes("blob-stream")) {
+                        heavyLibUrls.push(request.url);
+                    }
+                }
+                if (heavyLibUrls.length === 0) {
+                    console.log("[SW] No heavy library chunks found yet");
+                    return;
+                }
+                // Cache heavy library chunks
+                const heavyCache = yield caches.open(HEAVY_LIBS_CACHE);
+                yield Promise.all(heavyLibUrls.map((url) => __awaiter(void 0, void 0, void 0, function* () {
+                    try {
+                        const response = yield fetch(url);
+                        if (response.ok) {
+                            yield heavyCache.put(url, response);
+                            console.log("[SW] Cached heavy lib:", url);
+                        }
+                    }
+                    catch (error) {
+                        console.error("[SW] Failed to cache:", url, error);
+                    }
+                })));
+                console.log(`[SW] Preloaded ${heavyLibUrls.length} heavy library chunks`);
+            }
+            catch (error) {
+                console.error("[SW] Preload failed:", error);
+            }
         }))());
     }
 });
