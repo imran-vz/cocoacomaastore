@@ -36,22 +36,24 @@ export function Cart({
 	return (
 		<div className="flex flex-col">
 			<Form {...form}>
-				<form className="space-y-4">
-					<div className="flex gap-4 flex-col">
+				<form className="space-y-3">
+					<div className="space-y-3">
 						<FormField
 							control={form.control}
 							name="name"
 							render={({ field }) => (
-								<FormItem className="flex gap-2 justify-between">
-									<FormLabel className="shrink-0">Name</FormLabel>
+								<FormItem>
+									<FormLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+										Customer Name
+									</FormLabel>
 									<FormControl>
 										<Input
-											placeholder="Customer Name"
+											placeholder="Enter name"
 											{...field}
-											className="max-w-52"
+											className="h-10 rounded-lg border-neutral-200 focus:ring-2 focus:ring-offset-0 placeholder:text-neutral-400 text-sm"
 										/>
 									</FormControl>
-									<FormMessage />
+									<FormMessage className="text-xs" />
 								</FormItem>
 							)}
 						/>
@@ -60,17 +62,20 @@ export function Cart({
 							name="deliveryCost"
 							render={({ field }) => (
 								<FormItem>
-									<div className="flex gap-2 justify-between">
-										<FormLabel className="shrink-0">Delivery Cost</FormLabel>
-										<FormControl>
-											<Input
-												placeholder="Delivery Cost"
-												{...field}
-												className="max-w-52"
-											/>
-										</FormControl>
-									</div>
-									<FormMessage />
+									<FormLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+										Delivery Cost (₹)
+									</FormLabel>
+									<FormControl>
+										<Input
+											placeholder="0"
+											type="number"
+											step="0.01"
+											min="0"
+											{...field}
+											className="h-10 rounded-lg border-neutral-200 focus:ring-2 focus:ring-offset-0 placeholder:text-neutral-400 text-sm"
+										/>
+									</FormControl>
+									<FormMessage className="text-xs" />
 								</FormItem>
 							)}
 						/>

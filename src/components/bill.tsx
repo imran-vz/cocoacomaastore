@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Copy, ReceiptIndianRupee } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -77,7 +77,11 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 					`${capitalize(item.name.trim())} × ${item.quantity} = ₹${(item.price * item.quantity).toFixed(2)}`,
 			)
 			.join("\n");
-		const orderText = `${orderItemsText}\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}\n-----\nTotal: ₹${order.total.toFixed(2)}`;
+		const deliveryLine =
+			order.deliveryCost > 0
+				? `\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}`
+				: "";
+		const orderText = `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${order.total.toFixed(2)}`;
 
 		navigator.clipboard.writeText(orderText);
 		toast.info("Order details copied to clipboard", {
@@ -148,10 +152,7 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 	};
 
 	return (
-		<motion.div
-			animate={{ height: order.items.length > 0 ? "auto" : 0 }}
-			transition={{ duration: 0.3 }}
-		>
+		<>
 			{/* Order Details Section */}
 			<div className="flex gap-4 items-start justify-between">
 				<Button
@@ -159,19 +160,22 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 					type="button"
 					size="sm"
 					variant="outline"
+					className="flex-1"
 				>
+					<Copy className="size-4" />
 					Copy Order
 				</Button>
 
-				<div className="flex flex-col gap-1 items-end">
-					<div className="flex gap-0 items-center">
+				<div className="flex flex-col gap-1 flex-1 items-end">
+					<div className="flex items-center w-full">
 						<Button
 							onClick={copyQrCodeToClipboard}
 							type="button"
 							size="sm"
 							variant="outline"
-							className="rounded-r-none border-r-0"
+							className="rounded-r-none border-r-0 flex-1"
 						>
+							<ReceiptIndianRupee className="size-4" />
 							Copy UPI
 						</Button>
 						<DropdownMenu>
@@ -226,6 +230,6 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 				size={500}
 				className="hidden"
 			/>
-		</motion.div>
+		</>
 	);
 }

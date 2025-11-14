@@ -26,10 +26,15 @@ export function OutOfStockSection({
 	if (desserts.length === 0) return null;
 
 	return (
-		<Accordion type="single" collapsible className="mt-6">
+		<Accordion type="single" collapsible>
 			<AccordionItem value="out-of-stock">
-				<AccordionTrigger className="text-sm">
-					Out of Stock ({desserts.length} {desserts.length === 1 ? "item" : "items"})
+				<AccordionTrigger>
+					<div className="space-x-2">
+						<span className="text-sm font-semibold">Out of Stock</span>
+						<span className="text-xs text-muted-foreground">
+							({desserts.length} {desserts.length === 1 ? "item" : "items"})
+						</span>
+					</div>
 				</AccordionTrigger>
 				<AccordionContent>
 					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 pt-4">

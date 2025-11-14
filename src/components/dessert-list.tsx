@@ -228,13 +228,15 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 						stockToggleLoadingIds={stockToggleLoadingIds}
 					/>
 
-					{/* Out-of-stock desserts in accordion */}
-					<OutOfStockSection
-						desserts={outOfStockDesserts}
-						onAddToCart={addToCart}
-						onToggleStock={handleToggleOutOfStock}
-						stockToggleLoadingIds={stockToggleLoadingIds}
-					/>
+					<div className="mt-6 border-b border-t">
+						{/* Out-of-stock desserts in accordion */}
+						<OutOfStockSection
+							desserts={outOfStockDesserts}
+							onAddToCart={addToCart}
+							onToggleStock={handleToggleOutOfStock}
+							stockToggleLoadingIds={stockToggleLoadingIds}
+						/>
+					</div>
 				</>
 			)}
 			{filteredDesserts.length === 0 && (

@@ -8,7 +8,7 @@ import type { z } from "zod";
 
 import { Cart } from "@/components/cart";
 import { DessertList } from "@/components/dessert-list";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { UpiAccount } from "@/db/schema";
 import type { CartItem, Dessert } from "@/lib/types";
 import Bill from "./bill";
@@ -100,9 +100,6 @@ export default function Home({
 			{/* Cart & Receipt Section - Takes 1 column on MD+ screens */}
 			<div className="flex flex-col gap-4 md:sticky md:top-20">
 				<Card className="gap-2">
-					<CardHeader>
-						<CardTitle className="text-lg">Cart</CardTitle>
-					</CardHeader>
 					<CardContent>
 						<Cart
 							cart={cart}
@@ -114,18 +111,15 @@ export default function Home({
 				</Card>
 
 				<Card className="gap-2">
-					<CardHeader className="flex gap-3 items-start justify-between">
-						<CardTitle className="text-lg">Receipt</CardTitle>
-						<div className="">
-							<Bill
-								order={{
-									items: cart,
-									total: total,
-									deliveryCost: Number.parseFloat(deliveryCost || "0"),
-								}}
-								upiAccounts={upiAccountsList}
-							/>
-						</div>
+					<CardHeader>
+						<Bill
+							order={{
+								items: cart,
+								total: total,
+								deliveryCost: Number.parseFloat(deliveryCost || "0"),
+							}}
+							upiAccounts={upiAccountsList}
+						/>
 					</CardHeader>
 					<CardContent>
 						{cart.length > 0 ? (
