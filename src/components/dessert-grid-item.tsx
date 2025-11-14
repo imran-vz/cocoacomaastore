@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Dessert } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface DessertGridItemProps {
 	dessert: Dessert;
@@ -29,7 +30,7 @@ export function DessertGridItem({
 			layout
 		>
 			<motion.div
-				whileTap={{ scale: 0.95 }}
+				whileTap={{ scale: 0.9 }}
 				transition={{ type: "spring", stiffness: 400, damping: 17 }}
 			>
 				<Button
@@ -39,7 +40,7 @@ export function DessertGridItem({
 					disabled={dessert.isOutOfStock}
 					className="py-2 h-auto items-start hover:shadow-md transition-all duration-200 hover:scale-[1.02] disabled:hover:scale-100 w-full flex-1"
 				>
-					<Card className="w-full shadow-none py-2 px-3 gap-2 cursor-pointer">
+					<Card className="w-full rounded-b-none shadow-none py-2 px-3 gap-2 cursor-pointer">
 						<CardContent className="px-0 w-full">
 							<div className="flex flex-col items-start text-left">
 								<h4
@@ -75,11 +76,12 @@ export function DessertGridItem({
 					variant={dessert.isOutOfStock ? "secondary" : "outline"}
 					onClick={(e) => onToggleStock(e, dessert)}
 					disabled={isStockToggleLoading}
-					className={`w-full text-xs h-8 ${
+					className={cn(
+						"w-full text-xs h-8 rounded-t-none",
 						dessert.isOutOfStock
 							? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
-							: "border-gray-200"
-					}`}
+							: "border-gray-200",
+					)}
 				>
 					{isStockToggleLoading ? (
 						<span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent" />
