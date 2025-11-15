@@ -81,11 +81,7 @@ export function Cart({
 						/>
 					</div>
 
-					<motion.div
-						className="overflow-y-auto overflow-x-hidden max-h-[220px]"
-						animate={{ height: cart.length > 0 ? "auto" : 0 }}
-						transition={{ duration: 0.3 }}
-					>
+					<div className="overflow-y-auto overflow-x-hidden max-h-[220px]">
 						<AnimatePresence mode="popLayout">
 							{cart.map((item) => (
 								<QuantityControls
@@ -96,7 +92,7 @@ export function Cart({
 								/>
 							))}
 						</AnimatePresence>
-					</motion.div>
+					</div>
 				</form>
 			</Form>
 		</div>
@@ -189,15 +185,7 @@ function QuantityControls({
 					>
 						<Minus className="h-3 w-3" />
 					</Button>
-					<motion.span
-						className="w-6 text-center text-sm"
-						key={item.quantity}
-						initial={{ scale: 1.3 }}
-						animate={{ scale: 1 }}
-						transition={{ duration: 0.2 }}
-					>
-						{item.quantity}
-					</motion.span>
+					<span className="w-6 text-center text-sm">{item.quantity}</span>
 					<Button
 						type="button"
 						size="icon"

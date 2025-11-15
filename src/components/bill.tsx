@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { ChevronDown, Copy, ReceiptIndianRupee } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef } from "react";
@@ -197,29 +196,16 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 										className={
 											selectedUpiId === account.id.toString() ? "bg-accent" : ""
 										}
-										asChild
 									>
-										<motion.div
-											initial={{ opacity: 0, x: -10 }}
-											animate={{ opacity: 1, x: 0 }}
-											transition={{ duration: 0.2 }}
-										>
-											{account.label}
-										</motion.div>
+										{account.label}
 									</DropdownMenuItem>
 								))}
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>
-					<motion.p
-						key={selectedUpiId}
-						initial={{ opacity: 0, y: -5 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.2 }}
-						className="text-xs text-muted-foreground"
-					>
+					<p className="text-xs text-muted-foreground">
 						{selectedAccount?.label || "No UPI selected"}
-					</motion.p>
+					</p>
 				</div>
 			</div>
 

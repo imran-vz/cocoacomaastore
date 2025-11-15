@@ -57,7 +57,7 @@ export function Receipt({
 		urlParams.set("pa", selectedAccount?.upiId || "");
 		urlParams.set("am", total.toString());
 		urlParams.set("pn", "Cocoa Comaa");
-		urlParams.set("tn", transactionNote + "...");
+		urlParams.set("tn", `${transactionNote}...`);
 
 		return `upi://pay?${urlParams.toString()}`;
 	};
@@ -156,7 +156,7 @@ export function Receipt({
 	};
 
 	return (
-		<div className="receipt-container">
+		<div>
 			<div
 				ref={receiptRef}
 				className="bg-white p-3 font-mono text-xs border border-dashed border-gray-300 rounded-md"

@@ -1,7 +1,8 @@
 "use client";
 
 import { IconDotsVertical, IconLogout } from "@tabler/icons-react";
-
+import { useState } from "react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -18,9 +19,7 @@ import {
 	useSidebar,
 } from "@/components/ui/sidebar";
 import { signOut } from "@/lib/auth-client";
-import { useState } from "react";
 import { Spinner } from "./ui/spinner";
-import { toast } from "sonner";
 
 export function NavUser({
 	user,
