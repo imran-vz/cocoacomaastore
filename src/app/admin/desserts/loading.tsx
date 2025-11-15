@@ -39,14 +39,20 @@ export default function DessertsLoading() {
 					</h3>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
 						{Array.from({ length: 8 }).map((_, i) => (
-							<div key={i} className="bg-card border rounded-lg p-4 shadow-sm">
+							<div
+								key={`dessert-loading-${
+									// biome-ignore lint/suspicious/noArrayIndexKey: loading skeleton
+									i
+								}`}
+								className="bg-card border rounded-lg p-4 shadow-sm"
+							>
 								{/* Header with name and price */}
 								<div className="flex items-start justify-between mb-3">
 									<div className="flex-1 min-w-0 mr-2">
 										<Skeleton className="h-6 w-3/4 mb-2" />
 										<Skeleton className="h-4 w-full" />
 									</div>
-									<div className="text-right flex-shrink-0">
+									<div className="text-right shrink-0">
 										<Skeleton className="h-6 w-16" />
 									</div>
 								</div>
