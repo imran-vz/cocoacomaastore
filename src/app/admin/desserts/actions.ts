@@ -34,7 +34,7 @@ export async function toggleDessert(id: number, enabled: boolean) {
 	const start = performance.now();
 	await db
 		.update(dessertsTable)
-		.set({ enabled })
+		.set({ enabled, isOutOfStock: enabled ? false : undefined })
 		.where(eq(dessertsTable.id, id));
 	const duration = performance.now() - start;
 	console.log(`toggleDessert: ${duration.toFixed(2)}ms`);

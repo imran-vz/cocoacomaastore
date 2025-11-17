@@ -23,16 +23,26 @@ export function DessertGridItem({
 
 	const handleClick = async () => {
 		if (!dessert.isOutOfStock) {
-			await overlayControls.start({
-				x: ["100%", "0%"],
-				transition: { duration: 0.3, ease: "easeInOut" },
-			});
-			await overlayControls.start({
-				x: "-100%",
-				transition: { duration: 0.3, ease: "easeInOut" },
-			});
-			overlayControls.set({ x: "100%" });
+			// Add to cart immediately
 			onAddToCart(dessert);
+
+			// Cancel any ongoing animation and start fresh
+			overlayControls.stop();
+			overlayControls.set({ x: "100%" });
+
+			// Run animation independently (fire and forget)
+			overlayControls
+				.start({
+					x: ["100%", "0%"],
+					transition: { duration: 0.3, ease: "easeInOut" },
+				})
+				.then(() =>
+					overlayControls.start({
+						x: "-100%",
+						transition: { duration: 0.3, ease: "easeInOut" },
+					}),
+				)
+				.then(() => overlayControls.set({ x: "100%" }));
 		}
 	};
 
