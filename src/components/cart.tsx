@@ -1,14 +1,11 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { AnimatePresence } from "framer-motion";
 import type { UseFormReturn } from "react-hook-form";
 import type { z } from "zod";
 
-import { Button } from "@/components/ui/button";
-import { useLongPress } from "@/hooks/use-long-press";
 import type { CartItem } from "@/lib/types";
+import { QuantityControls } from "./cart-quantity-controls";
 import type { cartFormSchema } from "./form-schema/cart";
 import {
 	Form,
@@ -96,115 +93,5 @@ export function Cart({
 				</form>
 			</Form>
 		</div>
-	);
-}
-
-interface QuantityControlsProps {
-	item: CartItem;
-	updateQuantity: (dessertId: number, quantity: number) => void;
-	removeFromCart: (dessertId: number) => void;
-}
-
-function QuantityControls({
-	item,
-	updateQuantity,
-	removeFromCart,
-}: QuantityControlsProps) {
-	const intervalRef = useRef<NodeJS.Timeout | null>(null);
-	const quantityRef = useRef(item.quantity);
-
-	const createQuantityHandler = (delta: number) => {
-		return {
-			onCancel: () => {
-				// Short press - single increment
-				const newQty = quantityRef.current + delta;
-				quantityRef.current = newQty;
-				updateQuantity(item.id, newQty);
-			},
-			onFinish: () => {
-				if (intervalRef.current) {
-					clearInterval(intervalRef.current);
-					intervalRef.current = null;
-				}
-			},
-		};
-	};
-
-	const decrementHandlers = createQuantityHandler(-1);
-	const incrementHandlers = createQuantityHandler(1);
-
-	const decrementLongPress = useLongPress(
-		() => {
-			// Long press callback - start interval
-			intervalRef.current = setInterval(() => {
-				const nextQty = quantityRef.current - 1;
-				quantityRef.current = nextQty;
-				updateQuantity(item.id, nextQty);
-			}, 100);
-		},
-		{
-			threshold: 300,
-			...decrementHandlers,
-		},
-	);
-
-	const incrementLongPress = useLongPress(
-		() => {
-			// Long press callback - start interval
-			intervalRef.current = setInterval(() => {
-				const nextQty = quantityRef.current + 1;
-				quantityRef.current = nextQty;
-				updateQuantity(item.id, nextQty);
-			}, 100);
-		},
-		{
-			threshold: 300,
-			...incrementHandlers,
-		},
-	);
-
-	return (
-		<motion.div
-			className="flex items-center py-2 border-b last:border-b-0 select-none"
-			initial={{ opacity: 0, x: -20 }}
-			animate={{ opacity: 1, x: 0 }}
-			exit={{ opacity: 0, x: 20 }}
-			transition={{ duration: 0.3 }}
-		>
-			<div className="flex-1">
-				<h4 className="font-medium text-sm capitalize">{item.name}</h4>
-				<p className="text-xs text-muted-foreground">{item.price.toFixed(2)}</p>
-			</div>
-			<div className="flex items-center gap-4">
-				<div className="flex items-center gap-2">
-					<Button
-						size="icon"
-						className="size-10"
-						type="button"
-						{...decrementLongPress()}
-					>
-						<Minus className="size-4" />
-					</Button>
-					<span className="w-6 text-center text-sm">{item.quantity}</span>
-					<Button
-						type="button"
-						size="icon"
-						className="size-10"
-						{...incrementLongPress()}
-					>
-						<Plus className="size-4" />
-					</Button>
-				</div>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					className="h-7 w-7 text-destructive"
-					onClick={() => removeFromCart(item.id)}
-				>
-					<Trash2 className="h-4 w-4" />
-				</Button>
-			</div>
-		</motion.div>
 	);
 }
