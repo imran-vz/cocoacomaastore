@@ -1,11 +1,12 @@
 "use client";
 
-import { CheckCircle2Icon, LoaderIcon } from "lucide-react";
+import { CheckCircle2Icon } from "lucide-react";
 import { use, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import {
 	Table,
 	TableBody,
@@ -36,7 +37,9 @@ export type DBOrder = {
 
 export default function OrdersPage({
 	initialOrders,
-}: { initialOrders: Promise<DBOrder[]> }) {
+}: {
+	initialOrders: Promise<DBOrder[]>;
+}) {
 	const [orders, setOrders] = useState(use(initialOrders));
 	const [openModal, setOpenModal] = useState(false);
 	const [selectedOrder, setSelectedOrder] = useState<DBOrder | null>(null);
@@ -119,7 +122,7 @@ export default function OrdersPage({
 										{order.status === "completed" ? (
 											<CheckCircle2Icon className="text-green-500 dark:text-green-400" />
 										) : (
-											<LoaderIcon />
+											<Spinner />
 										)}
 										{order.status}
 									</Badge>

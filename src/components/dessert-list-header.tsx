@@ -2,29 +2,29 @@
 
 import { Edit3, Save, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupInput,
+} from "@/components/ui/input-group";
+import { useDessertStore } from "@/store/dessert-store";
 
 interface DessertListHeaderProps {
-	isEditMode: boolean;
 	hasUnsavedChanges: boolean;
 	isPending: boolean;
-	searchQuery: string;
-	onSearchChange: (value: string) => void;
 	onToggleEditMode: () => void;
 	onSaveChanges: () => void;
 	onCancelChanges: () => void;
 }
 
 export function DessertListHeader({
-	isEditMode,
 	hasUnsavedChanges,
 	isPending,
-	searchQuery,
-	onSearchChange,
 	onToggleEditMode,
 	onSaveChanges,
 	onCancelChanges,
 }: DessertListHeaderProps) {
+	const { searchQuery, isEditMode, setSearchQuery } = useDessertStore();
 	return (
 		<>
 			<div className="flex items-center justify-between mb-4">
@@ -71,15 +71,18 @@ export function DessertListHeader({
 
 			{/* Search input - only shown when not in edit mode */}
 			{!isEditMode && (
-				<div className="relative mb-6">
-					<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-					<Input
-						type="text"
-						placeholder="Search desserts..."
-						value={searchQuery}
-						onChange={(e) => onSearchChange(e.target.value)}
-						className="pl-10"
-					/>
+				<div className="mb-6">
+					<InputGroup>
+						<InputGroupInput
+							type="text"
+							placeholder="Search desserts..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+						/>
+						<InputGroupAddon>
+							<Search className="h-4 w-4" />
+						</InputGroupAddon>
+					</InputGroup>
 				</div>
 			)}
 		</>

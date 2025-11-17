@@ -1,13 +1,14 @@
 "use client";
 
 import { IconCake } from "@tabler/icons-react";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useTransition } from "react";
 import { toast } from "sonner";
 import {
 	batchUpdateDessertSequences,
 	toggleOutOfStock,
 } from "@/app/desserts/actions";
 import type { Dessert } from "@/lib/types";
+import { useDessertStore } from "@/store/dessert-store";
 import { DessertCard } from "./dessert-card";
 import { DessertGrid } from "./dessert-grid";
 import { DessertListHeader } from "./dessert-list-header";
@@ -26,34 +27,36 @@ interface DessertListProps {
 }
 
 export function DessertList({ desserts, addToCart }: DessertListProps) {
-	const [isEditMode, setIsEditMode] = useState(false);
+	const {
+		searchQuery,
+		isEditMode,
+		setIsEditMode,
+		localDesserts,
+		hasUnsavedChanges,
+		stockToggleLoadingIds,
+		setLocalDesserts,
+		setHasUnsavedChanges,
+		updateDessert,
+		reorderDesserts,
+		addStockToggleLoadingId,
+		removeStockToggleLoadingId,
+	} = useDessertStore();
 	const [isPending, startTransition] = useTransition();
-	const [localDesserts, setLocalDesserts] = useState(desserts);
-	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-	const [stockToggleLoadingIds, setStockToggleLoadingIds] = useState<
-		Set<number>
-	>(new Set());
-	const [searchQuery, setSearchQuery] = useState("");
 
 	// Update local desserts when prop changes
 	useEffect(() => {
 		setLocalDesserts(desserts);
-		setHasUnsavedChanges(false);
-	}, [desserts]);
+	}, [desserts, setLocalDesserts]);
 
 	const handleToggleOutOfStock = useCallback(
 		async (e: React.MouseEvent, dessert: Dessert) => {
 			e.stopPropagation();
 
 			const newOutOfStockState = !dessert.isOutOfStock;
-			setStockToggleLoadingIds((prev) => new Set(prev).add(dessert.id));
+			addStockToggleLoadingId(dessert.id);
 
 			// Optimistic update
-			setLocalDesserts((prev) =>
-				prev.map((d) =>
-					d.id === dessert.id ? { ...d, isOutOfStock: newOutOfStockState } : d,
-				),
-			);
+			updateDessert(dessert.id, { isOutOfStock: newOutOfStockState });
 
 			try {
 				await toggleOutOfStock(dessert.id, newOutOfStockState);
@@ -65,22 +68,12 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 				console.error("Failed to toggle stock status:", error);
 
 				// Revert optimistic update on error
-				setLocalDesserts((prev) =>
-					prev.map((d) =>
-						d.id === dessert.id
-							? { ...d, isOutOfStock: dessert.isOutOfStock }
-							: d,
-					),
-				);
+				updateDessert(dessert.id, { isOutOfStock: dessert.isOutOfStock });
 			} finally {
-				setStockToggleLoadingIds((prev) => {
-					const newSet = new Set(prev);
-					newSet.delete(dessert.id);
-					return newSet;
-				});
+				removeStockToggleLoadingId(dessert.id);
 			}
 		},
-		[],
+		[addStockToggleLoadingId, updateDessert, removeStockToggleLoadingId],
 	);
 
 	const handleMoveToTop = (dessert: Dessert) => {
@@ -89,8 +82,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 			const newOrder = [...localDesserts];
 			const [movedItem] = newOrder.splice(currentIndex, 1);
 			newOrder.unshift(movedItem);
-			setLocalDesserts(newOrder);
-			setHasUnsavedChanges(true);
+			reorderDesserts(newOrder);
 		}
 	};
 
@@ -100,8 +92,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 			const newOrder = [...localDesserts];
 			const [movedItem] = newOrder.splice(currentIndex, 1);
 			newOrder.push(movedItem);
-			setLocalDesserts(newOrder);
-			setHasUnsavedChanges(true);
+			reorderDesserts(newOrder);
 		}
 	};
 
@@ -113,8 +104,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 				newOrder[currentIndex - 1],
 				newOrder[currentIndex],
 			];
-			setLocalDesserts(newOrder);
-			setHasUnsavedChanges(true);
+			reorderDesserts(newOrder);
 		}
 	};
 
@@ -126,8 +116,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 				newOrder[currentIndex + 1],
 				newOrder[currentIndex],
 			];
-			setLocalDesserts(newOrder);
-			setHasUnsavedChanges(true);
+			reorderDesserts(newOrder);
 		}
 	};
 
@@ -167,7 +156,6 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 
 	const handleCancelChanges = () => {
 		setLocalDesserts(desserts);
-		setHasUnsavedChanges(false);
 		setIsEditMode(false);
 	};
 
@@ -192,11 +180,8 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 	return (
 		<div>
 			<DessertListHeader
-				isEditMode={isEditMode}
 				hasUnsavedChanges={hasUnsavedChanges}
 				isPending={isPending}
-				searchQuery={searchQuery}
-				onSearchChange={setSearchQuery}
 				onToggleEditMode={handleToggleEditMode}
 				onSaveChanges={handleSaveChanges}
 				onCancelChanges={handleCancelChanges}

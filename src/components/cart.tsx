@@ -78,7 +78,7 @@ export function Cart({
 						/>
 					</div>
 
-					<div className="overflow-y-auto overflow-x-hidden max-h-[220px]">
+					<div className="max-h-72 overflow-y-auto overflow-x-hidden">
 						<AnimatePresence mode="popLayout">
 							{cart.map((item) => (
 								<QuantityControls

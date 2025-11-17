@@ -1,15 +1,10 @@
 "use client";
 
-import {
-	ChevronDown,
-	ChevronsDown,
-	ChevronsUp,
-	ChevronUp,
-	Loader2,
-} from "lucide-react";
+import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp } from "lucide-react";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { Spinner } from "./ui/spinner";
 
 interface DessertCardProps {
 	dessert: Dessert;
@@ -59,7 +54,7 @@ export function DessertCard({
 				<div className="mb-2">
 					<h3
 						className={cn(
-							"font-semibold text-base @sm/card:text-lg leading-tight break-words",
+							"font-semibold text-base @sm/card:text-lg leading-tight wrap-break-word",
 							(!dessert.enabled || dessert.isOutOfStock) &&
 								"line-through text-muted-foreground",
 						)}
@@ -125,9 +120,9 @@ export function DessertCard({
 							title="Move to top"
 						>
 							{isMoving ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
+								<Spinner className="size-3" />
 							) : (
-								<ChevronsUp className="h-3 w-3" />
+								<ChevronsUp className="size-3" />
 							)}
 						</Button>
 						<Button
@@ -139,9 +134,9 @@ export function DessertCard({
 							title="Move up"
 						>
 							{isMoving ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
+								<Spinner className="size-3" />
 							) : (
-								<ChevronUp className="h-3 w-3" />
+								<ChevronUp className="size-3" />
 							)}
 						</Button>
 						<Button
@@ -153,9 +148,9 @@ export function DessertCard({
 							title="Move down"
 						>
 							{isMoving ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
+								<Spinner className="size-3" />
 							) : (
-								<ChevronDown className="h-3 w-3" />
+								<ChevronDown className="size-3" />
 							)}
 						</Button>
 						<Button
@@ -167,9 +162,9 @@ export function DessertCard({
 							title="Move to bottom"
 						>
 							{isMoving ? (
-								<Loader2 className="h-3 w-3 animate-spin" />
+								<Spinner className="size-3" />
 							) : (
-								<ChevronsDown className="h-3 w-3" />
+								<ChevronsDown className="size-3" />
 							)}
 						</Button>
 					</div>
@@ -192,7 +187,7 @@ export function DessertCard({
 									onClick={() => onToggleStock(dessert)}
 									disabled={isStockToggleLoading}
 									className={cn(
-										"text-xs min-w-[4rem] @sm/card:min-w-16 flex-1 @sm/card:flex-none",
+										"text-xs min-w-16 @sm/card:min-w-16 flex-1 @sm/card:flex-none",
 										dessert.isOutOfStock
 											? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
 											: "border-gray-200 text-gray-700 hover:bg-gray-50",
@@ -205,7 +200,7 @@ export function DessertCard({
 								>
 									{isStockToggleLoading ? (
 										<>
-											<Loader2 className="h-3 w-3 animate-spin mr-1" />
+											<Spinner className="size-3 mr-1" />
 											<span className="hidden @sm/card:inline">
 												{dessert.isOutOfStock ? "Restocking" : "Stocking Out"}
 											</span>
@@ -223,7 +218,7 @@ export function DessertCard({
 								onClick={() => onToggle(dessert)}
 								disabled={isToggleLoading}
 								className={cn(
-									"text-xs min-w-[4rem] @sm/card:min-w-16 flex-1 @sm/card:flex-none",
+									"text-xs min-w-16 @sm/card:min-w-16 flex-1 @sm/card:flex-none",
 									dessert.enabled
 										? "border-green-200 text-green-700 hover:bg-green-50"
 										: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
@@ -231,7 +226,7 @@ export function DessertCard({
 							>
 								{isToggleLoading ? (
 									<>
-										<Loader2 className="h-3 w-3 animate-spin mr-1" />
+										<Spinner className="size-3 mr-1" />
 										<span className="hidden @sm/card:inline">
 											{dessert.enabled ? "Disabling" : "Enabling"}
 										</span>
