@@ -1,6 +1,6 @@
 import { Minus, Plus, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useLongPress } from "@/hooks/use-long-press";
 import type { CartItem } from "@/lib/types";
 import { Button } from "./ui/button";
@@ -17,13 +17,20 @@ export function QuantityControls({
 	removeFromCart,
 }: QuantityControlsProps) {
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
+	const quantityRef = useRef(item.quantity);
+
+	// Sync ref when quantity changes externally
+	useEffect(() => {
+		quantityRef.current = item.quantity;
+	}, [item.quantity]);
 
 	const createQuantityHandler = (delta: number) => {
 		return {
 			threshold: 300,
 			onCancel: () => {
-				// Short press - single increment
-				const newQty = item.quantity + delta;
+				// Short press - single increment/decrement
+				const newQty = quantityRef.current + delta;
+				quantityRef.current = newQty;
 				updateQuantity(item.id, newQty);
 			},
 			onFinish: () => {
@@ -39,17 +46,19 @@ export function QuantityControls({
 	const incrementHandlers = createQuantityHandler(1);
 
 	const decrementLongPress = useLongPress(() => {
-		// Long press callback - start interval
+		// Long press - start continuous decrement
 		intervalRef.current = setInterval(() => {
-			const nextQty = item.quantity - 1;
+			const nextQty = quantityRef.current - 1;
+			quantityRef.current = nextQty;
 			updateQuantity(item.id, nextQty);
 		}, 100);
 	}, decrementHandlers);
 
 	const incrementLongPress = useLongPress(() => {
-		// Long press callback - start interval
+		// Long press - start continuous increment
 		intervalRef.current = setInterval(() => {
-			const nextQty = item.quantity + 1;
+			const nextQty = quantityRef.current + 1;
+			quantityRef.current = nextQty;
 			updateQuantity(item.id, nextQty);
 		}, 100);
 	}, incrementHandlers);
@@ -68,33 +77,42 @@ export function QuantityControls({
 			</div>
 			<div className="flex items-center gap-4">
 				<div className="flex items-center gap-2">
-					<Button
-						size="icon"
-						className="size-10"
-						type="button"
-						{...decrementLongPress()}
-					>
-						<Minus className="size-4" />
-					</Button>
+					<motion.div whileTap={{ scale: 0.9 }}>
+						<Button
+							size="icon"
+							className="size-10"
+							type="button"
+							{...decrementLongPress()}
+						>
+							<span className="sr-only">Decrement quantity</span>
+							<Minus className="size-4" />
+						</Button>
+					</motion.div>
 					<span className="w-6 text-center text-sm">{item.quantity}</span>
+					<motion.div whileTap={{ scale: 0.9 }}>
+						<Button
+							type="button"
+							size="icon"
+							className="size-10"
+							{...incrementLongPress()}
+						>
+							<span className="sr-only">Increment quantity</span>
+							<Plus className="size-4" />
+						</Button>
+					</motion.div>
+				</div>
+				<motion.div whileTap={{ scale: 0.9 }}>
 					<Button
 						type="button"
+						variant="ghost"
 						size="icon"
-						className="size-10"
-						{...incrementLongPress()}
+						className="size-7 text-destructive"
+						onClick={() => removeFromCart(item.id)}
 					>
-						<Plus className="size-4" />
+						<span className="sr-only">Remove from cart</span>
+						<Trash2 className="size-4" />
 					</Button>
-				</div>
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon"
-					className="size-7 text-destructive"
-					onClick={() => removeFromCart(item.id)}
-				>
-					<Trash2 className="size-4" />
-				</Button>
+				</motion.div>
 			</div>
 		</motion.div>
 	);
