@@ -24,6 +24,16 @@ export function QuantityControls({
 		quantityRef.current = item.quantity;
 	}, [item.quantity]);
 
+	// Cleanup interval on unmount
+	useEffect(() => {
+		return () => {
+			if (intervalRef.current) {
+				clearInterval(intervalRef.current);
+				intervalRef.current = null;
+			}
+		};
+	}, []);
+
 	const createQuantityHandler = (delta: number) => {
 		return {
 			threshold: 300,
@@ -51,6 +61,11 @@ export function QuantityControls({
 			const nextQty = quantityRef.current - 1;
 			quantityRef.current = nextQty;
 			updateQuantity(item.id, nextQty);
+			// Stop decrementing when item will be removed
+			if (nextQty <= 0 && intervalRef.current) {
+				clearInterval(intervalRef.current);
+				intervalRef.current = null;
+			}
 		}, 100);
 	}, decrementHandlers);
 
