@@ -165,7 +165,7 @@ function QuantityControls({
 
 	return (
 		<motion.div
-			className="flex items-center py-2 border-b last:border-b-0"
+			className="flex items-center py-2 border-b last:border-b-0 select-none"
 			initial={{ opacity: 0, x: -20 }}
 			animate={{ opacity: 1, x: 0 }}
 			exit={{ opacity: 0, x: 20 }}
@@ -179,20 +179,20 @@ function QuantityControls({
 				<div className="flex items-center gap-2">
 					<Button
 						size="icon"
-						className="h-7 w-7"
+						className="size-10"
 						type="button"
 						{...decrementLongPress()}
 					>
-						<Minus className="h-3 w-3" />
+						<Minus className="size-4" />
 					</Button>
 					<span className="w-6 text-center text-sm">{item.quantity}</span>
 					<Button
 						type="button"
 						size="icon"
-						className="h-7 w-7"
+						className="size-10"
 						{...incrementLongPress()}
 					>
-						<Plus className="h-3 w-3" />
+						<Plus className="size-4" />
 					</Button>
 				</div>
 				<Button

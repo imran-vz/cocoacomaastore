@@ -49,7 +49,7 @@ export function DessertGridItem({
 	return (
 		<motion.div
 			key={dessert.id}
-			className="relative flex flex-col gap-2"
+			className="relative flex flex-col gap-2 select-none"
 			initial={{ opacity: 0, y: 20 }}
 			animate={{ opacity: 1, y: 0 }}
 			exit={{ opacity: 0, y: -20 }}

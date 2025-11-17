@@ -70,7 +70,7 @@ export default function RootLayout({
 				className={cn(
 					nunitoSans.variable,
 					geistMono.variable,
-					"antialiased bg-[url(/bg-grid.svg)]",
+					"antialiased bg-[url(/bg-grid.svg)] select-none",
 				)}
 			>
 				<ServiceWorkerProvider>
