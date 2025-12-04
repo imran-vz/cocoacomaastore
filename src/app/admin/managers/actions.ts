@@ -63,9 +63,7 @@ export async function createManager(data: {
 
 export async function deleteManager(id: string) {
 	try {
-		// Delete associated accounts
-		await db.delete(accountTable).where(eq(accountTable.userId, id));
-		// Delete user
+		// Delete user (cascade deletes sessions and accounts)
 		await db.delete(userTable).where(eq(userTable.id, id));
 
 		revalidateTag("managers");
