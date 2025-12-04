@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { userTable } from "@/db/schema";
 
 async function getManagers() {
-	// Get managers from database, sorted by createdAt
+	// Get all users (admins and managers) from database, sorted by createdAt
 	const managers = await db.query.userTable.findMany({
 		columns: {
 			id: true,
@@ -16,7 +16,6 @@ async function getManagers() {
 			role: true,
 			createdAt: true,
 		},
-		where: eq(userTable.role, "manager"),
 		orderBy: (managers, { asc }) => [asc(managers.createdAt)],
 	});
 
