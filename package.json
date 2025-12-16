@@ -6,7 +6,7 @@
     "dev": "bun run --bun next dev",
     "build": "bun run build:sw && bun run --bun next build --webpack",
     "build:sw": "bun build src/app/sw.ts --outfile public/sw.js",
-    "start": "bun run --bun next start",
+    "start": "next start",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "knip": "knip",
@@ -71,5 +71,8 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
-  "packageManager": "bun@1.3.4"
+  "packageManager": "bun@1.3.4",
+  "engines": {
+    "node": ">=24"
+  }
 }
