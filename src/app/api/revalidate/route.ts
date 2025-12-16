@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ message: "Invalid secret" }, { status: 401 });
 	}
 
-	revalidateTag(tag);
+	revalidateTag(tag, "max");
 	console.log(`Revalidated: ${tag}`);
 	return NextResponse.json({ message: "Revalidated" });
 }

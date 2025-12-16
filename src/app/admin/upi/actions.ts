@@ -18,8 +18,8 @@ export async function createUpiAccount(data: {
 			sequence: 0,
 		});
 
-		revalidateTag("upi-accounts");
-		revalidateTag("upi-accounts-admin");
+		revalidateTag("upi-accounts", "max");
+		revalidateTag("upi-accounts-admin", "max");
 		revalidatePath("/admin/upi");
 		return { success: true };
 	} catch (error) {
@@ -38,8 +38,8 @@ export async function updateUpiAccount(
 			.set(data)
 			.where(eq(upiAccountsTable.id, id));
 
-		revalidateTag("upi-accounts");
-		revalidateTag("upi-accounts-admin");
+		revalidateTag("upi-accounts", "max");
+		revalidateTag("upi-accounts-admin", "max");
 		revalidatePath("/admin/upi");
 		return { success: true };
 	} catch (error) {
@@ -55,8 +55,8 @@ export async function deleteUpiAccount(id: UpiAccount["id"]) {
 			.set({ isDeleted: true })
 			.where(eq(upiAccountsTable.id, id));
 
-		revalidateTag("upi-accounts");
-		revalidateTag("upi-accounts-admin");
+		revalidateTag("upi-accounts", "max");
+		revalidateTag("upi-accounts-admin", "max");
 		revalidatePath("/admin/upi");
 		return { success: true };
 	} catch (error) {

@@ -52,7 +52,7 @@ export async function createManager(data: {
 			password: hashedPassword,
 		});
 
-		revalidateTag("managers");
+		revalidateTag("managers", "max");
 		revalidatePath("/admin/managers");
 		return { success: true };
 	} catch (error) {
@@ -66,7 +66,7 @@ export async function deleteManager(id: string) {
 		// Delete user (cascade deletes sessions and accounts)
 		await db.delete(userTable).where(eq(userTable.id, id));
 
-		revalidateTag("managers");
+		revalidateTag("managers", "max");
 		revalidatePath("/admin/managers");
 		return { success: true };
 	} catch (error) {

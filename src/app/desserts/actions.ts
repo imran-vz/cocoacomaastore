@@ -38,7 +38,7 @@ export async function toggleDessert(id: number, enabled: boolean) {
 		.where(eq(dessertsTable.id, id));
 	const duration = performance.now() - start;
 	console.log(`toggleDessert: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export async function toggleOutOfStock(id: number, isOutOfStock: boolean) {
@@ -49,7 +49,7 @@ export async function toggleOutOfStock(id: number, isOutOfStock: boolean) {
 		.where(eq(dessertsTable.id, id));
 	const duration = performance.now() - start;
 	console.log(`toggleOutOfStock: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export const getCachedDesserts = unstable_cache(getDesserts, ["desserts"], {
@@ -71,7 +71,7 @@ export async function createDessert(data: Omit<Dessert, "id" | "sequence">) {
 
 	const duration = performance.now() - start;
 	console.log(`createDessert: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export async function updateDessert(
@@ -90,7 +90,7 @@ export async function updateDessert(
 		.where(eq(dessertsTable.id, id));
 	const duration = performance.now() - start;
 	console.log(`updateDessert: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export async function deleteDessert(id: number) {
@@ -103,7 +103,7 @@ export async function deleteDessert(id: number) {
 
 	const duration = performance.now() - start;
 	console.log(`deleteDessert: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export async function updateDessertSequence(id: number, newScore: number) {
@@ -114,7 +114,7 @@ export async function updateDessertSequence(id: number, newScore: number) {
 
 	const duration = performance.now() - start;
 	console.log(`updateDessertSequence: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export async function batchUpdateDessertSequences(
@@ -133,7 +133,7 @@ export async function batchUpdateDessertSequences(
 	);
 
 	// Only revalidate once at the end
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export async function disableAllDesserts() {
@@ -144,7 +144,7 @@ export async function disableAllDesserts() {
 		.where(eq(dessertsTable.isDeleted, false));
 	const duration = performance.now() - start;
 	console.log(`disableAllDesserts: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export async function moveDessertToTop(id: number) {
@@ -171,7 +171,7 @@ export async function moveDessertToTop(id: number) {
 
 	const duration = performance.now() - start;
 	console.log(`moveDessertToTop: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }
 
 export async function moveDessertToBottom(id: number) {
@@ -198,5 +198,5 @@ export async function moveDessertToBottom(id: number) {
 
 	const duration = performance.now() - start;
 	console.log(`moveDessertToBottom: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts");
+	revalidateTag("desserts", "max");
 }

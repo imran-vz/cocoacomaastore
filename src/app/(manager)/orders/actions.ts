@@ -85,7 +85,7 @@ export async function createOrder(data: CreateOrderData) {
 	});
 	const duration = performance.now() - start;
 	console.log(`createOrder: ${duration}ms`);
-	revalidateTag("orders");
+	revalidateTag("orders", "max");
 }
 
 export async function updateOrderStatus(
@@ -99,7 +99,7 @@ export async function updateOrderStatus(
 		.where(eq(ordersTable.id, orderId));
 	const duration = performance.now() - start;
 	console.log(`updateOrderStatus: ${duration}ms`);
-	revalidateTag("orders");
+	revalidateTag("orders", "max");
 }
 
 export async function deleteOrder(orderId: number) {
@@ -110,5 +110,5 @@ export async function deleteOrder(orderId: number) {
 		.where(eq(ordersTable.id, orderId));
 	const duration = performance.now() - start;
 	console.log(`deleteOrder: ${duration}ms`);
-	revalidateTag("orders");
+	revalidateTag("orders", "max");
 }

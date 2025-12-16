@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "pnpm build:sw && next build",
-    "build:sw": "tsc src/app/sw.ts --outDir public --lib es2015,webworker --target es2015 --skipLibCheck --module esnext --moduleResolution bundler && node build-sw.js",
-    "start": "next start",
+    "dev": "bun run --bun next dev",
+    "build": "bun run build:sw && bun run --bun next build --webpack",
+    "build:sw": "bun build src/app/sw.ts --outfile public/sw.js",
+    "start": "bun run --bun start",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "knip": "knip",
@@ -41,12 +41,12 @@
     "framer-motion": "^12.23.25",
     "lucide-react": "^0.487.0",
     "motion": "^12.23.25",
-    "next": "^15.5.7",
+    "next": "^16.0.10",
     "next-themes": "^0.4.6",
     "pdfkit": "^0.17.2",
     "qrcode.react": "^4.2.0",
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-hook-form": "^7.68.0",
     "react-use-measure": "^2.1.7",
     "sonner": "^2.0.7",
@@ -71,14 +71,5 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
-  "packageManager": "pnpm@10.15.1",
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@tailwindcss/oxide",
-      "bufferutil",
-      "esbuild",
-      "msw",
-      "sharp"
-    ]
-  }
+  "packageManager": "bun@1.3.4"
 }
