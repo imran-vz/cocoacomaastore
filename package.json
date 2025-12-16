@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "bun run --bun next dev",
-    "build": "bun run build:sw && next build --webpack",
+    "dev": "bun run --bun next dev --webpack",
+    "build": "bun run build:sw && bun run --bun next build --webpack",
     "build:sw": "bun build src/app/sw.ts --outfile public/sw.js",
-    "start": "next start",
+    "start": "bun run --bun next start",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "knip": "knip",
@@ -52,14 +52,13 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "tw-animate-css": "^1.4.0",
-    "ws": "^8.18.3",
     "zod": "^3.25.76",
     "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.5",
     "@tailwindcss/postcss": "^4.1.17",
-    "@types/node": "^20.19.25",
+    "@types/node": "^24.10.4",
     "@types/pdfkit": "^0.17.4",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -73,6 +72,6 @@
   },
   "packageManager": "bun@1.3.4",
   "engines": {
-    "node": ">=24"
+    "bun": ">=1.3.4"
   }
 }
