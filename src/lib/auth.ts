@@ -19,7 +19,7 @@ export const auth = betterAuth({
 		requireEmailVerification: false,
 		password: {
 			async hash(password) {
-				return await bcrypt.hash(password, 10);
+				return await bcrypt.hash(password, 12);
 			},
 			async verify({ password, hash }) {
 				return await bcrypt.compare(password, hash);

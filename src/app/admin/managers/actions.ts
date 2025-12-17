@@ -1,10 +1,10 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/db";
-import { accountTable, userTable } from "@/db/schema";
+import { userTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
 
 export async function getManagers() {
 	const managers = await db
@@ -28,28 +28,13 @@ export async function createManager(data: {
 	role: "admin" | "manager";
 }) {
 	try {
-		// Generate a unique user ID
-		const userId = crypto.randomUUID();
-
-		// Hash the password
-		const hashedPassword = await bcrypt.hash(data.password, 10);
-
-		// Insert user
-		await db.insert(userTable).values({
-			id: userId,
-			name: data.name,
-			email: data.email,
-			role: data.role,
-			emailVerified: true,
-		});
-
-		// Insert account with password
-		await db.insert(accountTable).values({
-			id: crypto.randomUUID(),
-			userId: userId,
-			accountId: data.email,
-			providerId: "credential",
-			password: hashedPassword,
+		await auth.api.signUpEmail({
+			body: {
+				name: data.name,
+				email: data.email,
+				password: data.password,
+				role: data.role,
+			},
 		});
 
 		revalidateTag("managers", "max");
