@@ -11,21 +11,21 @@ This is a Next.js-based dessert store management system (Cocoacomaa Store) with 
 ### Development
 
 ```bash
-pnpm dev                 # Start development server with Turbopack
-pnpm build               # Build for production (includes service worker compilation)
-pnpm build:sw            # Compile service worker TypeScript to JavaScript
-pnpm start               # Start production server
-pnpm lint                # Run Next.js linting
+bun run dev                 # Start development server with Turbopack
+bun run build               # Build for production (includes service worker compilation)
+bun run build:sw            # Compile service worker TypeScript to JavaScript
+bun run start               # Start production server
+bun run lint                # Run Next.js linting
 ```
 
 ### Database Operations
 
 ```bash
-pnpm db:generate         # Generate Drizzle migration files
-pnpm db:migrate          # Apply migrations to database
-pnpm db:push             # Push schema changes directly to database (dev only)
-pnpm db:studio           # Open Drizzle Studio for database inspection
-pnpm seed:admin          # Create initial admin user (admin@cocoacomaa.com / Q1w2e3r4t5*)
+bun run db:generate         # Generate Drizzle migration files
+bun run db:migrate          # Apply migrations to database
+bun run db:push             # Push schema changes directly to database (dev only)
+bun run db:studio           # Open Drizzle Studio for database inspection
+bun run seed:admin          # Create initial admin user (admin@cocoacomaa.com / Q1w2e3r4t5*)
 ```
 
 ### Environment Setup
@@ -143,7 +143,7 @@ Desserts and UPI accounts use `sequence` integer field for custom ordering. Batc
 
 ## Development Notes
 
-- Package manager: pnpm 10.15.1 (enforced)
+- Package manager: bun run 10.15.1 (enforced)
 - Only specific dependencies should be built: @tailwindcss/oxide, bufferutil, esbuild, bcryptjs, sharp
 - Uses Next.js App Router with React Server Components
 - Styling: Tailwind CSS 4.x with custom configuration
