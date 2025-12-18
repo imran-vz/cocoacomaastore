@@ -34,15 +34,17 @@ function getUPIString(order: BillProps["order"], upiId: string) {
 	const transactionNote = `${order.items
 		.map((item) => item.name)
 		.join(", ")
-		.slice(0, 30)}...`;
+		.slice(0, 60)}...`;
 
-	const urlParams = new URLSearchParams();
-	urlParams.set("pa", upiId);
-	urlParams.set("am", order.total.toString());
-	urlParams.set("pn", "Cocoa Comaa");
-	urlParams.set("tn", transactionNote);
+	// Manually construct query string to keep @ unencoded in pa parameter
+	const params = new URLSearchParams();
+	params.set("am", order.total.toString());
+	params.set("pn", "Cocoa Comaa");
+	params.set("tn", transactionNote);
 
-	return `upi://pay?${urlParams.toString()}`;
+	// Add pa parameter separately without encoding @
+	const queryString = params.toString();
+	return `upi://pay?pa=${upiId}&${queryString}`;
 }
 
 export default function Bill({ order, upiAccounts }: BillProps) {
