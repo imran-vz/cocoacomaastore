@@ -39,7 +39,7 @@ export default function Navbar() {
 	return (
 		<div className="shadow-md z-50 sticky top-0 bg-white">
 			<div className="flex justify-between px-3 sm:px-4 md:px-6 py-3 items-center max-w-7xl mx-auto">
-				<Link href="/">
+				<Link href="/manager">
 					<TextRoll
 						transition={{
 							repeat: Number.POSITIVE_INFINITY,
@@ -68,13 +68,13 @@ export default function Navbar() {
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="w-56">
 							<DropdownMenuItem asChild>
-								<Link href="/desserts" className="cursor-pointer">
+								<Link href="/manager/desserts" className="cursor-pointer">
 									<IconCakeRoll />
 									Desserts & Stock
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
-								<Link href="/orders" className="cursor-pointer">
+								<Link href="/manager/orders" className="cursor-pointer">
 									<IconFileDescription />
 									Orders
 								</Link>

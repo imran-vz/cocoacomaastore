@@ -13,7 +13,7 @@ import { getCachedDesserts } from "@/app/_desserts/actions";
 import {
 	getCachedTodayInventory,
 	type TodayInventoryRow,
-} from "@/app/(manager)/inventory/actions";
+} from "@/app/manager/inventory/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";

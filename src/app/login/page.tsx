@@ -30,7 +30,7 @@ export default function LoginPage() {
 			if (session.user.role === "admin") {
 				router.replace("/admin");
 			} else {
-				router.replace("/");
+				router.replace("/manager");
 			}
 		}
 	}, [router, session?.user]);

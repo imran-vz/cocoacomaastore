@@ -45,7 +45,7 @@ Required environment variables (see `.env.example`):
 - **Middleware**: Route protection in `src/middleware.ts`
   - Public routes: `/login`, `/api/auth/*`
   - Admin-only routes: `/admin/*`
-  - Manager routes: `/(manager)/*` (root, `/orders`)
+  - Manager routes: `/manager/*` (`/manager`, `/manager/orders`, `/manager/desserts`, `/manager/inventory`)
 - **Auth configuration**: `src/lib/auth.ts` (server), `src/lib/auth-client.ts` (client)
 
 ### Database Schema (`src/db/schema.ts`)
@@ -64,16 +64,18 @@ Core tables:
 
 ```text
 src/app/
-├── (manager)/           # Manager role routes with layout
+├── page.tsx            # Root page - redirects to /manager or /admin based on role
+├── manager/            # Manager role routes with layout (/manager/*)
 │   ├── page.tsx        # Main store interface (home)
 │   ├── orders/         # Order management
-│   └── inventory/      # Inventory management
+│   ├── desserts/       # Desserts & inventory management for managers
+│   └── inventory/      # Inventory actions
 ├── admin/              # Admin-only routes with separate layout
 │   ├── dashboard/      # Admin dashboard with stats and audit logs
 │   ├── desserts/       # Manage desserts (CRUD)
 │   ├── managers/       # Manage manager accounts
 │   └── upi/            # Manage UPI accounts
-├── desserts/           # Shared dessert data actions
+├── _desserts/          # Shared dessert data actions
 ├── login/              # Authentication page
 └── api/auth/[...all]/  # better-auth API routes
 ```
