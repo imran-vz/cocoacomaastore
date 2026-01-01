@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { use, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { getCachedDesserts } from "@/app/_desserts/actions";
+import { getCachedDesserts } from "@/app/desserts/actions";
 import {
 	getCachedTodayInventory,
 	type TodayInventoryRow,

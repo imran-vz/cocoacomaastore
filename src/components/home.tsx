@@ -5,7 +5,7 @@ import { useStore } from "@tanstack/react-store";
 import { use, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { getCachedTodayInventory } from "@/app/(manager)/inventory/actions";
+import { getCachedTodayInventory } from "@/app/manager/inventory/actions";
 import { Cart } from "@/components/cart";
 import { DessertList } from "@/components/dessert-list";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";

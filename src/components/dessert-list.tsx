@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
 	batchUpdateDessertSequences,
 	toggleOutOfStock,
-} from "@/app/_desserts/actions";
+} from "@/app/desserts/actions";
 import type { Dessert } from "@/lib/types";
 import { useDessertStore } from "@/store/dessert-store";
 import { DessertCard } from "./dessert-card";

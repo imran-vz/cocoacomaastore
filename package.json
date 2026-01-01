@@ -11,7 +11,8 @@
 		"knip": "knip",
 		"lint": "biome check src/**/*.{ts,tsx}",
 		"lint:fix": "biome check --write src/**/*.{ts,tsx}",
-		"format": "biome format --write src/**/*.{ts,tsx}"
+		"format": "biome format --write src/**/*.{ts,tsx}",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@radix-ui/react-accordion": "^1.2.12",

@@ -10,17 +10,13 @@ import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { dessertFormSchema } from "./form-schema/dessert";
 
-type DessertFormValues = {
-	name: string;
-	description: string;
-	price: number;
-	isOutOfStock: boolean;
-	hasUnlimitedStock: boolean;
-};
+type onSubmit = (
+	values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">,
+) => Promise<void>;
 
 type DessertFormProps = {
 	initialData?: Dessert;
-	onSubmit: (values: DessertFormValues) => Promise<void>;
+	onSubmit: onSubmit;
 	onDelete?: () => Promise<void>;
 	isLoading?: boolean;
 };

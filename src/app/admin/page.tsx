@@ -1,6 +1,6 @@
 import Home from "@/components/home";
-import { getCachedDesserts } from "../_desserts/actions";
-import { getCachedTodayInventory } from "../(manager)/inventory/actions";
+import { getCachedDesserts } from "../desserts/actions";
+import { getCachedTodayInventory } from "../manager/inventory/actions";
 import { getCachedUPIAccounts } from "../upi/actions";
 
 export default function AdminPage() {

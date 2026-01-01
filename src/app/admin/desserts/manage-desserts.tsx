@@ -73,7 +73,7 @@ export default function ManageDesserts({
 	);
 
 	const handleSubmit = async (
-		values: Omit<Dessert, "id" | "enabled" | "sequence">,
+		values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">,
 	) => {
 		setIsLoading(true);
 		try {

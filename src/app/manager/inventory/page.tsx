@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { getCachedDesserts } from "@/app/_desserts/actions";
+import { getCachedDesserts } from "@/app/desserts/actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCachedTodayInventory } from "./actions";
 import InventoryPage from "./inventory-page";

@@ -1,5 +1,5 @@
 import Home from "@/components/home";
-import { getCachedDesserts } from "../_desserts/actions";
+import { getCachedDesserts } from "../desserts/actions";
 import { getCachedUPIAccounts } from "../upi/actions";
 import { getCachedTodayInventory } from "./inventory/actions";
 
