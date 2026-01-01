@@ -1,32 +1,49 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { getCachedOrders } from "./actions";
 import OrdersPage from "./orders-page";
-import { Skeleton } from "@/components/ui/skeleton";
 
-export const dynamic = "force-dynamic"; // forces dynamic rendering
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-	title: "Orders Management",
-	description: "Orders Management",
+	title: "Orders",
+	description: "View and manage today's orders",
 };
 
+function OrdersSkeleton() {
+	return (
+		<div className="space-y-4">
+			{/* Header skeleton */}
+			<div>
+				<Skeleton className="h-8 w-24" />
+				<Skeleton className="h-4 w-48 mt-1" />
+			</div>
+
+			{/* Stats skeleton */}
+			<div className="grid grid-cols-3 gap-3">
+				<Skeleton className="h-20 rounded-lg" />
+				<Skeleton className="h-20 rounded-lg" />
+				<Skeleton className="h-20 rounded-lg" />
+			</div>
+
+			{/* Orders skeleton */}
+			<div className="space-y-3">
+				<Skeleton className="h-24 rounded-lg" />
+				<Skeleton className="h-24 rounded-lg" />
+				<Skeleton className="h-24 rounded-lg" />
+			</div>
+		</div>
+	);
+}
+
 export default async function Orders() {
-	const orders = getCachedOrders();
+	const orders = await getCachedOrders();
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-3 pb-6 max-w-md mx-auto">
-			<Suspense
-				fallback={
-					<div className="flex flex-col gap-4 ">
-						<h1 className="text-2xl font-bold mb-6">Orders</h1>
-						<Skeleton className="h-10 w-full" />
-						<Skeleton className="h-10 w-full" />
-						<Skeleton className="h-10 w-full" />
-					</div>
-				}
-			>
+		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-2xl mx-auto">
+			<Suspense fallback={<OrdersSkeleton />}>
 				<OrdersPage initialOrders={orders} />
 			</Suspense>
 		</main>

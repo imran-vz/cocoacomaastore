@@ -22,7 +22,7 @@ export function QuantityControls({
 	// Sync ref when quantity changes externally
 	useEffect(() => {
 		quantityRef.current = item.quantity;
-	}, [item.quantity]);
+	}, [item]);
 
 	// Cleanup interval on unmount
 	useEffect(() => {

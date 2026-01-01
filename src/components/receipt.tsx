@@ -2,11 +2,13 @@
 
 import { Download } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { createOrder } from "@/app/(manager)/orders/actions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import type { UpiAccount } from "@/db/schema";
 import { generateReceiptPDF } from "@/lib/pdf-generator";
 import type { CartItem } from "@/lib/types";
@@ -19,6 +21,7 @@ interface ReceiptProps {
 	deliveryCost: number;
 	upiAccounts: UpiAccount[];
 	customerName: string;
+	onOrderSaved?: () => void | Promise<void>;
 }
 
 export function Receipt({
@@ -28,10 +31,12 @@ export function Receipt({
 	deliveryCost,
 	upiAccounts,
 	customerName,
+	onOrderSaved,
 }: ReceiptProps) {
 	const receiptRef = useRef<HTMLDivElement>(null);
 	const qrCodeRef = useRef<SVGSVGElement>(null);
 	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
+	const [isSavingOrder, setIsSavingOrder] = useState(false);
 
 	// Initialize with first available account if selectedUpiId is invalid
 	useEffect(() => {
@@ -151,8 +156,25 @@ export function Receipt({
 		}
 	};
 
-	const handleNewOrder = () => {
-		clearCart();
+	const handleSaveOrder = async () => {
+		if (cart.length === 0) return;
+		if (isSavingOrder) return;
+		try {
+			setIsSavingOrder(true);
+			await createOrder({
+				customerName: customerName.trim(),
+				items: cart,
+				deliveryCost: deliveryCost.toFixed(2),
+			});
+			toast.success("Order saved");
+			await onOrderSaved?.();
+			clearCart();
+		} catch (err) {
+			console.error("Failed to create order:", err);
+			toast.error(err instanceof Error ? err.message : "Failed to save order");
+		} finally {
+			setIsSavingOrder(false);
+		}
 	};
 
 	return (
@@ -186,7 +208,7 @@ export function Receipt({
 						<tbody>
 							{cart.map((item) => (
 								<tr key={item.id}>
-									<td className="truncate max-w-[150px]">{item.name}</td>
+									<td className="truncate max-w-37.5">{item.name}</td>
 									<td className="text-center">{item.quantity}</td>
 									<td className="text-right">
 										{(item.price * item.quantity).toFixed(2)}
@@ -229,8 +251,12 @@ export function Receipt({
 					<Download className="mr-2 h-4 w-4" />
 					PDF
 				</Button>
-				<Button onClick={handleNewOrder} className="flex-1">
-					New Order
+				<Button
+					onClick={handleSaveOrder}
+					className="flex-1"
+					disabled={isSavingOrder}
+				>
+					{isSavingOrder ? <Spinner /> : "Save Order"}
 				</Button>
 			</div>
 		</div>

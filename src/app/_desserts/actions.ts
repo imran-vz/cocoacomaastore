@@ -6,7 +6,11 @@ import { revalidateTag, unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import { dessertsTable } from "@/db/schema";
-import { initializeSequence, updateSequence } from "@/lib/sequence";
+import {
+	bulkUpdateSequences,
+	initializeSequence,
+	updateSequence,
+} from "@/lib/sequence";
 import type { Dessert } from "@/lib/types";
 
 async function getDesserts({
@@ -86,6 +90,7 @@ export async function updateDessert(
 			description: data.description,
 			price: data.price,
 			isOutOfStock: data.isOutOfStock,
+			hasUnlimitedStock: data.hasUnlimitedStock,
 		})
 		.where(eq(dessertsTable.id, id));
 	const duration = performance.now() - start;
@@ -122,9 +127,9 @@ export async function batchUpdateDessertSequences(
 ) {
 	const start = performance.now();
 
-	// Update all sequences in batch without revalidating
-	await Promise.all(
-		updates.map(({ id, newScore }) => updateSequence(id, newScore)),
+	// Use bulk update with a single SQL query instead of multiple queries
+	await bulkUpdateSequences(
+		updates.map(({ id, newScore }) => ({ id, sequence: newScore })),
 	);
 
 	const duration = performance.now() - start;

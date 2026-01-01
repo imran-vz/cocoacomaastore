@@ -11,7 +11,7 @@ const HEAVY_LIBS_CACHE = "heavy-libs-v1";
 const STATIC_ASSETS = [
 	"/icon-192x192.png",
 	"/icon-512x512.png",
-	"/favicon.svg",
+	"/favicon.png",
 	"/bg-grid.svg",
 ];
 

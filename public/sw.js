@@ -6,7 +6,7 @@ var HEAVY_LIBS_CACHE = "heavy-libs-v1";
 var STATIC_ASSETS = [
   "/icon-192x192.png",
   "/icon-512x512.png",
-  "/favicon.svg",
+  "/favicon.png",
   "/bg-grid.svg"
 ];
 self.addEventListener("install", (event) => {

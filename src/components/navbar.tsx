@@ -1,6 +1,10 @@
 "use client";
 
-import { IconCakeRoll, IconLogout } from "@tabler/icons-react";
+import {
+	IconCakeRoll,
+	IconFileDescription,
+	IconLogout,
+} from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -66,7 +70,13 @@ export default function Navbar() {
 							<DropdownMenuItem asChild>
 								<Link href="/desserts" className="cursor-pointer">
 									<IconCakeRoll />
-									Desserts
+									Desserts & Stock
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link href="/orders" className="cursor-pointer">
+									<IconFileDescription />
+									Orders
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />

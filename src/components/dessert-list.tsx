@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
 	batchUpdateDessertSequences,
 	toggleOutOfStock,
-} from "@/app/desserts/actions";
+} from "@/app/_desserts/actions";
 import type { Dessert } from "@/lib/types";
 import { useDessertStore } from "@/store/dessert-store";
 import { DessertCard } from "./dessert-card";
@@ -173,9 +173,13 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 		dessert.name.toLowerCase().includes(searchQuery.toLowerCase()),
 	);
 
+	const isUnavailable = (dessert: Dessert) =>
+		dessert.isOutOfStock ||
+		(dessert.inventoryQuantity !== undefined && dessert.inventoryQuantity <= 0);
+
 	// Separate in-stock and out-of-stock desserts
-	const inStockDesserts = filteredDesserts.filter((d) => !d.isOutOfStock);
-	const outOfStockDesserts = filteredDesserts.filter((d) => d.isOutOfStock);
+	const inStockDesserts = filteredDesserts.filter((d) => !isUnavailable(d));
+	const outOfStockDesserts = filteredDesserts.filter((d) => isUnavailable(d));
 
 	return (
 		<div>

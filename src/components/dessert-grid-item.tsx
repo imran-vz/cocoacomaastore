@@ -19,10 +19,13 @@ export function DessertGridItem({
 	onToggleStock,
 	isStockToggleLoading,
 }: DessertGridItemProps) {
+	const inventoryQty = dessert.inventoryQuantity;
+	const isInventoryOutOfStock = inventoryQty !== undefined && inventoryQty <= 0;
+	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock;
 	const overlayControls = useAnimation();
 
 	const handleClick = async () => {
-		if (!dessert.isOutOfStock) {
+		if (!isUnavailable) {
 			// Add to cart immediately
 			onAddToCart(dessert);
 
@@ -64,7 +67,7 @@ export function DessertGridItem({
 					asChild
 					variant={"outline"}
 					onClick={handleClick}
-					disabled={dessert.isOutOfStock}
+					disabled={isUnavailable}
 					className="py-2 h-auto items-start hover:shadow-md transition-all duration-200 hover:scale-[1.02] disabled:hover:scale-100 w-full flex-1 relative"
 				>
 					<Card className="w-full rounded-b-none shadow-none py-2 px-3 gap-2 cursor-pointer overflow-hidden">
@@ -78,7 +81,7 @@ export function DessertGridItem({
 						<CardContent className="px-0 w-full relative z-10">
 							<div className="flex flex-col items-start text-left">
 								<h4
-									className={`font-medium text-sm text-primary capitalize line-clamp-2 mb-1 max-w-[90%] truncate ${dessert.isOutOfStock ? "line-through text-muted-foreground" : ""}`}
+									className={`font-medium text-sm text-primary capitalize line-clamp-2 mb-1 max-w-[90%] truncate ${isUnavailable ? "line-through text-muted-foreground" : ""}`}
 								>
 									{dessert.name}
 								</h4>
@@ -89,15 +92,19 @@ export function DessertGridItem({
 								)}
 								<div className="flex items-center gap-2 w-full">
 									<p
-										className={`text-sm font-semibold ${dessert.isOutOfStock ? "text-muted-foreground" : "text-green-700"}`}
+										className={`text-sm font-semibold ${isUnavailable ? "text-muted-foreground" : "text-green-700"}`}
 									>
 										₹{dessert.price.toFixed(2)}
 									</p>
-									{dessert.isOutOfStock && (
+									{isUnavailable ? (
 										<span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-100 text-orange-700 whitespace-nowrap">
 											Out of Stock
 										</span>
-									)}
+									) : inventoryQty !== undefined ? (
+										<span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">
+											{inventoryQty} left
+										</span>
+									) : null}
 								</div>
 							</div>
 						</CardContent>

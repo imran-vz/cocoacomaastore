@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Next.js-based dessert store management system (Cocoacomaa Store) with role-based authentication, online/offline capabilities, and order management. Built with Next.js 15, React 19, TypeScript, Drizzle ORM, PostgreSQL (Neon), and better-auth.
+This is a Next.js-based dessert store management system (Cocoacomaa Store) with role-based authentication, online/offline capabilities, and order management. Built with Next.js 15, React 19, TypeScript, Drizzle ORM, PostgreSQL (Supabase), and better-auth.
 
 ## Essential Commands
 
@@ -32,7 +32,7 @@ bun run seed:admin          # Create initial admin user (admin@cocoacomaa.com / 
 
 Required environment variables (see `.env.example`):
 
-- `DATABASE_URL`: Neon PostgreSQL connection string
+- `DATABASE_URL`: Supabase PostgreSQL connection string
 - `NEXT_PUBLIC_APP_URL`: Application URL (e.g., <http://localhost:3000>)
 - `BETTER_AUTH_SECRET`: Generate with `openssl rand -base64 32`
 

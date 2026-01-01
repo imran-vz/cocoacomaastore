@@ -1,4 +1,3 @@
-import { Analytics } from "@vercel/analytics/react";
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Nunito_Sans } from "next/font/google";
 
@@ -75,7 +74,6 @@ export default function RootLayout({
 			>
 				<ServiceWorkerProvider>
 					<OfflineIndicator />
-					<Analytics />
 					<Navbar />
 					{children}
 					<Toaster
