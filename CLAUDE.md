@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Next.js-based dessert store management system (Cocoacomaa Store) with role-based authentication, online/offline capabilities, and order management. Built with Next.js 15, React 19, TypeScript, Drizzle ORM, PostgreSQL (Supabase), and better-auth.
+This is a Next.js-based dessert store management system (Cocoacomaa Store) with role-based authentication and order management. Built with Next.js 15, React 19, TypeScript, Drizzle ORM, PostgreSQL (Supabase), and better-auth.
 
 ## Essential Commands
 
@@ -12,8 +12,7 @@ This is a Next.js-based dessert store management system (Cocoacomaa Store) with 
 
 ```bash
 bun run dev                 # Start development server with Turbopack
-bun run build               # Build for production (includes service worker compilation)
-bun run build:sw            # Compile service worker TypeScript to JavaScript
+bun run build               # Build for production
 bun run start               # Start production server
 bun run lint                # Run Next.js linting
 ```
@@ -57,6 +56,8 @@ Core tables:
 - `orders`: Customer orders with status (pending/completed), delivery cost, soft delete
 - `order_items`: Order line items with dessert references
 - `upi_accounts`: UPI payment accounts with enabled flag and sequence
+- `daily_dessert_inventory`: Daily stock tracking per dessert
+- `inventory_audit_log`: Audit trail for inventory changes
 - Auth tables: `user`, `session`, `account`, `verification` (better-auth managed)
 
 ### Route Structure
@@ -65,8 +66,10 @@ Core tables:
 src/app/
 ├── (manager)/           # Manager role routes with layout
 │   ├── page.tsx        # Main store interface (home)
-│   └── orders/         # Order management
+│   ├── orders/         # Order management
+│   └── inventory/      # Inventory management
 ├── admin/              # Admin-only routes with separate layout
+│   ├── dashboard/      # Admin dashboard with stats and audit logs
 │   ├── desserts/       # Manage desserts (CRUD)
 │   ├── managers/       # Manage manager accounts
 │   └── upi/            # Manage UPI accounts
@@ -83,18 +86,6 @@ Server actions are co-located in `actions.ts` files within route directories:
 - Common pattern: cached getters (unstable_cache) and mutations with revalidatePath
 - Example: `src/app/desserts/actions.ts` exports `getCachedDesserts()`
 - Admin actions typically include delete operations and enable/disable toggles
-
-### Service Worker & Offline Support
-
-- **Location**: `src/app/sw.ts` (compiled to `public/sw.js` during build)
-- **Build process**: TypeScript compiled separately via `build:sw` script
-- **Caching strategies**:
-  - Network-only: HTML pages, API requests (no caching for dynamic data)
-  - Cache-first: Images, static assets (JS, CSS, fonts)
-- **Cache versions**: Static cache and image cache with version prefixes
-- **Components**:
-  - `OfflineIndicator`: Shows online/offline status
-  - `ServiceWorkerProvider`: Manages service worker registration
 
 ### Key Components
 
@@ -122,6 +113,12 @@ Tables use `isDeleted` boolean flag instead of hard deletes. Always filter by `i
 
 Desserts and UPI accounts use `sequence` integer field for custom ordering. Batch updates available for reordering (see `batchUpdateDessertSequences`).
 
+### Inventory Management
+
+- Daily inventory tracking per dessert via `daily_dessert_inventory` table
+- Desserts can have `hasUnlimitedStock: true` to bypass inventory checks
+- Audit logging for all inventory changes (set_stock, order_deducted, manual_adjustment)
+
 ### Form Validation
 
 - Zod schemas for validation
@@ -136,15 +133,12 @@ Desserts and UPI accounts use `sequence` integer field for custom ordering. Batc
 
 ## Build Process
 
-1. Service worker TypeScript compiles first (`build:sw`)
-2. Next.js build runs with Turbopack in dev
-3. Static assets cached by service worker on install
-4. Progressive Web App (PWA) capabilities via manifest
+1. Next.js build runs with Turbopack in dev
+2. Progressive Web App (PWA) capabilities via manifest (installable on devices)
 
 ## Development Notes
 
-- Package manager: bun run 10.15.1 (enforced)
-- Only specific dependencies should be built: @tailwindcss/oxide, bufferutil, esbuild, bcryptjs, sharp
+- Package manager: bun (enforced)
 - Uses Next.js App Router with React Server Components
 - Styling: Tailwind CSS 4.x with custom configuration
 - UI components: Radix UI primitives with shadcn/ui patterns

@@ -2,8 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Nunito_Sans } from "next/font/google";
 
 import Navbar from "@/components/navbar";
-import { OfflineIndicator } from "@/components/offline-indicator";
-import { ServiceWorkerProvider } from "@/components/service-worker-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -72,23 +70,20 @@ export default function RootLayout({
 					"antialiased bg-[url(/bg-grid.svg)] select-none",
 				)}
 			>
-				<ServiceWorkerProvider>
-					<OfflineIndicator />
-					<Navbar />
-					{children}
-					<Toaster
-						position="top-center"
-						richColors
-						icons={{
-							success: "👍",
-							error: "🚫",
-							info: "💡",
-							warning: "⚠️",
-							loading: "🔄",
-						}}
-						mobileOffset={50}
-					/>
-				</ServiceWorkerProvider>
+				<Navbar />
+				{children}
+				<Toaster
+					position="top-center"
+					richColors
+					icons={{
+						success: "👍",
+						error: "🚫",
+						info: "💡",
+						warning: "⚠️",
+						loading: "🔄",
+					}}
+					mobileOffset={50}
+				/>
 			</body>
 		</html>
 	);

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	IconChartBar,
 	IconDashboard,
 	IconDatabase,
 	IconFileDescription,
@@ -25,7 +26,8 @@ import { TextRoll } from "./ui/text-roll";
 
 const data = {
 	navMain: [
-		{ title: "Dashboard", url: "/admin", icon: IconDashboard },
+		{ title: "Home", url: "/admin", icon: IconDashboard },
+		{ title: "Dashboard", url: "/admin/dashboard", icon: IconChartBar },
 		{ title: "Desserts", url: "/admin/desserts", icon: IconFileDescription },
 		{ title: "Managers", url: "/admin/managers", icon: IconUsers },
 		{ title: "UPI Accounts", url: "/admin/upi", icon: IconDatabase },

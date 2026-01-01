@@ -3,9 +3,8 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "bun run --bun next dev --webpack",
-		"build": "bun run build:sw && bun run --bun next build --webpack",
-		"build:sw": "bun build src/app/sw.ts --outfile public/sw.js",
+		"dev": "bun run --bun next dev",
+		"build": "bun run --bun next build",
 		"start": "bun run --bun next start",
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",

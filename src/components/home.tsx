@@ -49,7 +49,9 @@ export default function Home({
 		() =>
 			items.map((dessert) => ({
 				...dessert,
-				inventoryQuantity: inventoryByDessertId[dessert.id] ?? 0,
+				inventoryQuantity: dessert.hasUnlimitedStock
+					? undefined
+					: (inventoryByDessertId[dessert.id] ?? 0),
 			})),
 		[items, inventoryByDessertId],
 	);

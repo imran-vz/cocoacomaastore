@@ -20,7 +20,10 @@ export function DessertGridItem({
 	isStockToggleLoading,
 }: DessertGridItemProps) {
 	const inventoryQty = dessert.inventoryQuantity;
-	const isInventoryOutOfStock = inventoryQty !== undefined && inventoryQty <= 0;
+	const isInventoryOutOfStock =
+		!dessert.hasUnlimitedStock &&
+		inventoryQty !== undefined &&
+		inventoryQty <= 0;
 	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock;
 	const overlayControls = useAnimation();
 

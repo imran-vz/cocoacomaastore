@@ -175,7 +175,9 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 
 	const isUnavailable = (dessert: Dessert) =>
 		dessert.isOutOfStock ||
-		(dessert.inventoryQuantity !== undefined && dessert.inventoryQuantity <= 0);
+		(!dessert.hasUnlimitedStock &&
+			dessert.inventoryQuantity !== undefined &&
+			dessert.inventoryQuantity <= 0);
 
 	// Separate in-stock and out-of-stock desserts
 	const inStockDesserts = filteredDesserts.filter((d) => !isUnavailable(d));
