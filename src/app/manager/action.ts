@@ -1,10 +1,8 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/db";
-import { userTable } from "@/db/schema";
 
 async function getManagers() {
 	// Get all users (admins and managers) from database, sorted by createdAt
