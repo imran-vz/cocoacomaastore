@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { getCachedDesserts } from "./actions";
+import { getCachedDesserts } from "@/app/desserts/actions";
 import ManageDesserts from "./manage-desserts";
 
 export const dynamic = "force-dynamic"; // forces dynamic rendering

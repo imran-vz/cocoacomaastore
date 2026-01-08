@@ -1,17 +1,15 @@
 "use server";
 
 import { performance } from "node:perf_hooks";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import {
 	dailyDessertInventoryTable,
-	dessertsTable,
 	inventoryAuditLogTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { updateSequence } from "@/lib/sequence";
 
 function getStartOfDay(date: Date = new Date()) {
 	const d = new Date(date);
@@ -19,80 +17,7 @@ function getStartOfDay(date: Date = new Date()) {
 	return d;
 }
 
-export async function toggleDessert(id: number, enabled: boolean) {
-	const start = performance.now();
-	await db
-		.update(dessertsTable)
-		.set({ enabled, isOutOfStock: enabled ? false : undefined })
-		.where(eq(dessertsTable.id, id));
-	const duration = performance.now() - start;
-	console.log(`toggleDessert: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts", "max");
-}
-
-export async function disableAllDesserts() {
-	const start = performance.now();
-	await db
-		.update(dessertsTable)
-		.set({ enabled: false })
-		.where(eq(dessertsTable.isDeleted, false));
-	const duration = performance.now() - start;
-	console.log(`disableAllDesserts: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts", "max");
-}
-
-export async function updateDessertSequence(id: number, newScore: number) {
-	const start = performance.now();
-	await updateSequence(id, newScore);
-	const duration = performance.now() - start;
-	console.log(`updateDessertSequence: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts", "max");
-}
-
-export async function moveDessertToTop(id: number) {
-	const start = performance.now();
-
-	const enabledDesserts = await db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-		),
-		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
-	});
-
-	const dessertToMove = enabledDesserts.find((d) => d.id === id);
-	if (!dessertToMove || enabledDesserts.length <= 1) return;
-
-	const minSequence = Math.min(...enabledDesserts.map((d) => d.sequence));
-	await updateSequence(id, minSequence - 1);
-
-	const duration = performance.now() - start;
-	console.log(`moveDessertToTop: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts", "max");
-}
-
-export async function moveDessertToBottom(id: number) {
-	const start = performance.now();
-
-	const enabledDesserts = await db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-		),
-		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
-	});
-
-	const dessertToMove = enabledDesserts.find((d) => d.id === id);
-	if (!dessertToMove || enabledDesserts.length <= 1) return;
-
-	const maxSequence = Math.max(...enabledDesserts.map((d) => d.sequence));
-	await updateSequence(id, maxSequence + 1);
-
-	const duration = performance.now() - start;
-	console.log(`moveDessertToBottom: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts", "max");
-}
-
+// Manager-specific action for inventory management
 export async function upsertInventoryWithAudit(
 	updates: Array<{ dessertId: number; quantity: number }>,
 ) {

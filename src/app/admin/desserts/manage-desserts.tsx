@@ -25,7 +25,7 @@ import {
 	toggleOutOfStock,
 	updateDessert,
 	updateDessertSequence,
-} from "./actions";
+} from "@/app/desserts/actions";
 
 function capitalize(str: string) {
 	return str

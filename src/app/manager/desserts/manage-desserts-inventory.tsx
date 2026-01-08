@@ -6,6 +6,7 @@ import {
 	ChevronsUp,
 	ChevronUp,
 	Infinity as InfinityIcon,
+	Pencil,
 } from "lucide-react";
 import { use, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -14,7 +15,14 @@ import {
 	getCachedTodayInventory,
 	type TodayInventoryRow,
 } from "@/app/manager/inventory/actions";
+import { DessertForm } from "@/components/dessert-form";
 import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -28,16 +36,26 @@ import {
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
+	createDessert,
+	deleteDessert,
 	disableAllDesserts,
 	moveDessertToBottom,
 	moveDessertToTop,
 	toggleDessert,
+	updateDessert,
 	updateDessertSequence,
-	upsertInventoryWithAudit,
-} from "./actions";
+} from "@/app/desserts/actions";
+import { upsertInventoryWithAudit } from "./actions";
 
 function toInventoryMap(rows: TodayInventoryRow[]) {
 	return new Map(rows.map((r) => [r.dessertId, r.quantity] as const));
+}
+
+function capitalize(str: string) {
+	return str
+		.split(" ")
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
 }
 
 export default function ManageDessertsInventory({
@@ -62,6 +80,9 @@ export default function ManageDessertsInventory({
 	);
 	const [movingIds, setMovingIds] = useState<Set<number>>(new Set());
 	const [searchTerm, setSearchTerm] = useState("");
+	const [openModal, setOpenModal] = useState(false);
+	const [isFormLoading, setIsFormLoading] = useState(false);
+	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
 
 	// Track the original quantities from the server
 	const [serverQuantities, setServerQuantities] = useState<Map<number, number>>(
@@ -308,6 +329,53 @@ export default function ManageDessertsInventory({
 		}
 	};
 
+	const handleSubmit = async (
+		values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">,
+	) => {
+		setIsFormLoading(true);
+		try {
+			const trimmedValues = {
+				...values,
+				name: capitalize(values.name.trim()),
+				description: values.description?.trim() || null,
+			};
+			if (editingDessert) {
+				await updateDessert(editingDessert.id, trimmedValues);
+			} else {
+				await createDessert({ ...trimmedValues, enabled: true });
+			}
+			await refetch();
+			setEditingDessert(null);
+			setOpenModal(false);
+			toast.success(
+				`Dessert ${editingDessert ? "updated" : "added"} successfully`,
+			);
+		} catch (error) {
+			toast.error(`Failed to ${editingDessert ? "update" : "add"} dessert`);
+			console.error("Failed to save dessert:", error);
+		} finally {
+			setIsFormLoading(false);
+		}
+	};
+
+	const handleDelete = async () => {
+		if (editingDessert) {
+			try {
+				setIsFormLoading(true);
+				await deleteDessert(editingDessert.id);
+				await refetch();
+				setEditingDessert(null);
+				setOpenModal(false);
+				toast.success("Dessert deleted successfully");
+			} catch (error) {
+				toast.error("Failed to delete dessert");
+				console.error("Failed to delete dessert:", error);
+			} finally {
+				setIsFormLoading(false);
+			}
+		}
+	};
+
 	const renderDessertRow = (
 		dessert: Dessert,
 		index: number,
@@ -430,6 +498,22 @@ export default function ManageDessertsInventory({
 					)}
 				</TableCell>
 
+				{/* Edit button */}
+				<TableCell className="w-12">
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => {
+							setEditingDessert(dessert);
+							setOpenModal(true);
+						}}
+						className="h-7 w-7 p-0"
+						title="Edit dessert"
+					>
+						<Pencil className="size-3" />
+					</Button>
+				</TableCell>
+
 				{/* Enable/Disable toggle */}
 				<TableCell className="w-20">
 					<Button
@@ -459,6 +543,29 @@ export default function ManageDessertsInventory({
 
 	return (
 		<div className="space-y-4">
+			<Dialog
+				open={openModal}
+				onOpenChange={(open) => {
+					setOpenModal(open);
+					if (!open) setEditingDessert(null);
+				}}
+			>
+				<DialogContent className="mx-2 max-w-[calc(100vw-1rem)] sm:mx-4 sm:max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 md:-mt-28">
+					<DialogHeader>
+						<DialogTitle>
+							{editingDessert ? "Edit Dessert" : "Add New Dessert"}
+						</DialogTitle>
+					</DialogHeader>
+					<DessertForm
+						key={editingDessert?.id}
+						initialData={editingDessert ?? undefined}
+						onSubmit={handleSubmit}
+						onDelete={handleDelete}
+						isLoading={isFormLoading}
+					/>
+				</DialogContent>
+			</Dialog>
+
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<h1 className="text-2xl font-bold">Desserts & Inventory</h1>
@@ -490,6 +597,15 @@ export default function ManageDessertsInventory({
 							</span>
 						)}
 					</Button>
+					<Button
+						onClick={() => {
+							setEditingDessert(null);
+							setOpenModal(true);
+						}}
+						size="sm"
+					>
+						Add Dessert
+					</Button>
 				</div>
 			</div>
 
@@ -520,6 +636,7 @@ export default function ManageDessertsInventory({
 									<TableHead className="w-25">Order</TableHead>
 									<TableHead>Dessert</TableHead>
 									<TableHead className="w-25">Stock</TableHead>
+									<TableHead className="w-12">Edit</TableHead>
 									<TableHead className="w-20">Enabled</TableHead>
 								</TableRow>
 							</TableHeader>
@@ -551,6 +668,7 @@ export default function ManageDessertsInventory({
 									<TableHead className="w-25">Order</TableHead>
 									<TableHead>Dessert</TableHead>
 									<TableHead className="w-25">Stock</TableHead>
+									<TableHead className="w-12">Edit</TableHead>
 									<TableHead className="w-20">Enabled</TableHead>
 								</TableRow>
 							</TableHeader>
