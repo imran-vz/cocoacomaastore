@@ -1,8 +1,7 @@
 "use client";
 
-import { Download } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { createOrder } from "@/app/manager/orders/actions";
@@ -10,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import type { UpiAccount } from "@/db/schema";
-import { generateReceiptPDF } from "@/lib/pdf-generator";
 import type { CartItem } from "@/lib/types";
 import { useUpiStore } from "@/store/upi-store";
 
@@ -33,8 +31,6 @@ export function Receipt({
 	customerName,
 	onOrderSaved,
 }: ReceiptProps) {
-	const receiptRef = useRef<HTMLDivElement>(null);
-	const qrCodeRef = useRef<SVGSVGElement>(null);
 	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
 	const [isSavingOrder, setIsSavingOrder] = useState(false);
 
@@ -51,110 +47,6 @@ export function Receipt({
 	const selectedAccount = upiAccounts.find(
 		(account) => account.id.toString() === selectedUpiId,
 	);
-
-	const getUPIString = () => {
-		const transactionNote = cart
-			.map((item) => item.name)
-			.join(", ")
-			.slice(0, 30);
-
-		const urlParams = new URLSearchParams();
-		urlParams.set("pa", selectedAccount?.upiId || "");
-		urlParams.set("am", total.toString());
-		urlParams.set("pn", "Cocoa Comaa");
-		urlParams.set("tn", `${transactionNote}...`);
-
-		return `upi://pay?${urlParams.toString()}`;
-	};
-
-	const getQrCodeDataUrl = async (): Promise<string> => {
-		if (!qrCodeRef.current) return "";
-
-		const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
-		const svgBlob = new Blob([svgData], {
-			type: "image/svg+xml;charset=utf-8",
-		});
-		const url = URL.createObjectURL(svgBlob);
-
-		const canvas = document.createElement("canvas");
-		const ctx = canvas.getContext("2d");
-		const img = new Image(500, 500);
-
-		await new Promise((resolve, reject) => {
-			img.onload = resolve;
-			img.onerror = reject;
-			img.src = url;
-		});
-
-		const padding = 96;
-		canvas.width = img.width + padding * 2;
-		canvas.height = img.height + padding * 2;
-
-		if (ctx) {
-			ctx.fillStyle = "white";
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.fillStyle = "black";
-			ctx.drawImage(img, padding, padding);
-			ctx.strokeStyle = "black";
-			ctx.lineWidth = 4;
-			ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
-		}
-
-		URL.revokeObjectURL(url);
-		return canvas.toDataURL("image/png");
-	};
-
-	const handleDownloadPDF = async () => {
-		if (cart.length === 0 || !selectedAccount) return;
-
-		try {
-			toast.info("Generating PDF...", {
-				duration: 2000,
-				icon: "⏳",
-				richColors: false,
-			});
-
-			const qrCodeDataUrl = await getQrCodeDataUrl();
-
-			const pdfBlob = await generateReceiptPDF({
-				order: {
-					items: cart,
-					total,
-					deliveryCost,
-				},
-				qrCodeDataUrl,
-			});
-
-			// Create download link
-			const url = URL.createObjectURL(pdfBlob);
-			const a = document.createElement("a");
-			a.href = url;
-
-			// Generate filename with customer name if available
-			const sanitizedName =
-				customerName
-					?.trim()
-					?.replace(/[^a-z0-9]/gi, "_")
-					?.toLowerCase() || "";
-
-			const timestamp = Date.now();
-			a.download = `receipt-${sanitizedName ? `${sanitizedName}-` : ""}${timestamp}.pdf`;
-
-			document.body.appendChild(a);
-			a.click();
-			document.body.removeChild(a);
-			URL.revokeObjectURL(url);
-
-			toast.success("PDF downloaded successfully", {
-				duration: 1000,
-				icon: "✓",
-				richColors: false,
-			});
-		} catch (err) {
-			console.error("Failed to generate PDF:", err);
-			toast.error("Failed to generate PDF");
-		}
-	};
 
 	const handleSaveOrder = async () => {
 		if (cart.length === 0) return;
@@ -179,10 +71,7 @@ export function Receipt({
 
 	return (
 		<div>
-			<div
-				ref={receiptRef}
-				className="bg-white p-3 font-mono text-xs border border-dashed border-gray-300 rounded-md"
-			>
+			<div className="bg-white p-3 font-mono text-xs border border-dashed border-gray-300 rounded-md">
 				<div className="text-center mb-3">
 					<h3 className="font-bold text-base">COCOA COMAA</h3>
 				</div>
@@ -238,18 +127,10 @@ export function Receipt({
 				</div>
 			</div>
 
-			{/* Hidden QR Code for PDF generation */}
-			<QRCodeSVG
-				ref={qrCodeRef}
-				value={getUPIString()}
-				size={500}
-				className="hidden"
-			/>
-
 			<div className="flex gap-2 mt-4">
-				<Button onClick={handleDownloadPDF} variant="outline">
-					<Download className="mr-2 h-4 w-4" />
-					PDF
+				<Button onClick={clearCart} variant="outline">
+					<X className="mr-2 h-4 w-4" />
+					Cancel
 				</Button>
 				<Button
 					onClick={handleSaveOrder}

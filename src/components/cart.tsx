@@ -79,16 +79,14 @@ export function Cart({
 
 				<div className="max-h-72 overflow-y-auto overflow-x-hidden">
 					<AnimatePresence mode="popLayout">
-						{cart.length > 0
-							? null
-							: cart.map((item) => (
-									<QuantityControls
-										key={item.id}
-										item={item}
-										updateQuantity={updateQuantity}
-										removeFromCart={removeFromCart}
-									/>
-								))}
+						{cart.map((item) => (
+							<QuantityControls
+								key={item.id}
+								item={item}
+								updateQuantity={updateQuantity}
+								removeFromCart={removeFromCart}
+							/>
+						))}
 					</AnimatePresence>
 				</div>
 			</form>
