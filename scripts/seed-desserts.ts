@@ -1,5 +1,3 @@
-import "dotenv/config";
-
 import { db } from "../src/db";
 import { dessertsTable } from "../src/db/schema";
 

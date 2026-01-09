@@ -11,6 +11,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useCallback, useState } from "react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 import { DateSwitcher } from "@/components/date-switcher";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import {
+	type ChartConfig,
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/components/ui/chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -117,6 +124,17 @@ function StatCard({
 	);
 }
 
+const chartConfig = {
+	revenue: {
+		label: "Revenue",
+		color: "var(--chart-1)",
+	},
+	orders: {
+		label: "Orders",
+		color: "var(--chart-2)",
+	},
+} satisfies ChartConfig;
+
 function RevenueChart({
 	data,
 	isLoading,
@@ -135,51 +153,102 @@ function RevenueChart({
 					<CardDescription>Last 7 days revenue</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<Skeleton className="h-40 w-full" />
+					<Skeleton className="h-64 w-full" />
 				</CardContent>
 			</Card>
 		);
 	}
 
-	const maxRevenue = Math.max(...data.map((d) => d.revenue), 1);
+	const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
+	const totalOrders = data.reduce((sum, d) => sum + d.orders, 0);
 
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle className="flex items-center gap-2">
-					<TrendingUp className="size-5" />
-					Revenue Trend
-				</CardTitle>
-				<CardDescription>Last 7 days revenue</CardDescription>
+				<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+					<div>
+						<CardTitle className="flex items-center gap-2">
+							<TrendingUp className="size-5" />
+							Revenue Trend
+						</CardTitle>
+						<CardDescription>Last 7 days revenue</CardDescription>
+					</div>
+					<div className="flex gap-4 text-sm">
+						<div>
+							<p className="text-muted-foreground">Total Revenue</p>
+							<p className="font-semibold">{formatCurrency(totalRevenue)}</p>
+						</div>
+						<div>
+							<p className="text-muted-foreground">Total Orders</p>
+							<p className="font-semibold">{totalOrders}</p>
+						</div>
+					</div>
+				</div>
 			</CardHeader>
 			<CardContent>
-				<div className="flex items-end justify-between gap-2 h-40">
-					{data.map((day) => {
-						const height = (day.revenue / maxRevenue) * 100;
-						return (
-							<div
-								key={day.date}
-								className="flex flex-col items-center gap-2 flex-1"
-							>
-								<div className="text-xs font-medium text-muted-foreground">
-									{day.revenue > 0 ? formatCurrency(day.revenue) : "-"}
-								</div>
-								<div
-									className="w-full bg-primary/20 rounded-t-md relative transition-all duration-300 hover:bg-primary/30"
-									style={{ height: `${Math.max(height, 4)}%` }}
-								>
-									<div
-										className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-md transition-all duration-300"
-										style={{ height: `${height}%` }}
-									/>
-								</div>
-								<div className="text-xs text-muted-foreground font-medium">
-									{day.date}
-								</div>
-							</div>
-						);
-					})}
-				</div>
+				<ChartContainer config={chartConfig} className="h-64 w-full">
+					<AreaChart
+						accessibilityLayer
+						data={data}
+						margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+					>
+						<defs>
+							<linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+								<stop
+									offset="5%"
+									stopColor="var(--color-revenue)"
+									stopOpacity={0.3}
+								/>
+								<stop
+									offset="95%"
+									stopColor="var(--color-revenue)"
+									stopOpacity={0}
+								/>
+							</linearGradient>
+						</defs>
+						<CartesianGrid strokeDasharray="3 3" vertical={false} />
+						<XAxis
+							dataKey="date"
+							axisLine={false}
+							tickLine={false}
+							tickMargin={10}
+						/>
+						<YAxis
+							axisLine={false}
+							tickLine={false}
+							tickMargin={10}
+							tickFormatter={(value) =>
+								value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`
+							}
+							width={50}
+						/>
+						<ChartTooltip
+							content={
+								<ChartTooltipContent
+									formatter={(value, name) => (
+										<div className="flex items-center justify-between gap-8">
+											<span className="text-muted-foreground">
+												{name === "revenue" ? "Revenue" : name}
+											</span>
+											<span className="font-mono font-medium">
+												{name === "revenue"
+													? formatCurrency(value as number)
+													: value}
+											</span>
+										</div>
+									)}
+								/>
+							}
+						/>
+						<Area
+							type="monotone"
+							dataKey="revenue"
+							stroke="var(--color-revenue)"
+							strokeWidth={2}
+							fill="url(#revenueGradient)"
+						/>
+					</AreaChart>
+				</ChartContainer>
 			</CardContent>
 		</Card>
 	);
