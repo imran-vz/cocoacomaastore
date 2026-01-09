@@ -2,18 +2,6 @@
 
 import { use, useCallback, useState } from "react";
 import { toast } from "sonner";
-
-import { DessertCard } from "@/components/dessert-card";
-import { DessertForm } from "@/components/dessert-form";
-import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import type { Dessert } from "@/lib/types";
 import {
 	createDessert,
 	deleteDessert,
@@ -26,6 +14,17 @@ import {
 	updateDessert,
 	updateDessertSequence,
 } from "@/app/desserts/actions";
+import { DessertCard } from "@/components/dessert-card";
+import { DessertForm } from "@/components/dessert-form";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import type { Dessert } from "@/lib/types";
 
 function capitalize(str: string) {
 	return str

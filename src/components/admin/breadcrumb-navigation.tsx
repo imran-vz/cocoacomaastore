@@ -19,7 +19,8 @@ interface BreadcrumbSegment {
 
 // Map route segments to user-friendly labels
 const segmentLabels: Record<string, string> = {
-	admin: "Dashboard",
+	admin: "Home",
+	dashboard: "Dashboard",
 	desserts: "Desserts",
 	orders: "Orders",
 	customers: "Customers",

@@ -56,6 +56,8 @@ export const ordersTable = pgTable(
 		index("orders_created_at_idx").on(table.createdAt),
 		index("orders_is_deleted_idx").on(table.isDeleted),
 		index("orders_active_idx").on(table.isDeleted, table.createdAt),
+		// Performance: Index for filtering by status and ordering by date
+		index("orders_status_created_at_idx").on(table.status, table.createdAt),
 	],
 );
 
@@ -65,12 +67,20 @@ export const ordersRelations = relations(ordersTable, ({ many }) => ({
 	orderItems: many(orderItemsTable),
 }));
 
-export const orderItemsTable = pgTable("order_items", {
-	id: integer().primaryKey().generatedAlwaysAsIdentity(),
-	orderId: integer().notNull(),
-	dessertId: integer().notNull(),
-	quantity: integer().notNull(),
-});
+export const orderItemsTable = pgTable(
+	"order_items",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		orderId: integer().notNull(),
+		dessertId: integer().notNull(),
+		quantity: integer().notNull(),
+	},
+	(table) => [
+		// Performance: Indexes for foreign key joins
+		index("order_items_order_id_idx").on(table.orderId),
+		index("order_items_dessert_id_idx").on(table.dessertId),
+	],
+);
 
 export type OrderItem = typeof orderItemsTable.$inferSelect;
 

@@ -1,11 +1,32 @@
 "use server";
 
 import { performance } from "node:perf_hooks";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
+import { headers } from "next/headers";
 
 import { db } from "@/db";
 import { dessertsTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { sanitizeDescription } from "@/lib/sanitize";
+import {
+	batchUpdateDessertSequencesSchema,
+	createDessertSchema,
+	deleteDessertSchema,
+	toggleDessertSchema,
+	toggleOutOfStockSchema,
+	updateDessertSchema,
+	updateDessertSequenceSchema,
+} from "@/lib/validation";
+
+async function requireAuth() {
+	const session = await auth.api.getSession({ headers: await headers() });
+	if (!session?.session || !session?.user) {
+		throw new Error("Unauthorized");
+	}
+	return session.user;
+}
+
 import {
 	bulkUpdateSequences,
 	initializeSequence,
@@ -35,22 +56,35 @@ async function getDesserts({
 }
 
 export async function toggleDessert(id: number, enabled: boolean) {
+	await requireAuth();
+
+	// Validate input
+	const validated = toggleDessertSchema.parse({ id, enabled });
+
 	const start = performance.now();
 	await db
 		.update(dessertsTable)
-		.set({ enabled, isOutOfStock: enabled ? false : undefined })
-		.where(eq(dessertsTable.id, id));
+		.set({
+			enabled: validated.enabled,
+			isOutOfStock: validated.enabled ? false : undefined,
+		})
+		.where(eq(dessertsTable.id, validated.id));
 	const duration = performance.now() - start;
 	console.log(`toggleDessert: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts", "max");
 }
 
 export async function toggleOutOfStock(id: number, isOutOfStock: boolean) {
+	await requireAuth();
+
+	// Validate input
+	const validated = toggleOutOfStockSchema.parse({ id, isOutOfStock });
+
 	const start = performance.now();
 	await db
 		.update(dessertsTable)
-		.set({ isOutOfStock })
-		.where(eq(dessertsTable.id, id));
+		.set({ isOutOfStock: validated.isOutOfStock })
+		.where(eq(dessertsTable.id, validated.id));
 	const duration = performance.now() - start;
 	console.log(`toggleOutOfStock: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts", "max");
@@ -64,12 +98,23 @@ export const getCachedDesserts = unstable_cache(getDesserts, ["desserts"], {
 export async function createDessert(
 	data: Omit<Dessert, "id" | "sequence" | "isDeleted">,
 ) {
+	await requireAuth();
+
+	// Validate and sanitize input
+	const validated = createDessertSchema.parse(data);
+	const sanitizedDescription = validated.description
+		? sanitizeDescription(validated.description)
+		: null;
+
 	const start = performance.now();
 
 	// Create dessert in database
 	const [newDessert] = await db
 		.insert(dessertsTable)
-		.values(data)
+		.values({
+			...validated,
+			description: sanitizedDescription,
+		})
 		.returning({ id: dessertsTable.id });
 
 	// Initialize sequence in Redis
@@ -84,29 +129,42 @@ export async function updateDessert(
 	id: number,
 	data: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">,
 ) {
+	await requireAuth();
+
+	// Validate and sanitize input
+	const validated = updateDessertSchema.parse({ id, data });
+	const sanitizedDescription = validated.data.description
+		? sanitizeDescription(validated.data.description)
+		: null;
+
 	const start = performance.now();
 	await db
 		.update(dessertsTable)
 		.set({
-			name: data.name,
-			description: data.description,
-			price: data.price,
-			isOutOfStock: data.isOutOfStock,
-			hasUnlimitedStock: data.hasUnlimitedStock,
+			name: validated.data.name,
+			description: sanitizedDescription,
+			price: validated.data.price,
+			isOutOfStock: validated.data.isOutOfStock,
+			hasUnlimitedStock: validated.data.hasUnlimitedStock,
 		})
-		.where(eq(dessertsTable.id, id));
+		.where(eq(dessertsTable.id, validated.id));
 	const duration = performance.now() - start;
 	console.log(`updateDessert: ${duration.toFixed(2)}ms`);
 	revalidateTag("desserts", "max");
 }
 
 export async function deleteDessert(id: number) {
+	await requireAuth();
+
+	// Validate input
+	const { id: validatedId } = deleteDessertSchema.parse({ id });
+
 	const start = performance.now();
 
 	await db
 		.update(dessertsTable)
 		.set({ isDeleted: true })
-		.where(eq(dessertsTable.id, id));
+		.where(eq(dessertsTable.id, validatedId));
 
 	const duration = performance.now() - start;
 	console.log(`deleteDessert: ${duration.toFixed(2)}ms`);
@@ -114,10 +172,15 @@ export async function deleteDessert(id: number) {
 }
 
 export async function updateDessertSequence(id: number, newScore: number) {
+	await requireAuth();
+
+	// Validate input
+	const validated = updateDessertSequenceSchema.parse({ id, newScore });
+
 	const start = performance.now();
 
 	// Update sequence in Redis
-	await updateSequence(id, newScore);
+	await updateSequence(validated.id, validated.newScore);
 
 	const duration = performance.now() - start;
 	console.log(`updateDessertSequence: ${duration.toFixed(2)}ms`);
@@ -127,11 +190,18 @@ export async function updateDessertSequence(id: number, newScore: number) {
 export async function batchUpdateDessertSequences(
 	updates: Array<{ id: number; newScore: number }>,
 ) {
+	await requireAuth();
+
+	// Validate input
+	const { updates: validatedUpdates } = batchUpdateDessertSequencesSchema.parse(
+		{ updates },
+	);
+
 	const start = performance.now();
 
 	// Use bulk update with a single SQL query instead of multiple queries
 	await bulkUpdateSequences(
-		updates.map(({ id, newScore }) => ({ id, sequence: newScore })),
+		validatedUpdates.map(({ id, newScore }) => ({ id, sequence: newScore })),
 	);
 
 	const duration = performance.now() - start;
@@ -144,6 +214,7 @@ export async function batchUpdateDessertSequences(
 }
 
 export async function disableAllDesserts() {
+	await requireAuth();
 	const start = performance.now();
 	await db
 		.update(dessertsTable)
@@ -155,23 +226,24 @@ export async function disableAllDesserts() {
 }
 
 export async function moveDessertToTop(id: number) {
+	await requireAuth();
 	const start = performance.now();
 
-	// Get all enabled desserts ordered by sequence
-	const enabledDesserts = await db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-		),
-		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
-	});
+	// PERFORMANCE: Use aggregate query instead of loading all desserts
+	// Get min sequence with a single query
+	const result = await db
+		.select({
+			minSequence: sql<number>`MIN(${dessertsTable.sequence})`,
+		})
+		.from(dessertsTable)
+		.where(
+			and(
+				eq(dessertsTable.isDeleted, false),
+				eq(dessertsTable.enabled, true),
+			),
+		);
 
-	// Find the dessert to move
-	const dessertToMove = enabledDesserts.find((d) => d.id === id);
-	if (!dessertToMove || enabledDesserts.length <= 1) return;
-
-	// Get the minimum sequence value and subtract 1
-	const minSequence = Math.min(...enabledDesserts.map((d) => d.sequence));
+	const minSequence = result[0]?.minSequence ?? 0;
 	const newSequence = minSequence - 1;
 
 	await updateSequence(id, newSequence);
@@ -182,23 +254,24 @@ export async function moveDessertToTop(id: number) {
 }
 
 export async function moveDessertToBottom(id: number) {
+	await requireAuth();
 	const start = performance.now();
 
-	// Get all enabled desserts ordered by sequence
-	const enabledDesserts = await db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-		),
-		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
-	});
+	// PERFORMANCE: Use aggregate query instead of loading all desserts
+	// Get max sequence with a single query
+	const result = await db
+		.select({
+			maxSequence: sql<number>`MAX(${dessertsTable.sequence})`,
+		})
+		.from(dessertsTable)
+		.where(
+			and(
+				eq(dessertsTable.isDeleted, false),
+				eq(dessertsTable.enabled, true),
+			),
+		);
 
-	// Find the dessert to move
-	const dessertToMove = enabledDesserts.find((d) => d.id === id);
-	if (!dessertToMove || enabledDesserts.length <= 1) return;
-
-	// Get the maximum sequence value and add 1
-	const maxSequence = Math.max(...enabledDesserts.map((d) => d.sequence));
+	const maxSequence = result[0]?.maxSequence ?? 0;
 	const newSequence = maxSequence + 1;
 
 	await updateSequence(id, newSequence);

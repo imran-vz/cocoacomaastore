@@ -5,6 +5,7 @@ import {
 	IconDashboard,
 	IconDatabase,
 	IconFileDescription,
+	IconShoppingCart,
 	IconUsers,
 } from "@tabler/icons-react";
 import Image from "next/image";
@@ -28,6 +29,7 @@ const data = {
 	navMain: [
 		{ title: "Home", url: "/admin", icon: IconDashboard },
 		{ title: "Dashboard", url: "/admin/dashboard", icon: IconChartBar },
+		{ title: "Orders", url: "/admin/orders", icon: IconShoppingCart },
 		{ title: "Desserts", url: "/admin/desserts", icon: IconFileDescription },
 		{ title: "Managers", url: "/admin/managers", icon: IconUsers },
 		{ title: "UPI Accounts", url: "/admin/upi", icon: IconDatabase },

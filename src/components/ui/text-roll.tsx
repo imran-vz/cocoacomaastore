@@ -55,12 +55,13 @@ export function TextRoll({
 			{letters.map((letter, i) => {
 				return (
 					<span
+						// biome-ignore lint/suspicious/noArrayIndexKey: letter is text with no reliable id
 						key={i}
-						className="relative inline-block [perspective:10000px] [transform-style:preserve-3d] [width:auto]"
+						className="relative inline-block perspective-[10000px] transform-3d w-auto"
 						aria-hidden="true"
 					>
 						<motion.span
-							className="absolute inline-block [backface-visibility:hidden] [transform-origin:50%_25%]"
+							className="absolute inline-block backface-hidden origin-[50%_25%]"
 							initial={
 								variants?.enter?.initial ?? defaultVariants.enter.initial
 							}
@@ -76,7 +77,7 @@ export function TextRoll({
 							{letter === " " ? "\u00A0" : letter}
 						</motion.span>
 						<motion.span
-							className="absolute inline-block [backface-visibility:hidden] [transform-origin:50%_100%]"
+							className="absolute inline-block backface-hidden origin-[50%_100%]"
 							initial={variants?.exit?.initial ?? defaultVariants.exit.initial}
 							animate={variants?.exit?.animate ?? defaultVariants.exit.animate}
 							transition={{

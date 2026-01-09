@@ -17,8 +17,8 @@ import {
 import type { Dessert } from "@/lib/types";
 import {
 	getCachedTodayInventory,
-	upsertTodayInventory,
 	type TodayInventoryRow,
+	upsertTodayInventory,
 } from "./actions";
 
 function toInventoryMap(rows: TodayInventoryRow[]) {
@@ -110,9 +110,7 @@ export default function InventoryPage({
 					<TableBody>
 						{desserts.map((dessert) => (
 							<TableRow key={dessert.id}>
-								<TableCell className="font-medium">
-									{dessert.name}
-								</TableCell>
+								<TableCell className="font-medium">{dessert.name}</TableCell>
 								<TableCell>
 									<Input
 										type="number"

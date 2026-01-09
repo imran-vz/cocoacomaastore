@@ -1,11 +1,22 @@
 "use server";
 
 import { performance } from "node:perf_hooks";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
+import { headers } from "next/headers";
 
 import { db } from "@/db";
 import { dailyDessertInventoryTable } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { upsertInventorySchema } from "@/lib/validation";
+
+async function requireAuth() {
+	const session = await auth.api.getSession({ headers: await headers() });
+	if (!session?.session || !session?.user) {
+		throw new Error("Unauthorized");
+	}
+	return session.user;
+}
 
 export type TodayInventoryRow = {
 	dessertId: number;
@@ -52,36 +63,44 @@ export async function getCachedTodayInventory() {
 export async function upsertTodayInventory(
 	updates: Array<{ dessertId: number; quantity: number }>,
 ) {
+	await requireAuth();
+
+	// Validate input
+	const { updates: validatedUpdates } = upsertInventorySchema.parse({
+		updates,
+	});
+
 	const start = performance.now();
 	const day = getStartOfDay();
 	const now = new Date();
 
-	await db.transaction(async (tx) => {
-		for (const update of updates) {
-			const quantity = Number.isFinite(update.quantity)
-				? Math.max(0, Math.floor(update.quantity))
-				: 0;
+	// PERFORMANCE: Bulk upsert in single query instead of loop
+	// Prepare all values first
+	const values = validatedUpdates.map((update) => ({
+		day,
+		dessertId: update.dessertId,
+		quantity: Number.isFinite(update.quantity)
+			? Math.max(0, Math.floor(update.quantity))
+			: 0,
+		updatedAt: now,
+	}));
 
-			await tx
-				.insert(dailyDessertInventoryTable)
-				.values({
-					day,
-					dessertId: update.dessertId,
-					quantity,
-					updatedAt: now,
-				})
-				.onConflictDoUpdate({
-					target: [
-						dailyDessertInventoryTable.day,
-						dailyDessertInventoryTable.dessertId,
-					],
-					set: {
-						quantity,
-						updatedAt: now,
-					},
-				});
-		}
-	});
+	// Single bulk insert/update query (much faster than N queries)
+	if (values.length > 0) {
+		await db
+			.insert(dailyDessertInventoryTable)
+			.values(values)
+			.onConflictDoUpdate({
+				target: [
+					dailyDessertInventoryTable.day,
+					dailyDessertInventoryTable.dessertId,
+				],
+				set: {
+					quantity: sql`excluded.quantity`,
+					updatedAt: sql`excluded.updated_at`,
+				},
+			});
+	}
 
 	const duration = performance.now() - start;
 	console.log(`upsertTodayInventory: ${duration.toFixed(2)}ms`);

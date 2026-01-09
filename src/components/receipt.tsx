@@ -44,10 +44,6 @@ export function Receipt({
 		}
 	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
 
-	const selectedAccount = upiAccounts.find(
-		(account) => account.id.toString() === selectedUpiId,
-	);
-
 	const handleSaveOrder = async () => {
 		if (cart.length === 0) return;
 		if (isSavingOrder) return;

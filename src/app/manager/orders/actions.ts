@@ -3,6 +3,7 @@
 import { performance } from "node:perf_hooks";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import {
 	type Dessert,
@@ -13,12 +14,23 @@ import {
 	orderItemsTable,
 	ordersTable,
 } from "@/db/schema";
+import { auth } from "@/lib/auth";
+import { sanitizeCustomerName } from "@/lib/sanitize";
 import type { CartItem } from "@/lib/types";
+import { createOrderSchema, deleteOrderSchema } from "@/lib/validation";
 
 interface CreateOrderData {
 	customerName: string;
 	items: CartItem[];
 	deliveryCost: string;
+}
+
+async function requireAuth() {
+	const session = await auth.api.getSession({ headers: await headers() });
+	if (!session?.session || !session?.user) {
+		throw new Error("Unauthorized");
+	}
+	return session.user;
 }
 
 function getStartOfDay(date: Date = new Date()) {
@@ -87,13 +99,19 @@ export async function getCachedOrders() {
 }
 
 export async function createOrder(data: CreateOrderData) {
+	const user = await requireAuth();
+
+	// Validate and sanitize input
+	const validated = createOrderSchema.parse(data);
+	const sanitizedCustomerName = sanitizeCustomerName(validated.customerName);
+
 	const start = performance.now();
 	const day = new Date();
 	day.setHours(0, 0, 0, 0);
 	const now = new Date();
 
 	// Filter out items with unlimited stock - they don't need inventory deduction
-	const itemsNeedingInventory = data.items.filter(
+	const itemsNeedingInventory = validated.items.filter(
 		(item) => !item.hasUnlimitedStock,
 	);
 
@@ -109,9 +127,42 @@ export async function createOrder(data: CreateOrderData) {
 			newQuantity: number;
 		}[] = [];
 
-		// Bulk inventory deduction - single UPDATE with RETURNING for audit data
+		// Atomic inventory deduction with row-level locking
 		if (itemsNeedingInventory.length > 0) {
-			// Build the CASE WHEN for quantity deduction
+			// STEP 1: Lock inventory rows with SELECT FOR UPDATE
+			// This prevents concurrent transactions from reading/modifying these rows
+			const lockedInventory = await tx
+				.select({
+					dessertId: dailyDessertInventoryTable.dessertId,
+					quantity: dailyDessertInventoryTable.quantity,
+				})
+				.from(dailyDessertInventoryTable)
+				.where(
+					and(
+						eq(dailyDessertInventoryTable.day, day),
+						sql`${dailyDessertInventoryTable.dessertId} IN (${sql.join(dessertIds, sql`, `)})`,
+					),
+				)
+				.for("update");
+
+			// Build map of current stock levels
+			const stockMap = new Map(
+				lockedInventory.map((row) => [row.dessertId, row.quantity]),
+			);
+
+			// STEP 2: Validate stock levels while rows are locked
+			// This check is now atomic - no other transaction can modify stock
+			for (const item of itemsNeedingInventory) {
+				const currentStock = stockMap.get(item.id) ?? 0;
+				if (currentStock < item.quantity) {
+					throw new Error(
+						`Insufficient stock for ${item.name}. Available: ${currentStock}, Requested: ${item.quantity}`,
+					);
+				}
+			}
+
+			// STEP 3: Perform atomic update with CASE WHEN
+			// Rows are still locked, so this update is guaranteed to succeed
 			const caseStatements = itemsNeedingInventory
 				.map(
 					(item) =>
@@ -119,15 +170,6 @@ export async function createOrder(data: CreateOrderData) {
 				)
 				.reduce((acc, curr) => sql`${acc} ${curr}`);
 
-			// Build the minimum quantity check for each item
-			const minQuantityChecks = itemsNeedingInventory
-				.map(
-					(item) =>
-						sql`(${dailyDessertInventoryTable.dessertId} = ${item.id} AND ${dailyDessertInventoryTable.quantity} >= ${item.quantity})`,
-				)
-				.reduce((acc, curr) => sql`${acc} OR ${curr}`);
-
-			// Single UPDATE query - returns new quantity, we calculate previous from it
 			const updated = await tx
 				.update(dailyDessertInventoryTable)
 				.set({
@@ -138,7 +180,6 @@ export async function createOrder(data: CreateOrderData) {
 					and(
 						eq(dailyDessertInventoryTable.day, day),
 						sql`${dailyDessertInventoryTable.dessertId} IN (${sql.join(dessertIds, sql`, `)})`,
-						sql`(${minQuantityChecks})`,
 					),
 				)
 				.returning({
@@ -146,11 +187,13 @@ export async function createOrder(data: CreateOrderData) {
 					newQuantity: dailyDessertInventoryTable.quantity,
 				});
 
-			// Check if all items were updated
+			// Verify all updates succeeded (should always pass after lock validation)
 			const updatedIds = new Set(updated.map((u) => u.dessertId));
 			for (const item of itemsNeedingInventory) {
 				if (!updatedIds.has(item.id)) {
-					throw new Error(`Insufficient stock for ${item.name}`);
+					throw new Error(
+						`Failed to update inventory for ${item.name} (unexpected error)`,
+					);
 				}
 			}
 
@@ -167,23 +210,23 @@ export async function createOrder(data: CreateOrderData) {
 		const [order] = await tx
 			.insert(ordersTable)
 			.values({
-				customerName: data.customerName,
+				customerName: sanitizedCustomerName,
 				createdAt: now,
 				status: "completed",
-				total: data.items
+				total: validated.items
 					.reduce(
 						(acc, item) => acc + item.quantity * item.price,
-						Number.parseFloat(data.deliveryCost),
+						Number.parseFloat(validated.deliveryCost),
 					)
 					.toFixed(2),
-				deliveryCost: data.deliveryCost,
+				deliveryCost: validated.deliveryCost,
 			})
 			.returning();
 
 		// Bulk insert order items and audit log in parallel
 		const insertPromises: Promise<unknown>[] = [
 			tx.insert(orderItemsTable).values(
-				data.items.map((item) => ({
+				validated.items.map((item) => ({
 					orderId: order.id,
 					dessertId: item.id,
 					quantity: item.quantity,
@@ -201,6 +244,7 @@ export async function createOrder(data: CreateOrderData) {
 						previousQuantity: update.previousQuantity,
 						newQuantity: update.newQuantity,
 						orderId: order.id,
+						userId: user.id,
 						createdAt: now,
 					})),
 				),
@@ -218,11 +262,16 @@ export async function createOrder(data: CreateOrderData) {
 }
 
 export async function deleteOrder(orderId: number) {
+	await requireAuth();
+
+	// Validate input
+	const { orderId: validatedOrderId } = deleteOrderSchema.parse({ orderId });
+
 	const start = performance.now();
 	await db
 		.update(ordersTable)
 		.set({ isDeleted: true })
-		.where(eq(ordersTable.id, orderId));
+		.where(eq(ordersTable.id, validatedOrderId));
 	const duration = performance.now() - start;
 	console.log(`deleteOrder: ${duration}ms`);
 	revalidateTag("orders", "max");

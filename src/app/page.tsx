@@ -16,4 +16,3 @@ export default async function RootPage() {
 
 	redirect("/manager", RedirectType.replace);
 }
-  
