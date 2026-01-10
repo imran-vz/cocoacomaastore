@@ -169,7 +169,7 @@ export async function createCombo(data: {
 	const duration = performance.now() - start;
 	console.log(`createCombo: ${duration.toFixed(2)}ms`);
 
-	revalidateTag("combos");
+	revalidateTag("combos", "max");
 	return newCombo;
 }
 
@@ -202,7 +202,7 @@ export async function updateCombo(
 	const duration = performance.now() - start;
 	console.log(`updateCombo: ${duration.toFixed(2)}ms`);
 
-	revalidateTag("combos");
+	revalidateTag("combos", "max");
 }
 
 export async function deleteCombo(id: number) {
@@ -220,7 +220,7 @@ export async function deleteCombo(id: number) {
 	const duration = performance.now() - start;
 	console.log(`deleteCombo: ${duration.toFixed(2)}ms`);
 
-	revalidateTag("combos");
+	revalidateTag("combos", "max");
 }
 
 export async function toggleCombo(id: number, enabled: boolean) {
@@ -236,7 +236,7 @@ export async function toggleCombo(id: number, enabled: boolean) {
 	const duration = performance.now() - start;
 	console.log(`toggleCombo: ${duration.toFixed(2)}ms`);
 
-	revalidateTag("combos");
+	revalidateTag("combos", "max");
 }
 
 export async function updateComboItems(
@@ -276,7 +276,7 @@ export async function updateComboItems(
 	const duration = performance.now() - start;
 	console.log(`updateComboItems: ${duration.toFixed(2)}ms`);
 
-	revalidateTag("combos");
+	revalidateTag("combos", "max");
 }
 
 export type BaseDessert = Awaited<ReturnType<typeof getBaseDesserts>>[number];
