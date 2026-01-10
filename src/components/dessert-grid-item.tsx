@@ -2,7 +2,7 @@
 
 import { motion, useAnimation } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -55,87 +55,99 @@ export function DessertGridItem({
 	return (
 		<motion.div
 			key={dessert.id}
-			className="relative flex flex-col gap-2 select-none"
-			initial={{ opacity: 0, y: 20 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0, y: -20 }}
-			transition={{ duration: 0.3 }}
+			className="relative h-full select-none"
+			initial={{ opacity: 0, scale: 0.95 }}
+			animate={{ opacity: 1, scale: 1 }}
+			exit={{ opacity: 0, scale: 0.95 }}
+			transition={{ duration: 0.2 }}
 			layout
 		>
-			<motion.div
-				whileTap={{ scale: 0.9 }}
-				transition={{ type: "spring", stiffness: 400, damping: 17 }}
-			>
-				<Button
-					asChild
-					variant={"outline"}
-					onClick={handleClick}
-					disabled={isUnavailable}
-					className="py-2 h-auto items-start hover:shadow-md transition-all duration-200 hover:scale-[1.02] disabled:hover:scale-100 w-full flex-1 relative"
-				>
-					<Card className="w-full rounded-b-none shadow-none py-2 px-3 gap-2 cursor-pointer overflow-hidden">
+			<Card className="h-full flex flex-col p-0 gap-0 overflow-hidden border-2 hover:border-primary/20 transition-colors">
+				<div className="relative flex-1 flex flex-col">
+					{/* Clickable Area for Add to Cart */}
+					<button
+						type="button"
+						onClick={handleClick}
+						disabled={isUnavailable}
+						className={cn(
+							"flex-1 flex flex-col text-left p-4 gap-2 transition-colors hover:bg-muted/50 active:bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+							isUnavailable && "cursor-not-allowed opacity-60 hover:bg-transparent"
+						)}
+					>
 						{/* Green slide overlay */}
 						<motion.div
-							className="absolute inset-0 bg-green-500/30 pointer-events-none"
+							className="absolute inset-0 bg-green-500/20 pointer-events-none z-0"
 							initial={{ x: "100%" }}
 							animate={overlayControls}
-							style={{ zIndex: 0 }}
 						/>
-						<CardContent className="px-0 w-full relative z-10">
-							<div className="flex flex-col items-start text-left">
-								<h4
-									className={`font-medium text-sm text-primary capitalize line-clamp-2 mb-1 max-w-[90%] truncate ${isUnavailable ? "line-through text-muted-foreground" : ""}`}
-								>
+						
+						<div className="relative z-10 w-full">
+							<div className="flex justify-between items-start gap-2 mb-1">
+								<h4 className={cn(
+									"font-semibold text-base leading-tight line-clamp-2",
+									isUnavailable && "line-through text-muted-foreground"
+								)}>
 									{dessert.name}
 								</h4>
-								{dessert.description && (
-									<p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-										{dessert.description}
-									</p>
-								)}
-								<div className="flex items-center gap-2 w-full">
-									<p
-										className={`text-sm font-semibold ${isUnavailable ? "text-muted-foreground" : "text-green-700"}`}
-									>
-										₹{dessert.price.toFixed(2)}
-									</p>
-									{isUnavailable ? (
-										<span className="text-xs font-medium px-2 py-1 rounded-full bg-orange-100 text-orange-700 whitespace-nowrap">
-											Out of Stock
-										</span>
-									) : inventoryQty !== undefined ? (
-										<span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700 whitespace-nowrap">
-											{inventoryQty} left
-										</span>
-									) : null}
-								</div>
+								<span className={cn(
+									"shrink-0 font-bold text-base",
+									isUnavailable ? "text-muted-foreground" : "text-primary"
+								)}>
+									₹{dessert.price}
+								</span>
 							</div>
-						</CardContent>
-					</Card>
-				</Button>
 
-				{/* Stock toggle button */}
-				<Button
-					size="sm"
-					variant={dessert.isOutOfStock ? "secondary" : "outline"}
-					onClick={(e) => onToggleStock(e, dessert)}
-					disabled={isStockToggleLoading}
-					className={cn(
-						"w-full text-xs h-8 rounded-t-none",
-						dessert.isOutOfStock
-							? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
-							: "border-gray-200",
-					)}
-				>
-					{isStockToggleLoading ? (
-						<span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent" />
-					) : dessert.isOutOfStock ? (
-						"Back In Stock"
-					) : (
-						"Mark Out of Stock"
-					)}
-				</Button>
-			</motion.div>
+							{dessert.description && (
+								<p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-snug">
+									{dessert.description}
+								</p>
+							)}
+
+							<div className="mt-auto flex items-center gap-2">
+								{isUnavailable ? (
+									<span className="inline-flex items-center px-2 py-1 rounded-md bg-destructive/10 text-destructive text-xs font-medium">
+										Out of Stock
+									</span>
+								) : inventoryQty !== undefined ? (
+									<span className={cn(
+										"inline-flex items-center px-2 py-1 rounded-md text-xs font-medium",
+										inventoryQty < 5 
+											? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" 
+											: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+									)}>
+										{inventoryQty} left
+									</span>
+								) : (
+									<span className="inline-flex items-center px-2 py-1 rounded-md bg-secondary text-secondary-foreground text-xs font-medium">
+										Unlimited
+									</span>
+								)}
+							</div>
+						</div>
+					</button>
+				</div>
+
+				{/* Stock Toggle Footer */}
+				<div className="border-t bg-muted/30 p-1">
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={(e) => onToggleStock(e, dessert)}
+						disabled={isStockToggleLoading}
+						className={cn(
+							"w-full h-8 text-xs font-medium hover:bg-white dark:hover:bg-zinc-800 transition-colors",
+							dessert.isOutOfStock 
+								? "text-destructive hover:text-destructive" 
+								: "text-muted-foreground hover:text-foreground"
+						)}
+					>
+						{isStockToggleLoading ? (
+							<span className="h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent mr-2" />
+						) : null}
+						{dessert.isOutOfStock ? "Set as Available" : "Mark as Unavailable"}
+					</Button>
+				</div>
+			</Card>
 		</motion.div>
 	);
 }

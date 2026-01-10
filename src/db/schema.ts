@@ -19,6 +19,9 @@ export const dessertsTable = pgTable(
 		name: varchar({ length: 255 }).notNull(),
 		price: integer().notNull(),
 		description: varchar({ length: 255 }),
+		kind: varchar("kind", { length: 20, enum: ["base", "modifier"] })
+			.notNull()
+			.default("base"),
 		isDeleted: boolean().notNull().default(false),
 		enabled: boolean().notNull().default(true),
 		isOutOfStock: boolean().notNull().default(false),
@@ -29,6 +32,7 @@ export const dessertsTable = pgTable(
 		index("desserts_is_deleted_idx").on(table.isDeleted),
 		index("desserts_enabled_idx").on(table.enabled),
 		index("desserts_sequence_idx").on(table.sequence),
+		index("desserts_kind_idx").on(table.kind),
 		index("desserts_active_idx").on(
 			table.isDeleted,
 			table.enabled,
@@ -38,6 +42,88 @@ export const dessertsTable = pgTable(
 );
 
 export type Dessert = typeof dessertsTable.$inferSelect;
+
+// ============================================================================
+// Dessert Combos - preset templates with base dessert + modifiers
+// ============================================================================
+
+export const dessertCombosTable = pgTable(
+	"dessert_combos",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		name: varchar({ length: 255 }).notNull(),
+		baseDessertId: integer()
+			.notNull()
+			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+		overridePrice: integer(), // nullable: if set, use this instead of computed price
+		enabled: boolean().notNull().default(true),
+		isDeleted: boolean().notNull().default(false),
+		sequence: integer().notNull().default(0),
+		createdAt: timestamp().notNull().defaultNow(),
+		updatedAt: timestamp().notNull().defaultNow(),
+	},
+	(table) => [
+		index("dessert_combos_base_dessert_idx").on(table.baseDessertId),
+		index("dessert_combos_enabled_idx").on(table.enabled),
+		index("dessert_combos_is_deleted_idx").on(table.isDeleted),
+		index("dessert_combos_sequence_idx").on(table.sequence),
+	],
+);
+
+export type DessertCombo = typeof dessertCombosTable.$inferSelect;
+
+export const dessertCombosRelations = relations(
+	dessertCombosTable,
+	({ one, many }) => ({
+		baseDessert: one(dessertsTable, {
+			fields: [dessertCombosTable.baseDessertId],
+			references: [dessertsTable.id],
+		}),
+		items: many(dessertComboItemsTable),
+	}),
+);
+
+// ============================================================================
+// Dessert Combo Items - modifiers included in a combo
+// ============================================================================
+
+export const dessertComboItemsTable = pgTable(
+	"dessert_combo_items",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		comboId: integer()
+			.notNull()
+			.references(() => dessertCombosTable.id, { onDelete: "cascade" }),
+		dessertId: integer()
+			.notNull()
+			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+		quantity: integer().notNull().default(1), // quantity of this modifier per combo unit
+	},
+	(table) => [
+		index("dessert_combo_items_combo_idx").on(table.comboId),
+		index("dessert_combo_items_dessert_idx").on(table.dessertId),
+		uniqueIndex("dessert_combo_items_unique").on(
+			table.comboId,
+			table.dessertId,
+		),
+	],
+);
+
+export type DessertComboItem = typeof dessertComboItemsTable.$inferSelect;
+
+export const dessertComboItemsRelations = relations(
+	dessertComboItemsTable,
+	({ one }) => ({
+		combo: one(dessertCombosTable, {
+			fields: [dessertComboItemsTable.comboId],
+			references: [dessertCombosTable.id],
+		}),
+		dessert: one(dessertsTable, {
+			fields: [dessertComboItemsTable.dessertId],
+			references: [dessertsTable.id],
+		}),
+	}),
+);
 
 export const ordersTable = pgTable(
 	"orders",
@@ -74,6 +160,7 @@ export const orderItemsTable = pgTable(
 		orderId: integer().notNull(),
 		dessertId: integer().notNull(),
 		quantity: integer().notNull(),
+		unitPrice: numeric({ precision: 10, scale: 2 }).notNull().default("0.00"), // snapshotted price per unit at order time
 	},
 	(table) => [
 		// Performance: Indexes for foreign key joins
@@ -84,16 +171,62 @@ export const orderItemsTable = pgTable(
 
 export type OrderItem = typeof orderItemsTable.$inferSelect;
 
-export const orderItemsRelations = relations(orderItemsTable, ({ one }) => ({
-	order: one(ordersTable, {
-		fields: [orderItemsTable.orderId],
-		references: [ordersTable.id],
+export const orderItemsRelations = relations(
+	orderItemsTable,
+	({ one, many }) => ({
+		order: one(ordersTable, {
+			fields: [orderItemsTable.orderId],
+			references: [ordersTable.id],
+		}),
+		dessert: one(dessertsTable, {
+			fields: [orderItemsTable.dessertId],
+			references: [dessertsTable.id],
+		}),
+		modifiers: many(orderItemModifiersTable),
 	}),
-	dessert: one(dessertsTable, {
-		fields: [orderItemsTable.dessertId],
-		references: [dessertsTable.id],
+);
+
+// ============================================================================
+// Order Item Modifiers - persists modifier selections per order item
+// ============================================================================
+
+export const orderItemModifiersTable = pgTable(
+	"order_item_modifiers",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		orderItemId: integer()
+			.notNull()
+			.references(() => orderItemsTable.id, { onDelete: "cascade" }),
+		dessertId: integer()
+			.notNull()
+			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+		quantity: integer().notNull().default(1), // quantity of this modifier per unit
+	},
+	(table) => [
+		index("order_item_modifiers_order_item_idx").on(table.orderItemId),
+		index("order_item_modifiers_dessert_idx").on(table.dessertId),
+		uniqueIndex("order_item_modifiers_unique").on(
+			table.orderItemId,
+			table.dessertId,
+		),
+	],
+);
+
+export type OrderItemModifier = typeof orderItemModifiersTable.$inferSelect;
+
+export const orderItemModifiersRelations = relations(
+	orderItemModifiersTable,
+	({ one }) => ({
+		orderItem: one(orderItemsTable, {
+			fields: [orderItemModifiersTable.orderItemId],
+			references: [orderItemsTable.id],
+		}),
+		dessert: one(dessertsTable, {
+			fields: [orderItemModifiersTable.dessertId],
+			references: [dessertsTable.id],
+		}),
 	}),
-}));
+);
 
 export const dailyDessertInventoryTable = pgTable(
 	"daily_dessert_inventory",

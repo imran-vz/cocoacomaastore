@@ -3,12 +3,14 @@
 import { IconCake } from "@tabler/icons-react";
 import { useCallback, useEffect, useTransition } from "react";
 import { toast } from "sonner";
+import type { ModifierDessert } from "@/app/combos/actions";
 import {
 	batchUpdateDessertSequences,
 	toggleOutOfStock,
 } from "@/app/desserts/actions";
-import type { Dessert } from "@/lib/types";
+import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { useDessertStore } from "@/store/dessert-store";
+import { ComboGrid } from "./combo-grid";
 import { DessertCard } from "./dessert-card";
 import { DessertGrid } from "./dessert-grid";
 import { DessertListHeader } from "./dessert-list-header";
@@ -24,9 +26,18 @@ import {
 interface DessertListProps {
 	desserts: Dessert[];
 	addToCart: (dessert: Dessert) => void;
+	combos?: ComboWithDetails[];
+	addComboToCart?: (combo: ComboWithDetails) => void;
+	modifiers?: ModifierDessert[];
 }
 
-export function DessertList({ desserts, addToCart }: DessertListProps) {
+export function DessertList({
+	desserts,
+	addToCart,
+	combos = [],
+	addComboToCart,
+	modifiers: _modifiers = [],
+}: DessertListProps) {
 	const {
 		searchQuery,
 		isEditMode,
@@ -175,8 +186,7 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 
 	const isUnavailable = (dessert: Dessert) =>
 		!dessert.hasUnlimitedStock &&
-		(dessert.inventoryQuantity === undefined ||
-			dessert.inventoryQuantity <= 0);
+		(dessert.inventoryQuantity === undefined || dessert.inventoryQuantity <= 0);
 
 	// Separate in-stock and out-of-stock desserts
 	const inStockDesserts = filteredDesserts.filter((d) => !isUnavailable(d));
@@ -210,6 +220,16 @@ export function DessertList({ desserts, addToCart }: DessertListProps) {
 				</div>
 			) : (
 				<>
+					{/* Combos section */}
+					{combos.length > 0 && addComboToCart && (
+						<div className="mb-6">
+							<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+								Combos
+							</h2>
+							<ComboGrid combos={combos} onAddComboToCart={addComboToCart} />
+						</div>
+					)}
+
 					{/* In-stock desserts */}
 					<DessertGrid
 						desserts={inStockDesserts}

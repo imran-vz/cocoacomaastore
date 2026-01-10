@@ -2,15 +2,15 @@
 
 import { AnimatePresence } from "framer-motion";
 
-import type { CartItem } from "@/lib/types";
-import { QuantityControls } from "./cart-quantity-controls";
+import type { CartLine } from "@/lib/types";
+import { CartLineControls } from "./cart-quantity-controls";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 
 interface CartProps {
-	cart: CartItem[];
-	updateQuantity: (dessertId: number, quantity: number) => void;
-	removeFromCart: (dessertId: number) => void;
+	cart: CartLine[];
+	updateQuantity: (cartLineId: string, quantity: number) => void;
+	removeFromCart: (cartLineId: string) => void;
 	// biome-ignore lint/suspicious/noExplicitAny: TanStack form has complex generics
 	form: any;
 }
@@ -22,28 +22,28 @@ export function Cart({
 	form,
 }: CartProps) {
 	return (
-		<div className="flex flex-col">
-			<form className="space-y-3">
-				<div className="space-y-3">
+		<div className="flex flex-col h-full">
+			<form className="space-y-4 flex flex-col h-full">
+				<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 					<form.Field name="name">
 						{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
 						{(field: any) => (
-							<div className="space-y-2">
+							<div className="space-y-1.5">
 								<Label
 									htmlFor={field.name}
 									className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
 								>
-									Customer Name
+									Customer
 								</Label>
 								<Input
 									id={field.name}
-									placeholder="Enter name"
+									placeholder="Guest"
 									value={field.state.value}
 									onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
 										field.handleChange(e.target.value)
 									}
 									onBlur={field.handleBlur}
-									className="h-10 rounded-lg border-neutral-200 focus:ring-2 focus:ring-offset-0 placeholder:text-neutral-400 text-sm"
+									className="h-9"
 								/>
 							</div>
 						)}
@@ -52,12 +52,12 @@ export function Cart({
 					<form.Field name="deliveryCost">
 						{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
 						{(field: any) => (
-							<div className="space-y-2">
+							<div className="space-y-1.5">
 								<Label
 									htmlFor={field.name}
 									className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
 								>
-									Delivery Cost (₹)
+									Delivery (₹)
 								</Label>
 								<Input
 									id={field.name}
@@ -70,23 +70,32 @@ export function Cart({
 										field.handleChange(e.target.value)
 									}
 									onBlur={field.handleBlur}
-									className="h-10 rounded-lg border-neutral-200 focus:ring-2 focus:ring-offset-0 placeholder:text-neutral-400 text-sm"
+									className="h-9"
 								/>
 							</div>
 						)}
 					</form.Field>
 				</div>
 
-				<div className="max-h-72 overflow-y-auto overflow-x-hidden">
-					<AnimatePresence mode="popLayout">
-						{cart.map((item) => (
-							<QuantityControls
-								key={item.id}
-								item={item}
-								updateQuantity={updateQuantity}
-								removeFromCart={removeFromCart}
-							/>
-						))}
+				<div className="flex-1 min-h-[300px] max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-md p-1">
+					<AnimatePresence mode="popLayout" initial={false}>
+						{cart.length === 0 ? (
+							<div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center border-2 border-dashed rounded-lg">
+								<p className="text-sm">Cart is empty</p>
+								<p className="text-xs mt-1 opacity-70">Add items to start an order</p>
+							</div>
+						) : (
+							<div className="divide-y">
+								{cart.map((line) => (
+									<CartLineControls
+										key={line.cartLineId}
+										line={line}
+										updateQuantity={updateQuantity}
+										removeFromCart={removeFromCart}
+									/>
+								))}
+							</div>
+						)}
 					</AnimatePresence>
 				</div>
 			</form>

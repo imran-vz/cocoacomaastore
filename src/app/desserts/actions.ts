@@ -144,6 +144,7 @@ export async function updateDessert(
 			name: validated.data.name,
 			description: sanitizedDescription,
 			price: validated.data.price,
+			kind: validated.data.kind,
 			isOutOfStock: validated.data.isOutOfStock,
 			hasUnlimitedStock: validated.data.hasUnlimitedStock,
 		})
@@ -237,10 +238,7 @@ export async function moveDessertToTop(id: number) {
 		})
 		.from(dessertsTable)
 		.where(
-			and(
-				eq(dessertsTable.isDeleted, false),
-				eq(dessertsTable.enabled, true),
-			),
+			and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true)),
 		);
 
 	const minSequence = result[0]?.minSequence ?? 0;
@@ -265,10 +263,7 @@ export async function moveDessertToBottom(id: number) {
 		})
 		.from(dessertsTable)
 		.where(
-			and(
-				eq(dessertsTable.isDeleted, false),
-				eq(dessertsTable.enabled, true),
-			),
+			and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true)),
 		);
 
 	const maxSequence = result[0]?.maxSequence ?? 0;

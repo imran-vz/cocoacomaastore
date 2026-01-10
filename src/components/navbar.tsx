@@ -2,6 +2,7 @@
 
 import {
 	IconCakeRoll,
+	IconComponents,
 	IconFileDescription,
 	IconLogout,
 } from "@tabler/icons-react";
@@ -74,11 +75,18 @@ export default function Navbar() {
 								</Link>
 							</DropdownMenuItem>
 							<DropdownMenuItem asChild>
+								<Link href="/manager/combos" className="cursor-pointer">
+									<IconComponents />
+									Combos
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
 								<Link href="/manager/orders" className="cursor-pointer">
 									<IconFileDescription />
 									Orders
 								</Link>
 							</DropdownMenuItem>
+
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								variant="destructive"

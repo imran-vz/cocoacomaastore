@@ -43,7 +43,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { Dessert } from "@/lib/types";
+import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { upsertInventoryWithAudit } from "./actions";
 
@@ -571,7 +571,7 @@ export default function ManageDessertsInventory({
 					<h1 className="text-2xl font-bold">Desserts & Inventory</h1>
 					<p className="text-sm text-muted-foreground">Today: {todayLabel}</p>
 				</div>
-				<div className="flex gap-2">
+				<div className="flex flex-wrap gap-2">
 					<Button
 						variant="outline"
 						onClick={handleDisableAll}
@@ -629,15 +629,15 @@ export default function ManageDessertsInventory({
 					<h3 className="text-sm font-semibold mb-2 text-green-700">
 						Available ({enabledDesserts.length})
 					</h3>
-					<div className="border rounded-lg overflow-hidden">
+					<div className="border rounded-lg overflow-hidden bg-white shadow-sm">
 						<Table>
 							<TableHeader>
-								<TableRow>
-									<TableHead className="w-25">Order</TableHead>
+								<TableRow className="bg-muted/50">
+									<TableHead className="w-16">#</TableHead>
 									<TableHead>Dessert</TableHead>
-									<TableHead className="w-25">Stock</TableHead>
-									<TableHead className="w-12">Edit</TableHead>
-									<TableHead className="w-20">Enabled</TableHead>
+									<TableHead className="w-24 text-center">Stock</TableHead>
+									<TableHead className="w-16 text-center">Edit</TableHead>
+									<TableHead className="w-20 text-center">Status</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -661,15 +661,15 @@ export default function ManageDessertsInventory({
 					<h3 className="text-sm font-semibold mb-2 text-red-700">
 						Disabled ({disabledDesserts.length})
 					</h3>
-					<div className="border rounded-lg overflow-hidden">
+					<div className="border rounded-lg overflow-hidden bg-white shadow-sm opacity-80">
 						<Table>
 							<TableHeader>
-								<TableRow>
-									<TableHead className="w-25">Order</TableHead>
+								<TableRow className="bg-muted/50">
+									<TableHead className="w-16">#</TableHead>
 									<TableHead>Dessert</TableHead>
-									<TableHead className="w-25">Stock</TableHead>
-									<TableHead className="w-12">Edit</TableHead>
-									<TableHead className="w-20">Enabled</TableHead>
+									<TableHead className="w-24 text-center">Stock</TableHead>
+									<TableHead className="w-16 text-center">Edit</TableHead>
+									<TableHead className="w-20 text-center">Status</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -689,10 +689,21 @@ export default function ManageDessertsInventory({
 
 			{/* Empty state */}
 			{filteredDesserts.length === 0 && (
-				<div className="text-center py-12 text-muted-foreground">
-					{searchTerm
-						? "No desserts found matching your search."
-						: "No desserts available."}
+				<div className="text-center py-12 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
+					<p className="font-medium">
+						{searchTerm
+							? "No desserts found matching your search."
+							: "No desserts available."}
+					</p>
+					{searchTerm && (
+						<Button 
+							variant="link" 
+							onClick={() => setSearchTerm("")}
+							className="mt-1 h-auto p-0 text-sm"
+						>
+							Clear search
+						</Button>
+					)}
 				</div>
 			)}
 		</div>

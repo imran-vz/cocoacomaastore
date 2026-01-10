@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 
 import type { UpiAccount } from "@/db/schema";
-import type { CartItem } from "@/lib/types";
+import type { CartLine } from "@/lib/types";
 import { useUpiStore } from "@/store/upi-store";
 import { Button } from "./ui/button";
 import {
@@ -16,7 +16,7 @@ import {
 
 interface BillProps {
 	order: {
-		items: CartItem[];
+		lines: CartLine[];
 		total: number;
 		deliveryCost: number;
 	};
@@ -31,8 +31,8 @@ function capitalize(str: string) {
 }
 
 function getUPIString(order: BillProps["order"], upiId: string) {
-	const transactionNote = `${order.items
-		.map((item) => item.name)
+	const transactionNote = `${order.lines
+		.map((line) => line.comboName ?? line.baseDessertName)
 		.join(", ")
 		.slice(0, 60)}...`;
 
@@ -70,13 +70,17 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 	);
 
 	const copyOrderDetails = () => {
-		if (order.items.length === 0) return navigator.clipboard.writeText("");
+		if (order.lines.length === 0) return navigator.clipboard.writeText("");
 
-		const orderItemsText = order.items
-			.map(
-				(item) =>
-					`${capitalize(item.name.trim())} × ${item.quantity} = ₹${(item.price * item.quantity).toFixed(2)}`,
-			)
+		const orderItemsText = order.lines
+			.map((line) => {
+				const displayName = line.comboName ?? line.baseDessertName;
+				const modifierText =
+					line.modifiers.length > 0 && !line.comboName
+						? ` (+ ${line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")})`
+						: "";
+				return `${capitalize(displayName.trim())}${modifierText} × ${line.quantity} = ₹${(line.unitPrice * line.quantity).toFixed(2)}`;
+			})
 			.join("\n");
 		const deliveryLine =
 			order.deliveryCost > 0

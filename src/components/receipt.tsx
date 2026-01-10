@@ -4,16 +4,16 @@ import { X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { createOrder } from "@/app/manager/orders/actions";
+import { createOrderWithLines } from "@/app/manager/orders/actions";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import type { UpiAccount } from "@/db/schema";
-import type { CartItem } from "@/lib/types";
+import type { CartLine } from "@/lib/types";
 import { useUpiStore } from "@/store/upi-store";
 
 interface ReceiptProps {
-	cart: CartItem[];
+	cart: CartLine[];
 	total: number;
 	clearCart: () => void;
 	deliveryCost: number;
@@ -49,9 +49,9 @@ export function Receipt({
 		if (isSavingOrder) return;
 		try {
 			setIsSavingOrder(true);
-			await createOrder({
+			await createOrderWithLines({
 				customerName: customerName.trim(),
-				items: cart,
+				lines: cart,
 				deliveryCost: deliveryCost.toFixed(2),
 			});
 			toast.success("Order saved");
@@ -91,15 +91,35 @@ export function Receipt({
 							</tr>
 						</thead>
 						<tbody>
-							{cart.map((item) => (
-								<tr key={item.id}>
-									<td className="truncate max-w-37.5">{item.name}</td>
-									<td className="text-center">{item.quantity}</td>
-									<td className="text-right">
-										{(item.price * item.quantity).toFixed(2)}
-									</td>
-								</tr>
-							))}
+							{cart.map((line) => {
+								const displayName = line.comboName ?? line.baseDessertName;
+								const hasModifiers =
+									line.modifiers.length > 0 && !line.comboName;
+
+								return (
+									<tr key={line.cartLineId}>
+										<td className="align-top">
+											<div className="truncate max-w-37.5">{displayName}</div>
+											{hasModifiers && (
+												<div className="text-[10px] text-gray-500 truncate max-w-37.5">
+													+{" "}
+													{line.modifiers
+														.map((m) =>
+															m.quantity > 1
+																? `${m.quantity}× ${m.name}`
+																: m.name,
+														)
+														.join(", ")}
+												</div>
+											)}
+										</td>
+										<td className="text-center align-top">{line.quantity}</td>
+										<td className="text-right align-top">
+											{(line.unitPrice * line.quantity).toFixed(2)}
+										</td>
+									</tr>
+								);
+							})}
 						</tbody>
 					</table>
 				</div>
