@@ -11,17 +11,28 @@ import {
 	inventoryAuditLogTable,
 	type Order,
 	type OrderItem,
+	orderItemModifiersTable,
 	orderItemsTable,
 	ordersTable,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { sanitizeCustomerName } from "@/lib/sanitize";
-import type { CartItem } from "@/lib/types";
-import { createOrderSchema, deleteOrderSchema } from "@/lib/validation";
+import type { CartItem, CartLine } from "@/lib/types";
+import {
+	createOrderSchema,
+	createOrderWithLinesSchema,
+	deleteOrderSchema,
+} from "@/lib/validation";
 
 interface CreateOrderData {
 	customerName: string;
 	items: CartItem[];
+	deliveryCost: string;
+}
+
+interface CreateOrderWithLinesData {
+	customerName: string;
+	lines: CartLine[];
 	deliveryCost: string;
 }
 
@@ -46,8 +57,15 @@ function getDayKey(day: Date) {
 	return `${y}-${m}-${d}`;
 }
 
+type OrderItemModifierWithDessert = {
+	id: number;
+	quantity: number;
+	dessert: Pick<Dessert, "id" | "name">;
+};
+
 type OrderItemWithDessert = Omit<OrderItem, "dessertId" | "orderId"> & {
 	dessert: Pick<Dessert, "id" | "name">;
+	modifiers: OrderItemModifierWithDessert[];
 };
 
 export type GetOrdersReturnType = (Omit<Order, "isDeleted"> & {
@@ -74,6 +92,20 @@ async function getOrders(day: Date): Promise<GetOrdersReturnType> {
 							name: true,
 						},
 					},
+					modifiers: {
+						columns: {
+							orderItemId: false,
+							dessertId: false,
+						},
+						with: {
+							dessert: {
+								columns: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
 				},
 				columns: {
 					dessertId: false,
@@ -85,7 +117,7 @@ async function getOrders(day: Date): Promise<GetOrdersReturnType> {
 	const duration = performance.now() - start;
 	console.log(`getOrders: ${duration}ms`);
 
-	return orders;
+	return orders as GetOrdersReturnType;
 }
 
 export async function getCachedOrders() {
@@ -230,6 +262,7 @@ export async function createOrder(data: CreateOrderData) {
 					orderId: order.id,
 					dessertId: item.id,
 					quantity: item.quantity,
+					unitPrice: item.price.toFixed(2), // snapshot price per unit
 				})),
 			),
 		];
@@ -257,6 +290,234 @@ export async function createOrder(data: CreateOrderData) {
 	});
 	const duration = performance.now() - start;
 	console.log(`createOrder: ${duration}ms`);
+	revalidateTag("orders", "max");
+	revalidateTag("inventory", "max");
+}
+
+/**
+ * Creates an order from cart lines (supports modifiers).
+ * - Aggregates inventory deduction by base dessert
+ * - Inserts order_items with unitPrice
+ * - Persists order_item_modifiers
+ */
+export async function createOrderWithLines(data: CreateOrderWithLinesData) {
+	const user = await requireAuth();
+
+	// Validate and sanitize input
+	const validated = createOrderWithLinesSchema.parse(data);
+	const sanitizedCustomerName = sanitizeCustomerName(validated.customerName);
+
+	const start = performance.now();
+	const day = new Date();
+	day.setHours(0, 0, 0, 0);
+	const now = new Date();
+
+	// Aggregate quantities by base dessert for inventory deduction
+	// Only base desserts with !hasUnlimitedStock need inventory deduction
+	const inventoryAggregation = new Map<
+		number,
+		{ quantity: number; name: string }
+	>();
+
+	for (const line of validated.lines) {
+		if (!line.hasUnlimitedStock) {
+			const existing = inventoryAggregation.get(line.baseDessertId);
+			if (existing) {
+				existing.quantity += line.quantity;
+			} else {
+				inventoryAggregation.set(line.baseDessertId, {
+					quantity: line.quantity,
+					name: line.baseDessertName,
+				});
+			}
+		}
+	}
+
+	const dessertIds = Array.from(inventoryAggregation.keys());
+	const quantityByDessertId = new Map(
+		Array.from(inventoryAggregation.entries()).map(([id, data]) => [
+			id,
+			data.quantity,
+		]),
+	);
+	const nameByDessertId = new Map(
+		Array.from(inventoryAggregation.entries()).map(([id, data]) => [
+			id,
+			data.name,
+		]),
+	);
+
+	await db.transaction(async (tx) => {
+		let inventoryUpdates: {
+			dessertId: number;
+			previousQuantity: number;
+			newQuantity: number;
+		}[] = [];
+
+		// Atomic inventory deduction with row-level locking
+		if (dessertIds.length > 0) {
+			// STEP 1: Lock inventory rows with SELECT FOR UPDATE
+			const lockedInventory = await tx
+				.select({
+					dessertId: dailyDessertInventoryTable.dessertId,
+					quantity: dailyDessertInventoryTable.quantity,
+				})
+				.from(dailyDessertInventoryTable)
+				.where(
+					and(
+						eq(dailyDessertInventoryTable.day, day),
+						sql`${dailyDessertInventoryTable.dessertId} IN (${sql.join(dessertIds, sql`, `)})`,
+					),
+				)
+				.for("update");
+
+			// Build map of current stock levels
+			const stockMap = new Map(
+				lockedInventory.map((row) => [row.dessertId, row.quantity]),
+			);
+
+			// STEP 2: Validate stock levels while rows are locked
+			for (const dessertId of dessertIds) {
+				const currentStock = stockMap.get(dessertId) ?? 0;
+				const requestedQty = quantityByDessertId.get(dessertId) ?? 0;
+				if (currentStock < requestedQty) {
+					const name = nameByDessertId.get(dessertId) ?? "Unknown";
+					throw new Error(
+						`Insufficient stock for ${name}. Available: ${currentStock}, Requested: ${requestedQty}`,
+					);
+				}
+			}
+
+			// STEP 3: Perform atomic update with CASE WHEN
+			const caseStatements = dessertIds
+				.map(
+					(dessertId) =>
+						sql`WHEN ${dailyDessertInventoryTable.dessertId} = ${dessertId} THEN ${dailyDessertInventoryTable.quantity} - ${quantityByDessertId.get(dessertId)}`,
+				)
+				.reduce((acc, curr) => sql`${acc} ${curr}`);
+
+			const updated = await tx
+				.update(dailyDessertInventoryTable)
+				.set({
+					quantity: sql`CASE ${caseStatements} ELSE ${dailyDessertInventoryTable.quantity} END`,
+					updatedAt: now,
+				})
+				.where(
+					and(
+						eq(dailyDessertInventoryTable.day, day),
+						sql`${dailyDessertInventoryTable.dessertId} IN (${sql.join(dessertIds, sql`, `)})`,
+					),
+				)
+				.returning({
+					dessertId: dailyDessertInventoryTable.dessertId,
+					newQuantity: dailyDessertInventoryTable.quantity,
+				});
+
+			// Verify all updates succeeded
+			const updatedIds = new Set(updated.map((u) => u.dessertId));
+			for (const dessertId of dessertIds) {
+				if (!updatedIds.has(dessertId)) {
+					const name = nameByDessertId.get(dessertId) ?? "Unknown";
+					throw new Error(
+						`Failed to update inventory for ${name} (unexpected error)`,
+					);
+				}
+			}
+
+			// Calculate previous quantities
+			inventoryUpdates = updated.map((u) => ({
+				dessertId: u.dessertId,
+				newQuantity: u.newQuantity,
+				previousQuantity:
+					u.newQuantity + (quantityByDessertId.get(u.dessertId) ?? 0),
+			}));
+		}
+
+		// Compute order total from cart lines
+		const total = validated.lines
+			.reduce(
+				(acc, line) => acc + line.quantity * line.unitPrice,
+				Number.parseFloat(validated.deliveryCost),
+			)
+			.toFixed(2);
+
+		// Create the order
+		const [order] = await tx
+			.insert(ordersTable)
+			.values({
+				customerName: sanitizedCustomerName,
+				createdAt: now,
+				status: "completed",
+				total,
+				deliveryCost: validated.deliveryCost,
+			})
+			.returning();
+
+		// Insert order items with unitPrice
+		const orderItemInserts = validated.lines.map((line) => ({
+			orderId: order.id,
+			dessertId: line.baseDessertId,
+			quantity: line.quantity,
+			unitPrice: line.unitPrice.toFixed(2),
+		}));
+
+		const insertedItems = await tx
+			.insert(orderItemsTable)
+			.values(orderItemInserts)
+			.returning({ id: orderItemsTable.id });
+
+		// Insert order item modifiers
+		const modifierInserts: Array<{
+			orderItemId: number;
+			dessertId: number;
+			quantity: number;
+		}> = [];
+
+		for (let i = 0; i < validated.lines.length; i++) {
+			const line = validated.lines[i];
+			const orderItemId = insertedItems[i].id;
+
+			for (const modifier of line.modifiers) {
+				modifierInserts.push({
+					orderItemId,
+					dessertId: modifier.dessertId,
+					quantity: modifier.quantity,
+				});
+			}
+		}
+
+		const insertPromises: Promise<unknown>[] = [];
+
+		if (modifierInserts.length > 0) {
+			insertPromises.push(
+				tx.insert(orderItemModifiersTable).values(modifierInserts),
+			);
+		}
+
+		if (inventoryUpdates.length > 0) {
+			insertPromises.push(
+				tx.insert(inventoryAuditLogTable).values(
+					inventoryUpdates.map((update) => ({
+						day,
+						dessertId: update.dessertId,
+						action: "order_deducted" as const,
+						previousQuantity: update.previousQuantity,
+						newQuantity: update.newQuantity,
+						orderId: order.id,
+						userId: user.id,
+						createdAt: now,
+					})),
+				),
+			);
+		}
+
+		await Promise.all(insertPromises);
+
+		return order;
+	});
+
+	const duration = performance.now() - start;
+	console.log(`createOrderWithLines: ${duration}ms`);
 	revalidateTag("orders", "max");
 	revalidateTag("inventory", "max");
 }

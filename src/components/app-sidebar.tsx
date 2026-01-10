@@ -5,6 +5,7 @@ import {
 	IconDashboard,
 	IconDatabase,
 	IconFileDescription,
+	IconPackage,
 	IconShoppingCart,
 	IconUsers,
 } from "@tabler/icons-react";
@@ -31,6 +32,7 @@ const data = {
 		{ title: "Dashboard", url: "/admin/dashboard", icon: IconChartBar },
 		{ title: "Orders", url: "/admin/orders", icon: IconShoppingCart },
 		{ title: "Desserts", url: "/admin/desserts", icon: IconFileDescription },
+		{ title: "Combos", url: "/admin/combos", icon: IconPackage },
 		{ title: "Managers", url: "/admin/managers", icon: IconUsers },
 		{ title: "UPI Accounts", url: "/admin/upi", icon: IconDatabase },
 	],

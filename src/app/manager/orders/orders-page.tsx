@@ -116,14 +116,25 @@ function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
 
 					<div className="space-y-2">
 						{order.orderItems.map((item) => (
-							<div
-								key={item.id}
-								className="flex items-center justify-between text-sm"
-							>
-								<span className="flex-1">{item.dessert.name}</span>
-								<span className="text-muted-foreground font-medium tabular-nums">
-									×{item.quantity}
-								</span>
+							<div key={item.id} className="flex flex-col gap-0.5">
+								<div className="flex items-center justify-between text-sm">
+									<span className="flex-1">{item.dessert.name}</span>
+									<span className="text-muted-foreground font-medium tabular-nums">
+										×{item.quantity}
+									</span>
+								</div>
+								{item.modifiers && item.modifiers.length > 0 && (
+									<p className="text-xs text-muted-foreground pl-2">
+										+{" "}
+										{item.modifiers
+											.map((mod) =>
+												mod.quantity > 1
+													? `${mod.quantity}× ${mod.dessert.name}`
+													: mod.dessert.name,
+											)
+											.join(", ")}
+									</p>
+								)}
 							</div>
 						))}
 					</div>

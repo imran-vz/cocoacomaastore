@@ -5,6 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -32,6 +39,7 @@ export function DessertForm({
 			name: initialData?.name || "",
 			description: initialData?.description || "",
 			price: initialData?.price || 0,
+			kind: initialData?.kind || ("base" as const),
 			isOutOfStock: initialData?.isOutOfStock || false,
 			hasUnlimitedStock: initialData?.hasUnlimitedStock || false,
 		},
@@ -111,6 +119,32 @@ export function DessertForm({
 									.join(", ")}
 							</p>
 						)}
+					</div>
+				)}
+			</form.Field>
+
+			<form.Field name="kind">
+				{(field) => (
+					<div className="space-y-2">
+						<Label htmlFor={field.name}>Type</Label>
+						<Select
+							value={field.state.value}
+							onValueChange={(value: "base" | "modifier") =>
+								field.handleChange(value)
+							}
+						>
+							<SelectTrigger>
+								<SelectValue placeholder="Select type" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="base">Base Dessert</SelectItem>
+								<SelectItem value="modifier">Modifier (Add-on)</SelectItem>
+							</SelectContent>
+						</Select>
+						<p className="text-xs text-muted-foreground">
+							Base desserts have inventory tracking. Modifiers are add-ons for
+							combos.
+						</p>
 					</div>
 				)}
 			</form.Field>
