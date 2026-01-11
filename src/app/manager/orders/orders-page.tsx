@@ -1,18 +1,21 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Clock, Package, User } from "lucide-react";
+import { Clock, Package } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { type GetOrdersReturnType, getCachedOrders } from "./actions";
 
@@ -25,16 +28,6 @@ function formatTime(date: Date | string) {
 		timeZone: "Asia/Kolkata",
 	});
 }
-
-function formatDate(date: Date | string) {
-	const d = typeof date === "string" ? new Date(date) : date;
-	return d.toLocaleDateString("en-IN", {
-		day: "numeric",
-		month: "short",
-		timeZone: "Asia/Kolkata",
-	});
-}
-
 function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
 	const [isExpanded, setIsExpanded] = useState(false);
 
@@ -44,112 +37,136 @@ function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
 	);
 
 	const itemsSummary = order.orderItems
-		.map(
-			(item) =>
-				`${item.dessert.name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`,
-		)
+		.map((item) => {
+			if (item.comboName) {
+				return `${item.comboName}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`;
+			}
+			return `${item.dessert.name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`;
+		})
 		.join(", ");
 
 	return (
 		<Card
 			className={cn(
-				"transition-all duration-200 active:scale-[0.99]",
-				isExpanded && "ring-2 ring-primary/20",
+				"transition-all duration-200 border-l-4",
+				isExpanded ? "border-l-primary shadow-md" : "border-l-transparent",
 			)}
 		>
-			<CardHeader
-				className="p-4 pb-2 cursor-pointer"
-				onClick={() => setIsExpanded(!isExpanded)}
-			>
-				<div className="flex items-start justify-between gap-2">
-					<div className="flex-1 min-w-0">
-						<CardTitle className="text-base font-semibold flex items-center gap-2">
-							<span className="text-muted-foreground text-sm font-normal">
-								#{order.id}
-							</span>
-							{order.customerName && (
-								<>
-									<span className="text-muted-foreground">•</span>
-									<span className="truncate">{order.customerName}</span>
-								</>
+			<div className="flex flex-col">
+				{/** biome-ignore lint/a11y/useSemanticElements: for accessibility */}
+				<div
+					className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+					onClick={() => setIsExpanded(!isExpanded)}
+					onKeyUp={(e) => {
+						if (e.key === "Enter" || e.key === " ") {
+							setIsExpanded(!isExpanded);
+						}
+					}}
+					tabIndex={0}
+					role="button"
+				>
+					<div className="flex items-start justify-between gap-3">
+						<div className="flex-1 min-w-0">
+							<div className="flex items-center gap-2 mb-1">
+								<Badge variant="outline" className="font-mono text-xs">
+									#{order.id}
+								</Badge>
+								<span className="text-xs text-muted-foreground flex items-center gap-1">
+									<Clock className="size-3" />
+									{formatTime(order.createdAt)}
+								</span>
+							</div>
+
+							<h3 className="font-semibold text-lg truncate">
+								{order.customerName || "Walk-in Customer"}
+							</h3>
+
+							{!isExpanded && (
+								<p className="text-sm text-muted-foreground mt-1 line-clamp-1">
+									{itemsSummary}
+								</p>
 							)}
-						</CardTitle>
-						<CardDescription
-							className="mt-1 flex items-center gap-1.5 text-xs"
-							suppressHydrationWarning
-						>
-							<Clock className="size-3" />
-							{formatTime(order.createdAt)}
-							<span className="text-muted-foreground/50">•</span>
-							{formatDate(order.createdAt)}
-						</CardDescription>
-					</div>
-					<div className="flex items-center gap-2">
-						<div className="text-right">
-							<p className="font-semibold text-base">₹{order.total}</p>
-							<p className="text-xs text-muted-foreground">
-								{totalItems} item{totalItems !== 1 ? "s" : ""}
-							</p>
 						</div>
-						<Button variant="ghost" size="icon" className="size-8 shrink-0">
-							{isExpanded ? (
-								<ChevronUp className="size-4" />
-							) : (
-								<ChevronDown className="size-4" />
-							)}
-						</Button>
+
+						<div className="flex flex-col items-end gap-1">
+							<span className="font-bold text-lg">₹{order.total}</span>
+							<Badge variant="secondary" className="text-xs">
+								{totalItems} item{totalItems !== 1 ? "s" : ""}
+							</Badge>
+						</div>
 					</div>
 				</div>
 
-				{/* Collapsed summary */}
-				{!isExpanded && (
-					<p className="text-xs text-muted-foreground mt-2 line-clamp-1">
-						{itemsSummary}
-					</p>
-				)}
-			</CardHeader>
+				{isExpanded && (
+					<div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-200">
+						<Separator className="my-3" />
 
-			{/* Expanded content */}
-			{isExpanded && (
-				<CardContent className="p-4 pt-0">
-					<Separator className="mb-3" />
+						<div className="space-y-3">
+							<div className="rounded-md border bg-card">
+								<Table>
+									<TableHeader>
+										<TableRow className="hover:bg-transparent">
+											<TableHead className="h-9">Item</TableHead>
+											<TableHead className="h-9 text-right w-20">Qty</TableHead>
+										</TableRow>
+									</TableHeader>
+									<TableBody>
+										{order.orderItems.map((item) => (
+											<TableRow
+												key={`${order.id}-${item.id}`} // Using composite key for safety
+												className="hover:bg-transparent"
+											>
+												<TableCell className="py-2">
+													<div className="font-medium">
+														{item.comboName ? (
+															<span className="text-primary">
+																{item.comboName}
+															</span>
+														) : (
+															item.dessert.name
+														)}
+													</div>
+													{item.comboName && (
+														<div className="text-xs text-muted-foreground mt-1 ml-2 pl-2 border-l-2">
+															<div className="font-medium text-foreground/80">
+																{item.dessert.name}
+															</div>
+															{item.modifiers.map((mod) => (
+																<div key={`${item.id}-mod-${mod.id}`}>
+																	{mod.dessert.name}
+																</div>
+															))}
+														</div>
+													)}
+													{!item.comboName && item.modifiers.length > 0 && (
+														<div className="text-xs text-muted-foreground mt-1 ml-2 pl-2 border-l-2">
+															{item.modifiers.map((mod) => (
+																<div key={`${item.id}-mod-${mod.id}`}>
+																	{mod.dessert.name} ×{mod.quantity}
+																</div>
+															))}
+														</div>
+													)}
+												</TableCell>
+												<TableCell className="text-right py-2 font-mono">
+													×{item.quantity}
+												</TableCell>
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</div>
 
-					<div className="space-y-2">
-						{order.orderItems.map((item) => (
-							<div key={item.id} className="flex flex-col gap-0.5">
-								<div className="flex items-center justify-between text-sm">
-									<span className="flex-1">{item.dessert.name}</span>
-									<span className="text-muted-foreground font-medium tabular-nums">
-										×{item.quantity}
-									</span>
+							{order.deliveryCost && Number(order.deliveryCost) > 0 && (
+								<div className="flex items-center justify-between text-sm px-2">
+									<span className="text-muted-foreground">Delivery Cost</span>
+									<span className="font-medium">₹{order.deliveryCost}</span>
 								</div>
-								{item.modifiers && item.modifiers.length > 0 && (
-									<p className="text-xs text-muted-foreground pl-2">
-										+{" "}
-										{item.modifiers
-											.map((mod) =>
-												mod.quantity > 1
-													? `${mod.quantity}× ${mod.dessert.name}`
-													: mod.dessert.name,
-											)
-											.join(", ")}
-									</p>
-								)}
-							</div>
-						))}
+							)}
+						</div>
 					</div>
-
-					{order.deliveryCost && Number(order.deliveryCost) > 0 && (
-						<>
-							<Separator className="my-3" />
-							<div className="flex items-center justify-between text-sm">
-								<span className="text-muted-foreground">Delivery</span>
-								<span className="font-medium">₹{order.deliveryCost}</span>
-							</div>
-						</>
-					)}
-				</CardContent>
-			)}
+				)}
+			</div>
 		</Card>
 	);
 }
@@ -160,16 +177,14 @@ export default function OrdersPage({
 	initialOrders: GetOrdersReturnType;
 }) {
 	const [orders, setOrders] = useState(initialOrders);
+	const [isLoading, setIsLoading] = useState(false);
 
 	const refetch = useCallback(() => {
-		getCachedOrders().then(setOrders);
+		setIsLoading(true);
+		getCachedOrders()
+			.then(setOrders)
+			.finally(() => setIsLoading(false));
 	}, []);
-
-	// Auto-refresh every 10 seconds
-	useEffect(() => {
-		const interval = setInterval(refetch, 10_000);
-		return () => clearInterval(interval);
-	}, [refetch]);
 
 	const [todayLabel, setTodayLabel] = useState("");
 
@@ -190,49 +205,71 @@ export default function OrdersPage({
 	);
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-6 max-w-3xl mx-auto">
 			{/* Header */}
-			<div>
-				<h1 className="text-2xl font-bold">Orders</h1>
-				<div className="text-sm text-muted-foreground">
-					{todayLabel ? todayLabel : <Skeleton className="w-24 h-4" />}
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+				<div>
+					<h1 className="text-3xl font-bold tracking-tight">Orders</h1>
+					<p className="text-muted-foreground mt-1">
+						{todayLabel ? todayLabel : <Skeleton className="w-32 h-5" />}
+					</p>
 				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={refetch}
+					disabled={isLoading}
+					className={isLoading ? "animate-pulse" : ""}
+				>
+					{isLoading ? "Refreshing..." : "Refresh Orders"}
+				</Button>
 			</div>
 
-			{/* Stats */}
-			<div className="grid grid-cols-2 gap-3">
-				<Card className="p-3">
-					<div className="flex flex-col items-center justify-center text-center">
-						<Package className="size-4 text-muted-foreground mb-1" />
-						<p className="text-xl font-bold tabular-nums">{orders.length}</p>
-						<p className="text-xs text-muted-foreground">Orders</p>
-					</div>
+			{/* Stats Cards */}
+			<div className="grid grid-cols-2 gap-4">
+				<Card className="p-0 gap-1">
+					<CardHeader className="p-4 pb-2">
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							Total Orders
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="p-4 pt-0">
+						<div className="text-2xl font-bold">{orders.length}</div>
+					</CardContent>
 				</Card>
-				<Card className="p-3">
-					<div className="flex flex-col items-center justify-center text-center">
-						<User className="size-4 text-muted-foreground mb-1" />
-						<p className="text-xl font-bold tabular-nums">{totalItems}</p>
-						<p className="text-xs text-muted-foreground">Items</p>
-					</div>
+				<Card className="p-0 gap-1">
+					<CardHeader className="p-4 pb-2">
+						<CardTitle className="text-sm font-medium text-muted-foreground">
+							Items Sold
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="p-4 pt-0">
+						<div className="text-2xl font-bold">{totalItems}</div>
+					</CardContent>
 				</Card>
 			</div>
 
-			{/* Orders list */}
-			{orders.length > 0 ? (
-				<div className="space-y-3">
-					{orders.map((order) => (
-						<OrderCard key={order.id} order={order} />
-					))}
-				</div>
-			) : (
-				<Card className="p-8">
-					<div className="flex flex-col items-center justify-center text-center text-muted-foreground">
-						<Package className="size-12 mb-3 opacity-50" />
-						<p className="font-medium">No orders yet</p>
-						<p className="text-sm">Orders will appear here as they come in</p>
-					</div>
-				</Card>
-			)}
+			{/* Orders List */}
+			<div className="space-y-4">
+				{orders.length > 0 ? (
+					orders.map((order) => <OrderCard key={order.id} order={order} />)
+				) : (
+					<Card className="py-12 border-dashed">
+						<div className="flex flex-col items-center justify-center text-center text-muted-foreground">
+							<div className="bg-muted rounded-full p-4 mb-4">
+								<Package className="size-8 opacity-50" />
+							</div>
+							<h3 className="font-semibold text-lg text-foreground">
+								No orders yet
+							</h3>
+							<p className="text-sm max-w-62.5 mt-1">
+								Orders will appear here automatically when customers make a
+								purchase.
+							</p>
+						</div>
+					</Card>
+				)}
+			</div>
 		</div>
 	);
 }

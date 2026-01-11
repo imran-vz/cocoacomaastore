@@ -134,8 +134,9 @@ export default function Home({
 		);
 
 		if (existingLine) {
-			if (existingLine.quantity >= remaining) {
-				toast.error(`Only ${remaining} left`);
+			const currentQuantityInCart = existingLine.quantity;
+			if (currentQuantityInCart >= available) {
+				toast.error(`Only ${available} left`);
 				return;
 			}
 
@@ -191,8 +192,9 @@ export default function Home({
 		const existingLine = cart.find((line) => line.comboId === combo.id);
 
 		if (existingLine) {
-			if (existingLine.quantity >= remaining) {
-				toast.error(`Only ${remaining} left`);
+			const currentQuantityInCart = existingLine.quantity;
+			if (currentQuantityInCart >= available) {
+				toast.error(`Only ${available} left`);
 				return;
 			}
 

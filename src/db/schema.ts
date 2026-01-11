@@ -161,6 +161,7 @@ export const orderItemsTable = pgTable(
 		dessertId: integer().notNull(),
 		quantity: integer().notNull(),
 		unitPrice: numeric({ precision: 10, scale: 2 }).notNull().default("0.00"), // snapshotted price per unit at order time
+		comboName: varchar({ length: 255 }), // optional: name of the combo if this item was part of one
 	},
 	(table) => [
 		// Performance: Indexes for foreign key joins
