@@ -472,6 +472,7 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 				dessertId: line.baseDessertId,
 				quantity: line.quantity,
 				unitPrice: line.unitPrice.toFixed(2),
+				comboName: line.comboName, // Store combo name
 			}));
 
 			const insertedItems = await tx

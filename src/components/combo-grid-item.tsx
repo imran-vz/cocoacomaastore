@@ -11,10 +11,7 @@ interface ComboGridItemProps {
 	onAddComboToCart: (combo: ComboWithDetails) => void;
 }
 
-export function ComboGridItem({
-	combo,
-	onAddComboToCart,
-}: ComboGridItemProps) {
+export function ComboGridItem({ combo, onAddComboToCart }: ComboGridItemProps) {
 	const overlayControls = useAnimation();
 
 	const handleClick = async () => {
