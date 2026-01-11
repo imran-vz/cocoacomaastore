@@ -94,13 +94,9 @@ function StatCard({
 }) {
 	return (
 		<Card className={cn("relative overflow-hidden", className)}>
-			<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-				<CardTitle className="text-sm font-medium text-muted-foreground">
-					{title}
-				</CardTitle>
-				<div className="p-2 rounded-lg bg-primary/10">
-					<Icon className="size-4 text-primary" />
-				</div>
+			<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+				<CardTitle className="text-sm font-medium">{title}</CardTitle>
+				<Icon className="h-4 w-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
 				{isLoading ? (
@@ -127,11 +123,11 @@ function StatCard({
 const chartConfig = {
 	revenue: {
 		label: "Revenue",
-		color: "var(--chart-1)",
+		color: "hsl(var(--chart-1))",
 	},
 	orders: {
 		label: "Orders",
-		color: "var(--chart-2)",
+		color: "hsl(var(--chart-2))",
 	},
 } satisfies ChartConfig;
 
@@ -144,7 +140,7 @@ function RevenueChart({
 }) {
 	if (isLoading) {
 		return (
-			<Card>
+			<Card className="col-span-4">
 				<CardHeader>
 					<CardTitle className="flex items-center gap-2">
 						<TrendingUp className="size-5" />
@@ -153,7 +149,7 @@ function RevenueChart({
 					<CardDescription>Last 7 days revenue</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<Skeleton className="h-64 w-full" />
+					<Skeleton className="h-[300px] w-full" />
 				</CardContent>
 			</Card>
 		);
@@ -163,7 +159,7 @@ function RevenueChart({
 	const totalOrders = data.reduce((sum, d) => sum + d.orders, 0);
 
 	return (
-		<Card>
+		<Card className="col-span-4">
 			<CardHeader>
 				<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
 					<div>
@@ -186,7 +182,7 @@ function RevenueChart({
 				</div>
 			</CardHeader>
 			<CardContent>
-				<ChartContainer config={chartConfig} className="h-64 w-full">
+				<ChartContainer config={chartConfig} className="h-[300px] w-full">
 					<AreaChart
 						accessibilityLayer
 						data={data}
@@ -264,7 +260,7 @@ function StockList({
 	const filteredStock = stock.filter((item) => item.enabled);
 
 	return (
-		<Card className="flex flex-col">
+		<Card className="flex flex-col col-span-2">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<Box className="size-5" />
@@ -273,7 +269,7 @@ function StockList({
 				<CardDescription>Inventory for selected date</CardDescription>
 			</CardHeader>
 			<CardContent className="flex-1 p-0">
-				<ScrollArea className="h-75 px-6">
+				<ScrollArea className="h-[400px] px-6">
 					{isLoading ? (
 						<div className="space-y-3 pb-4">
 							{[1, 2, 3, 4, 5].map((i) => (
@@ -286,20 +282,20 @@ function StockList({
 								<div
 									key={item.id}
 									className={cn(
-										"flex items-center justify-between p-3 rounded-lg border transition-colors",
+										"flex items-center justify-between p-3 rounded-lg border transition-colors hover:bg-muted/50",
 										!item.enabled && "opacity-50 bg-muted/50",
 									)}
 								>
 									<div className="flex items-center gap-3">
 										<div
 											className={cn(
-												"size-2 rounded-full",
+												"size-2.5 rounded-full ring-2 ring-background",
 												item.hasUnlimitedStock
 													? "bg-blue-500"
 													: item.currentStock > 10
-														? "bg-green-500"
+														? "bg-emerald-500"
 														: item.currentStock > 0
-															? "bg-yellow-500"
+															? "bg-amber-500"
 															: "bg-red-500",
 											)}
 										/>
@@ -307,26 +303,21 @@ function StockList({
 									</div>
 									<div className="flex items-center gap-2">
 										{item.hasUnlimitedStock ? (
-											<Badge variant="secondary" className="text-xs">
+											<Badge variant="outline" className="text-xs font-normal">
 												Unlimited
 											</Badge>
 										) : (
 											<Badge
 												variant={
 													item.currentStock > 10
-														? "default"
+														? "secondary"
 														: item.currentStock > 0
-															? "secondary"
+															? "outline"
 															: "destructive"
 												}
 												className="text-xs tabular-nums min-w-12 justify-center"
 											>
 												{item.currentStock}
-											</Badge>
-										)}
-										{!item.enabled && (
-											<Badge variant="outline" className="text-xs">
-												Disabled
 											</Badge>
 										)}
 									</div>
@@ -371,7 +362,7 @@ function AuditLogList({
 	};
 
 	return (
-		<Card className="flex flex-col">
+		<Card className="flex flex-col col-span-2">
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
 					<Clock className="size-5" />
@@ -380,7 +371,7 @@ function AuditLogList({
 				<CardDescription>Inventory changes for selected date</CardDescription>
 			</CardHeader>
 			<CardContent className="flex-1 p-0">
-				<ScrollArea className="h-75 px-6">
+				<ScrollArea className="h-[400px] px-6">
 					{isLoading ? (
 						<div className="space-y-3 pb-4">
 							{[1, 2, 3, 4, 5].map((i) => (
@@ -388,7 +379,7 @@ function AuditLogList({
 							))}
 						</div>
 					) : logs.length === 0 ? (
-						<div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-8">
+						<div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground py-12">
 							<Clock className="size-10 mb-2 opacity-50" />
 							<p className="text-sm">No audit logs for this date</p>
 						</div>
@@ -397,7 +388,7 @@ function AuditLogList({
 							{logs.map((log) => (
 								<div
 									key={log.id}
-									className="flex items-start justify-between p-3 rounded-lg border"
+									className="flex items-start justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
 								>
 									<div className="space-y-1">
 										<div className="flex items-center gap-2">
@@ -407,7 +398,7 @@ function AuditLogList({
 											{getActionBadge(log.action)}
 										</div>
 										<div className="flex items-center gap-2 text-xs text-muted-foreground">
-											<span className="tabular-nums">
+											<span className="tabular-nums font-medium">
 												{log.previousQuantity} → {log.newQuantity}
 											</span>
 											{log.orderId && (
@@ -477,13 +468,13 @@ export function DashboardContent({
 		stats.dayOrdersCount > 0 ? stats.dayRevenue / stats.dayOrdersCount : 0;
 
 	return (
-		<div className="space-y-6">
+		<div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
 			{/* Header */}
 			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 				<div>
-					<h1 className="text-2xl font-bold">Dashboard</h1>
-					<p className="text-sm text-muted-foreground">
-						View stats and activity
+					<h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+					<p className="text-muted-foreground">
+						Overview of your store's performance
 					</p>
 				</div>
 				<DateSwitcher
@@ -493,7 +484,7 @@ export function DashboardContent({
 			</div>
 
 			{/* Stats Grid */}
-			<div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<StatCard
 					title="Orders"
 					value={stats.dayOrdersCount}
@@ -529,7 +520,7 @@ export function DashboardContent({
 			<RevenueChart data={dailyRevenue} isLoading={isLoading} />
 
 			{/* Stock and Audit Log */}
-			<div className="grid md:grid-cols-2 gap-6">
+			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<StockList stock={stock} isLoading={isLoading} />
 				<AuditLogList logs={auditLogs} isLoading={isLoading} />
 			</div>

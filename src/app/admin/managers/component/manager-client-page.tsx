@@ -32,7 +32,7 @@ import {
 import type { User } from "@/db/schema";
 import { createManager, deleteManager } from "../actions";
 
-export default function ManagersClientPage({
+export default function ManagerClientPage({
 	managers,
 }: {
 	managers: Promise<
@@ -81,10 +81,10 @@ export default function ManagersClientPage({
 	};
 
 	return (
-		<div className="space-y-6 p-2 md:p-0">
+		<div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold">Managers</h1>
+					<h2 className="text-3xl font-bold tracking-tight">Managers</h2>
 					<p className="text-muted-foreground">
 						Manage admin and manager accounts
 					</p>
@@ -162,44 +162,46 @@ export default function ManagersClientPage({
 				</Dialog>
 			</div>
 
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Name</TableHead>
-						<TableHead>Email</TableHead>
-						<TableHead>Role</TableHead>
-						<TableHead>Created At</TableHead>
-						<TableHead className="text-right">Actions</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{managersList.map((manager) => (
-						<TableRow key={manager.id}>
-							<TableCell className="font-medium">{manager.name}</TableCell>
-							<TableCell>{manager.email}</TableCell>
-							<TableCell className="capitalize">
-								<Badge
-									variant={manager.role === "admin" ? "default" : "secondary"}
-								>
-									{manager.role}
-								</Badge>
-							</TableCell>
-							<TableCell>
-								{new Date(manager.createdAt).toLocaleDateString()}
-							</TableCell>
-							<TableCell className="text-right">
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={() => handleDelete(manager.id)}
-								>
-									<Trash2 className="h-4 w-4" />
-								</Button>
-							</TableCell>
+			<div className="rounded-md border">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Name</TableHead>
+							<TableHead>Email</TableHead>
+							<TableHead>Role</TableHead>
+							<TableHead>Created At</TableHead>
+							<TableHead className="text-right">Actions</TableHead>
 						</TableRow>
-					))}
-				</TableBody>
-			</Table>
+					</TableHeader>
+					<TableBody>
+						{managersList.map((manager) => (
+							<TableRow key={manager.id}>
+								<TableCell className="font-medium">{manager.name}</TableCell>
+								<TableCell>{manager.email}</TableCell>
+								<TableCell className="capitalize">
+									<Badge
+										variant={manager.role === "admin" ? "default" : "secondary"}
+									>
+										{manager.role}
+									</Badge>
+								</TableCell>
+								<TableCell>
+									{new Date(manager.createdAt).toLocaleDateString()}
+								</TableCell>
+								<TableCell className="text-right">
+									<Button
+										variant="ghost"
+										size="sm"
+										onClick={() => handleDelete(manager.id)}
+									>
+										<Trash2 className="h-4 w-4" />
+									</Button>
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
 		</div>
 	);
 }

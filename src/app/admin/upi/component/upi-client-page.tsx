@@ -98,17 +98,16 @@ export default function UpiClientPage({
 	};
 
 	return (
-		<div className="space-y-6 p-2 md:p-0">
+		<div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold">UPI Accounts</h1>
+					<h2 className="text-3xl font-bold tracking-tight">UPI Accounts</h2>
 					<p className="text-muted-foreground">Manage UPI payment accounts</p>
 				</div>
 				<Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
 					<Button
 						type="button"
 						onClick={() => {
-							console.log("clicked");
 							setIsDialogOpen(true);
 						}}
 					>
@@ -159,7 +158,7 @@ export default function UpiClientPage({
 									onChange={(e) =>
 										setFormData({ ...formData, enabled: e.target.checked })
 									}
-									className="h-4 w-4"
+									className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
 								/>
 								<Label htmlFor={enabledID} className="cursor-pointer">
 									Enabled
@@ -173,51 +172,53 @@ export default function UpiClientPage({
 				</Dialog>
 			</div>
 
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Label</TableHead>
-						<TableHead>UPI ID</TableHead>
-						<TableHead>Status</TableHead>
-						<TableHead>Created At</TableHead>
-						<TableHead className="text-right">Actions</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{accounts.map((account) => (
-						<TableRow key={account.id}>
-							<TableCell className="font-medium">{account.label}</TableCell>
-							<TableCell>{account.upiId}</TableCell>
-							<TableCell>
-								<Badge variant={account.enabled ? "default" : "secondary"}>
-									{account.enabled ? "Enabled" : "Disabled"}
-								</Badge>
-							</TableCell>
-							<TableCell>
-								{new Date(account.createdAt).toLocaleDateString()}
-							</TableCell>
-							<TableCell className="text-right">
-								<div className="flex justify-end gap-2">
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={() => handleEdit(account)}
-									>
-										<Edit className="h-4 w-4" />
-									</Button>
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={() => handleDelete(account.id)}
-									>
-										<Trash2 className="h-4 w-4" />
-									</Button>
-								</div>
-							</TableCell>
+			<div className="rounded-md border">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Label</TableHead>
+							<TableHead>UPI ID</TableHead>
+							<TableHead>Status</TableHead>
+							<TableHead>Created At</TableHead>
+							<TableHead className="text-right">Actions</TableHead>
 						</TableRow>
-					))}
-				</TableBody>
-			</Table>
+					</TableHeader>
+					<TableBody>
+						{accounts.map((account) => (
+							<TableRow key={account.id}>
+								<TableCell className="font-medium">{account.label}</TableCell>
+								<TableCell>{account.upiId}</TableCell>
+								<TableCell>
+									<Badge variant={account.enabled ? "default" : "secondary"}>
+										{account.enabled ? "Enabled" : "Disabled"}
+									</Badge>
+								</TableCell>
+								<TableCell>
+									{new Date(account.createdAt).toLocaleDateString()}
+								</TableCell>
+								<TableCell className="text-right">
+									<div className="flex justify-end gap-2">
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => handleEdit(account)}
+										>
+											<Edit className="h-4 w-4" />
+										</Button>
+										<Button
+											variant="ghost"
+											size="sm"
+											onClick={() => handleDelete(account.id)}
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
+									</div>
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
 		</div>
 	);
 }
