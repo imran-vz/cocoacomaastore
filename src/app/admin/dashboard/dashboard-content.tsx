@@ -1,5 +1,6 @@
 "use client";
 
+import { IconLink } from "@tabler/icons-react";
 import {
 	ArrowDownRight,
 	ArrowUpRight,
@@ -13,7 +14,6 @@ import {
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
-
 import { DateSwitcher } from "@/components/date-switcher";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -405,9 +405,12 @@ function AuditLogList({
 											{log.orderId && (
 												<Link
 													href={`/admin/orders?orderId=${log.orderId}`}
-													className="text-muted-foreground hover:underline hover:text-primary transition-colors"
+													className="text-muted-foreground hover:underline hover:text-primary transition-colors inline-flex gap-2 underline"
 												>
-													Order #{log.orderId}
+													Order #{log.orderId}{" "}
+													<span>
+														<IconLink className="size-4" />
+													</span>
 												</Link>
 											)}
 										</div>
