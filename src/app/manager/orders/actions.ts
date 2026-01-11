@@ -1,9 +1,9 @@
 "use server";
 
 import { performance } from "node:perf_hooks";
+import type { Session, User } from "better-auth";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
-import { headers } from "next/headers";
 import { db } from "@/db";
 import {
 	type Dessert,
@@ -15,7 +15,8 @@ import {
 	orderItemsTable,
 	ordersTable,
 } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
+import { isDatabaseUnavailableError } from "@/lib/errors";
 import { sanitizeCustomerName } from "@/lib/sanitize";
 import type { CartItem, CartLine } from "@/lib/types";
 import {
@@ -36,8 +37,9 @@ interface CreateOrderWithLinesData {
 	deliveryCost: string;
 }
 
-async function requireAuth() {
-	const session = await auth.api.getSession({ headers: await headers() });
+type GetSessionReturnType = { session: Session; user: User } | null;
+async function requireAuth(): Promise<User> {
+	const session: GetSessionReturnType = await getServerSession();
 	if (!session?.session || !session?.user) {
 		throw new Error("Unauthorized");
 	}
@@ -301,7 +303,17 @@ export async function createOrder(data: CreateOrderData) {
  * - Persists order_item_modifiers
  */
 export async function createOrderWithLines(data: CreateOrderWithLinesData) {
-	const user = await requireAuth();
+	let user: User;
+	try {
+		user = await requireAuth();
+	} catch (error) {
+		if (isDatabaseUnavailableError(error)) {
+			throw new Error("Database is unavailable. Please try again.", {
+				cause: error,
+			});
+		}
+		throw error;
+	}
 
 	// Validate and sanitize input
 	const validated = createOrderWithLinesSchema.parse(data);
@@ -347,174 +359,183 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 		]),
 	);
 
-	await db.transaction(async (tx) => {
-		let inventoryUpdates: {
-			dessertId: number;
-			previousQuantity: number;
-			newQuantity: number;
-		}[] = [];
+	try {
+		await db.transaction(async (tx) => {
+			let inventoryUpdates: {
+				dessertId: number;
+				previousQuantity: number;
+				newQuantity: number;
+			}[] = [];
 
-		// Atomic inventory deduction with row-level locking
-		if (dessertIds.length > 0) {
-			// STEP 1: Lock inventory rows with SELECT FOR UPDATE
-			const lockedInventory = await tx
-				.select({
-					dessertId: dailyDessertInventoryTable.dessertId,
-					quantity: dailyDessertInventoryTable.quantity,
-				})
-				.from(dailyDessertInventoryTable)
-				.where(
-					and(
-						eq(dailyDessertInventoryTable.day, day),
-						sql`${dailyDessertInventoryTable.dessertId} IN (${sql.join(dessertIds, sql`, `)})`,
-					),
-				)
-				.for("update");
+			// Atomic inventory deduction with row-level locking
+			if (dessertIds.length > 0) {
+				// STEP 1: Lock inventory rows with SELECT FOR UPDATE
+				const lockedInventory = await tx
+					.select({
+						dessertId: dailyDessertInventoryTable.dessertId,
+						quantity: dailyDessertInventoryTable.quantity,
+					})
+					.from(dailyDessertInventoryTable)
+					.where(
+						and(
+							eq(dailyDessertInventoryTable.day, day),
+							sql`${dailyDessertInventoryTable.dessertId} IN (${sql.join(dessertIds, sql`, `)})`,
+						),
+					)
+					.for("update");
 
-			// Build map of current stock levels
-			const stockMap = new Map(
-				lockedInventory.map((row) => [row.dessertId, row.quantity]),
-			);
+				// Build map of current stock levels
+				const stockMap = new Map(
+					lockedInventory.map((row) => [row.dessertId, row.quantity]),
+				);
 
-			// STEP 2: Validate stock levels while rows are locked
-			for (const dessertId of dessertIds) {
-				const currentStock = stockMap.get(dessertId) ?? 0;
-				const requestedQty = quantityByDessertId.get(dessertId) ?? 0;
-				if (currentStock < requestedQty) {
-					const name = nameByDessertId.get(dessertId) ?? "Unknown";
-					throw new Error(
-						`Insufficient stock for ${name}. Available: ${currentStock}, Requested: ${requestedQty}`,
-					);
+				// STEP 2: Validate stock levels while rows are locked
+				for (const dessertId of dessertIds) {
+					const currentStock = stockMap.get(dessertId) ?? 0;
+					const requestedQty = quantityByDessertId.get(dessertId) ?? 0;
+					if (currentStock < requestedQty) {
+						const name = nameByDessertId.get(dessertId) ?? "Unknown";
+						throw new Error(
+							`Insufficient stock for ${name}. Available: ${currentStock}, Requested: ${requestedQty}`,
+						);
+					}
 				}
+
+				// STEP 3: Perform atomic update with CASE WHEN
+				const caseStatements = dessertIds
+					.map(
+						(dessertId) =>
+							sql`WHEN ${dailyDessertInventoryTable.dessertId} = ${dessertId} THEN ${dailyDessertInventoryTable.quantity} - ${quantityByDessertId.get(dessertId)}`,
+					)
+					.reduce((acc, curr) => sql`${acc} ${curr}`);
+
+				const updated = await tx
+					.update(dailyDessertInventoryTable)
+					.set({
+						quantity: sql`CASE ${caseStatements} ELSE ${dailyDessertInventoryTable.quantity} END`,
+						updatedAt: now,
+					})
+					.where(
+						and(
+							eq(dailyDessertInventoryTable.day, day),
+							sql`${dailyDessertInventoryTable.dessertId} IN (${sql.join(dessertIds, sql`, `)})`,
+						),
+					)
+					.returning({
+						dessertId: dailyDessertInventoryTable.dessertId,
+						newQuantity: dailyDessertInventoryTable.quantity,
+					});
+
+				// Verify all updates succeeded
+				const updatedIds = new Set(updated.map((u) => u.dessertId));
+				for (const dessertId of dessertIds) {
+					if (!updatedIds.has(dessertId)) {
+						const name = nameByDessertId.get(dessertId) ?? "Unknown";
+						throw new Error(
+							`Failed to update inventory for ${name} (unexpected error)`,
+						);
+					}
+				}
+
+				// Calculate previous quantities
+				inventoryUpdates = updated.map((u) => ({
+					dessertId: u.dessertId,
+					newQuantity: u.newQuantity,
+					previousQuantity:
+						u.newQuantity + (quantityByDessertId.get(u.dessertId) ?? 0),
+				}));
 			}
 
-			// STEP 3: Perform atomic update with CASE WHEN
-			const caseStatements = dessertIds
-				.map(
-					(dessertId) =>
-						sql`WHEN ${dailyDessertInventoryTable.dessertId} = ${dessertId} THEN ${dailyDessertInventoryTable.quantity} - ${quantityByDessertId.get(dessertId)}`,
+			// Compute order total from cart lines
+			const total = validated.lines
+				.reduce(
+					(acc, line) => acc + line.quantity * line.unitPrice,
+					Number.parseFloat(validated.deliveryCost),
 				)
-				.reduce((acc, curr) => sql`${acc} ${curr}`);
+				.toFixed(2);
 
-			const updated = await tx
-				.update(dailyDessertInventoryTable)
-				.set({
-					quantity: sql`CASE ${caseStatements} ELSE ${dailyDessertInventoryTable.quantity} END`,
-					updatedAt: now,
+			// Create the order
+			const [order] = await tx
+				.insert(ordersTable)
+				.values({
+					customerName: sanitizedCustomerName,
+					createdAt: now,
+					status: "completed",
+					total,
+					deliveryCost: validated.deliveryCost,
 				})
-				.where(
-					and(
-						eq(dailyDessertInventoryTable.day, day),
-						sql`${dailyDessertInventoryTable.dessertId} IN (${sql.join(dessertIds, sql`, `)})`,
-					),
-				)
-				.returning({
-					dessertId: dailyDessertInventoryTable.dessertId,
-					newQuantity: dailyDessertInventoryTable.quantity,
-				});
+				.returning();
 
-			// Verify all updates succeeded
-			const updatedIds = new Set(updated.map((u) => u.dessertId));
-			for (const dessertId of dessertIds) {
-				if (!updatedIds.has(dessertId)) {
-					const name = nameByDessertId.get(dessertId) ?? "Unknown";
-					throw new Error(
-						`Failed to update inventory for ${name} (unexpected error)`,
-					);
-				}
-			}
-
-			// Calculate previous quantities
-			inventoryUpdates = updated.map((u) => ({
-				dessertId: u.dessertId,
-				newQuantity: u.newQuantity,
-				previousQuantity:
-					u.newQuantity + (quantityByDessertId.get(u.dessertId) ?? 0),
+			// Insert order items with unitPrice
+			const orderItemInserts = validated.lines.map((line) => ({
+				orderId: order.id,
+				dessertId: line.baseDessertId,
+				quantity: line.quantity,
+				unitPrice: line.unitPrice.toFixed(2),
 			}));
-		}
 
-		// Compute order total from cart lines
-		const total = validated.lines
-			.reduce(
-				(acc, line) => acc + line.quantity * line.unitPrice,
-				Number.parseFloat(validated.deliveryCost),
-			)
-			.toFixed(2);
+			const insertedItems = await tx
+				.insert(orderItemsTable)
+				.values(orderItemInserts)
+				.returning({ id: orderItemsTable.id });
 
-		// Create the order
-		const [order] = await tx
-			.insert(ordersTable)
-			.values({
-				customerName: sanitizedCustomerName,
-				createdAt: now,
-				status: "completed",
-				total,
-				deliveryCost: validated.deliveryCost,
-			})
-			.returning();
+			// Insert order item modifiers
+			const modifierInserts: Array<{
+				orderItemId: number;
+				dessertId: number;
+				quantity: number;
+			}> = [];
 
-		// Insert order items with unitPrice
-		const orderItemInserts = validated.lines.map((line) => ({
-			orderId: order.id,
-			dessertId: line.baseDessertId,
-			quantity: line.quantity,
-			unitPrice: line.unitPrice.toFixed(2),
-		}));
+			for (let i = 0; i < validated.lines.length; i++) {
+				const line = validated.lines[i];
+				const orderItemId = insertedItems[i].id;
 
-		const insertedItems = await tx
-			.insert(orderItemsTable)
-			.values(orderItemInserts)
-			.returning({ id: orderItemsTable.id });
-
-		// Insert order item modifiers
-		const modifierInserts: Array<{
-			orderItemId: number;
-			dessertId: number;
-			quantity: number;
-		}> = [];
-
-		for (let i = 0; i < validated.lines.length; i++) {
-			const line = validated.lines[i];
-			const orderItemId = insertedItems[i].id;
-
-			for (const modifier of line.modifiers) {
-				modifierInserts.push({
-					orderItemId,
-					dessertId: modifier.dessertId,
-					quantity: modifier.quantity,
-				});
+				for (const modifier of line.modifiers) {
+					modifierInserts.push({
+						orderItemId,
+						dessertId: modifier.dessertId,
+						quantity: modifier.quantity,
+					});
+				}
 			}
+
+			const insertPromises: Promise<unknown>[] = [];
+
+			if (modifierInserts.length > 0) {
+				insertPromises.push(
+					tx.insert(orderItemModifiersTable).values(modifierInserts),
+				);
+			}
+
+			if (inventoryUpdates.length > 0) {
+				insertPromises.push(
+					tx.insert(inventoryAuditLogTable).values(
+						inventoryUpdates.map((update) => ({
+							day,
+							dessertId: update.dessertId,
+							action: "order_deducted" as const,
+							previousQuantity: update.previousQuantity,
+							newQuantity: update.newQuantity,
+							orderId: order.id,
+							userId: user.id,
+							createdAt: now,
+						})),
+					),
+				);
+			}
+
+			await Promise.all(insertPromises);
+
+			return order;
+		});
+	} catch (error) {
+		if (isDatabaseUnavailableError(error)) {
+			throw new Error("Database is unavailable. Please try again.", {
+				cause: error,
+			});
 		}
-
-		const insertPromises: Promise<unknown>[] = [];
-
-		if (modifierInserts.length > 0) {
-			insertPromises.push(
-				tx.insert(orderItemModifiersTable).values(modifierInserts),
-			);
-		}
-
-		if (inventoryUpdates.length > 0) {
-			insertPromises.push(
-				tx.insert(inventoryAuditLogTable).values(
-					inventoryUpdates.map((update) => ({
-						day,
-						dessertId: update.dessertId,
-						action: "order_deducted" as const,
-						previousQuantity: update.previousQuantity,
-						newQuantity: update.newQuantity,
-						orderId: order.id,
-						userId: user.id,
-						createdAt: now,
-					})),
-				),
-			);
-		}
-
-		await Promise.all(insertPromises);
-
-		return order;
-	});
+		throw error;
+	}
 
 	const duration = performance.now() - start;
 	console.log(`createOrderWithLines: ${duration}ms`);

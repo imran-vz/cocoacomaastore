@@ -1,14 +1,13 @@
-import { headers } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
 
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 
 export default async function ManagerLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	const data = await auth.api.getSession({ headers: await headers() });
+	const data = await getServerSession();
 
 	if (!data || !data.session) {
 		redirect("/login", RedirectType.replace);

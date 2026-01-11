@@ -1,17 +1,16 @@
-import { headers } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 
 export default async function AdminLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
-	const data = await auth.api.getSession({ headers: await headers() });
+	const data = await getServerSession();
 
 	if (!data?.session) {
 		redirect("/login", RedirectType.replace);

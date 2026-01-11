@@ -1,8 +1,13 @@
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import {
+	DatabaseUnavailableError,
+	isDatabaseUnavailableError,
+} from "@/lib/errors";
 
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {
@@ -37,3 +42,19 @@ export const auth = betterAuth({
 	},
 	trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
 });
+
+export type ServerSession = Awaited<ReturnType<typeof auth.api.getSession>>;
+
+export async function getServerSession(): Promise<ServerSession> {
+	try {
+		return await auth.api.getSession({ headers: await headers() });
+	} catch (error) {
+		if (error instanceof DatabaseUnavailableError) throw error;
+		if (isDatabaseUnavailableError(error)) {
+			throw new DatabaseUnavailableError("Database unavailable", {
+				cause: error,
+			});
+		}
+		throw error;
+	}
+}

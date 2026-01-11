@@ -3,7 +3,6 @@
 import { performance } from "node:perf_hooks";
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
-import { headers } from "next/headers";
 import { db } from "@/db";
 import {
 	type Dessert,
@@ -11,10 +10,10 @@ import {
 	type OrderItem,
 	ordersTable,
 } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 
 async function requireAdmin() {
-	const session = await auth.api.getSession({ headers: await headers() });
+	const session = await getServerSession();
 	if (!session?.session || !session?.user) {
 		throw new Error("Unauthorized");
 	}

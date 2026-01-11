@@ -82,7 +82,9 @@ export function Cart({
 						{cart.length === 0 ? (
 							<div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center border-2 border-dashed rounded-lg">
 								<p className="text-sm">Cart is empty</p>
-								<p className="text-xs mt-1 opacity-70">Add items to start an order</p>
+								<p className="text-xs mt-1 opacity-70">
+									Add items to start an order
+								</p>
 							</div>
 						) : (
 							<div className="divide-y">
