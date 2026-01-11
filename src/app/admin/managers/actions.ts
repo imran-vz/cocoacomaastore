@@ -2,15 +2,14 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { headers } from "next/headers";
 import { db } from "@/db";
 import { userTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { auth, getServerSession } from "@/lib/auth";
 import { sanitizeEmail } from "@/lib/sanitize";
 import { createManagerSchema, deleteManagerSchema } from "@/lib/validation";
 
 async function requireAdmin() {
-	const session = await auth.api.getSession({ headers: await headers() });
+	const session = await getServerSession();
 	if (!session?.session || !session?.user) {
 		throw new Error("Unauthorized");
 	}

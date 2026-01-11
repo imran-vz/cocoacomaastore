@@ -2,10 +2,9 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { headers } from "next/headers";
 import { db } from "@/db";
 import { type UpiAccount, upiAccountsTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { sanitizeUpiId } from "@/lib/sanitize";
 import {
 	createUpiAccountSchema,
@@ -14,7 +13,7 @@ import {
 } from "@/lib/validation";
 
 async function requireAdmin() {
-	const session = await auth.api.getSession({ headers: await headers() });
+	const session = await getServerSession();
 	if (!session?.session || !session?.user) {
 		throw new Error("Unauthorized");
 	}

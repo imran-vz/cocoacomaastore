@@ -3,11 +3,10 @@
 import { performance } from "node:perf_hooks";
 import { and, eq, sql } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
-import { headers } from "next/headers";
 
 import { db } from "@/db";
 import { dessertsTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { sanitizeDescription } from "@/lib/sanitize";
 import {
 	batchUpdateDessertSequencesSchema,
@@ -20,7 +19,7 @@ import {
 } from "@/lib/validation";
 
 async function requireAuth() {
-	const session = await auth.api.getSession({ headers: await headers() });
+	const session = await getServerSession();
 	if (!session?.session || !session?.user) {
 		throw new Error("Unauthorized");
 	}

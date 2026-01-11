@@ -71,7 +71,8 @@ export function DessertGridItem({
 						disabled={isUnavailable}
 						className={cn(
 							"flex-1 flex flex-col text-left p-4 gap-2 transition-colors hover:bg-muted/50 active:bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-							isUnavailable && "cursor-not-allowed opacity-60 hover:bg-transparent"
+							isUnavailable &&
+								"cursor-not-allowed opacity-60 hover:bg-transparent",
 						)}
 					>
 						{/* Green slide overlay */}
@@ -80,19 +81,23 @@ export function DessertGridItem({
 							initial={{ x: "100%" }}
 							animate={overlayControls}
 						/>
-						
+
 						<div className="relative z-10 w-full">
 							<div className="flex justify-between items-start gap-2 mb-1">
-								<h4 className={cn(
-									"font-semibold text-base leading-tight line-clamp-2",
-									isUnavailable && "line-through text-muted-foreground"
-								)}>
+								<h4
+									className={cn(
+										"font-semibold text-base leading-tight line-clamp-2",
+										isUnavailable && "line-through text-muted-foreground",
+									)}
+								>
 									{dessert.name}
 								</h4>
-								<span className={cn(
-									"shrink-0 font-bold text-base",
-									isUnavailable ? "text-muted-foreground" : "text-primary"
-								)}>
+								<span
+									className={cn(
+										"shrink-0 font-bold text-base",
+										isUnavailable ? "text-muted-foreground" : "text-primary",
+									)}
+								>
 									₹{dessert.price}
 								</span>
 							</div>
@@ -109,12 +114,14 @@ export function DessertGridItem({
 										Out of Stock
 									</span>
 								) : inventoryQty !== undefined ? (
-									<span className={cn(
-										"inline-flex items-center px-2 py-1 rounded-md text-xs font-medium",
-										inventoryQty < 5 
-											? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" 
-											: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-									)}>
+									<span
+										className={cn(
+											"inline-flex items-center px-2 py-1 rounded-md text-xs font-medium",
+											inventoryQty < 5
+												? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+												: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+										)}
+									>
 										{inventoryQty} left
 									</span>
 								) : (
@@ -136,9 +143,9 @@ export function DessertGridItem({
 						disabled={isStockToggleLoading}
 						className={cn(
 							"w-full h-8 text-xs font-medium hover:bg-white dark:hover:bg-zinc-800 transition-colors",
-							dessert.isOutOfStock 
-								? "text-destructive hover:text-destructive" 
-								: "text-muted-foreground hover:text-foreground"
+							dessert.isOutOfStock
+								? "text-destructive hover:text-destructive"
+								: "text-muted-foreground hover:text-foreground",
 						)}
 					>
 						{isStockToggleLoading ? (

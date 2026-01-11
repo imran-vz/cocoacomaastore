@@ -3,15 +3,14 @@
 import { performance } from "node:perf_hooks";
 import { eq, sql } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
-import { headers } from "next/headers";
 
 import { db } from "@/db";
 import { dailyDessertInventoryTable } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 import { upsertInventorySchema } from "@/lib/validation";
 
 async function requireAuth() {
-	const session = await auth.api.getSession({ headers: await headers() });
+	const session = await getServerSession();
 	if (!session?.session || !session?.user) {
 		throw new Error("Unauthorized");
 	}

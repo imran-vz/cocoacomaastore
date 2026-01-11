@@ -3,13 +3,12 @@
 import { performance } from "node:perf_hooks";
 import { eq, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
-import { headers } from "next/headers";
 import { db } from "@/db";
 import {
 	dailyDessertInventoryTable,
 	inventoryAuditLogTable,
 } from "@/db/schema";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "@/lib/auth";
 
 function getStartOfDay(date: Date = new Date()) {
 	const d = new Date(date);
@@ -27,9 +26,7 @@ export async function upsertInventoryWithAudit(
 
 	if (updates.length === 0) return;
 
-	const session = await auth.api.getSession({
-		headers: await headers(),
-	});
+	const session = await getServerSession();
 	const userId = session?.user?.id ?? null;
 
 	await db.transaction(async (tx) => {

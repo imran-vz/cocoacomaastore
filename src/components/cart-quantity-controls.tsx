@@ -1,4 +1,4 @@
-import { Minus, Plus, Trash2, XIcon } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef } from "react";
 import { useLongPress } from "@/hooks/use-long-press";
