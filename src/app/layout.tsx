@@ -5,6 +5,8 @@ import Navbar from "@/components/navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+
 import "./globals.css";
 
 const nunitoSans = Nunito_Sans({
@@ -70,20 +72,22 @@ export default function RootLayout({
 					"antialiased bg-[url(/bg-grid.svg)] select-none",
 				)}
 			>
-				<Navbar />
-				{children}
-				<Toaster
-					position="top-center"
-					richColors
-					icons={{
-						success: "👍",
-						error: "🚫",
-						info: "💡",
-						warning: "⚠️",
-						loading: "🔄",
-					}}
-					mobileOffset={50}
-				/>
+				<NuqsAdapter>
+					<Navbar />
+					{children}
+					<Toaster
+						position="top-center"
+						richColors
+						icons={{
+							success: "👍",
+							error: "🚫",
+							info: "💡",
+							warning: "⚠️",
+							loading: "🔄",
+						}}
+						mobileOffset={50}
+					/>
+				</NuqsAdapter>
 			</body>
 		</html>
 	);

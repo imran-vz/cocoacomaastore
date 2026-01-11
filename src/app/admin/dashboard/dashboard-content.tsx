@@ -10,6 +10,7 @@ import {
 	ShoppingCart,
 	TrendingUp,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useState } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
@@ -149,7 +150,7 @@ function RevenueChart({
 					<CardDescription>Last 7 days revenue</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<Skeleton className="h-[300px] w-full" />
+					<Skeleton className="h-75 w-full" />
 				</CardContent>
 			</Card>
 		);
@@ -182,7 +183,7 @@ function RevenueChart({
 				</div>
 			</CardHeader>
 			<CardContent>
-				<ChartContainer config={chartConfig} className="h-[300px] w-full">
+				<ChartContainer config={chartConfig} className="h-75 w-full">
 					<AreaChart
 						accessibilityLayer
 						data={data}
@@ -269,7 +270,7 @@ function StockList({
 				<CardDescription>Inventory for selected date</CardDescription>
 			</CardHeader>
 			<CardContent className="flex-1 p-0">
-				<ScrollArea className="h-[400px] px-6">
+				<ScrollArea className="h-100 px-6">
 					{isLoading ? (
 						<div className="space-y-3 pb-4">
 							{[1, 2, 3, 4, 5].map((i) => (
@@ -371,7 +372,7 @@ function AuditLogList({
 				<CardDescription>Inventory changes for selected date</CardDescription>
 			</CardHeader>
 			<CardContent className="flex-1 p-0">
-				<ScrollArea className="h-[400px] px-6">
+				<ScrollArea className="h-100 px-6">
 					{isLoading ? (
 						<div className="space-y-3 pb-4">
 							{[1, 2, 3, 4, 5].map((i) => (
@@ -402,9 +403,12 @@ function AuditLogList({
 												{log.previousQuantity} → {log.newQuantity}
 											</span>
 											{log.orderId && (
-												<span className="text-muted-foreground">
+												<Link
+													href={`/admin/orders?orderId=${log.orderId}`}
+													className="text-muted-foreground hover:underline hover:text-primary transition-colors"
+												>
 													Order #{log.orderId}
-												</span>
+												</Link>
 											)}
 										</div>
 									</div>

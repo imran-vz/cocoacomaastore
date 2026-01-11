@@ -27,8 +27,14 @@ function formatTime(date: Date | string) {
 	});
 }
 
-export function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
-	const [isExpanded, setIsExpanded] = useState(false);
+export function OrderCard({
+	order,
+	initialExpanded = false,
+}: {
+	order: GetOrdersReturnType[number];
+	initialExpanded?: boolean;
+}) {
+	const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
 	const totalItems = order.orderItems.reduce(
 		(acc, item) => acc + item.quantity,

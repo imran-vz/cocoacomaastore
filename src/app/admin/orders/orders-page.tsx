@@ -1,7 +1,8 @@
 "use client";
 
 import { Package, User } from "lucide-react";
-import { useCallback, useState } from "react";
+import { parseAsInteger, useQueryState } from "nuqs";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { DateSwitcher } from "@/components/date-switcher";
 import { Card } from "@/components/ui/card";
@@ -40,6 +41,14 @@ export default function AdminOrdersPage({
 		return d;
 	});
 
+	// Use nuqs to manage the orderId query parameter
+	const [targetOrderId, setTargetOrderId] = useQueryState(
+		"orderId",
+		parseAsInteger,
+	);
+
+	const orderRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
 	const handleDateChange = useCallback(async (date: Date) => {
 		setSelectedDate(date);
 		setIsLoading(true);
@@ -54,6 +63,22 @@ export default function AdminOrdersPage({
 			setIsLoading(false);
 		}
 	}, []);
+
+	// Scroll to order if query param exists
+	useEffect(() => {
+		if (targetOrderId && !isLoading && orders.length > 0) {
+			const orderElement = orderRefs.current.get(targetOrderId);
+			if (orderElement) {
+				// Small delay to ensure rendering is complete
+				setTimeout(() => {
+					orderElement.scrollIntoView({ behavior: "smooth", block: "center" });
+					// Optional: Clear the query param after scrolling if desired,
+					// but keeping it allows sharing/refreshing.
+					// If we want to highlight it temporarily, we could do that here.
+				}, 100);
+			}
+		}
+	}, [targetOrderId, isLoading, orders]);
 
 	const totalItems = orders.reduce(
 		(acc, order) =>
@@ -129,7 +154,18 @@ export default function AdminOrdersPage({
 			) : orders.length > 0 ? (
 				<div className="space-y-3">
 					{orders.map((order) => (
-						<OrderCard key={order.id} order={order} />
+						<div
+							key={order.id}
+							ref={(el) => {
+								if (el) orderRefs.current.set(order.id, el);
+								else orderRefs.current.delete(order.id);
+							}}
+						>
+							<OrderCard
+								order={order}
+								initialExpanded={order.id === targetOrderId}
+							/>
+						</div>
 					))}
 				</div>
 			) : (
