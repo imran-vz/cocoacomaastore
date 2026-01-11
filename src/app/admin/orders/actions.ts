@@ -42,8 +42,15 @@ function getDayKey(day: Date) {
 	return `${y}-${m}-${d}`;
 }
 
+type OrderItemModifierWithDessert = {
+	id: number;
+	quantity: number;
+	dessert: Pick<Dessert, "id" | "name">;
+};
+
 type OrderItemWithDessert = Omit<OrderItem, "dessertId" | "orderId"> & {
 	dessert: Pick<Dessert, "id" | "name">;
+	modifiers: OrderItemModifierWithDessert[];
 };
 
 export type GetOrdersReturnType = (Omit<Order, "isDeleted"> & {
@@ -75,6 +82,20 @@ async function getOrders(date: Date): Promise<GetOrdersReturnType> {
 							name: true,
 						},
 					},
+					modifiers: {
+						columns: {
+							orderItemId: false,
+							dessertId: false,
+						},
+						with: {
+							dessert: {
+								columns: {
+									id: true,
+									name: true,
+								},
+							},
+						},
+					},
 				},
 				columns: {
 					dessertId: false,
@@ -86,7 +107,7 @@ async function getOrders(date: Date): Promise<GetOrdersReturnType> {
 	const duration = performance.now() - start;
 	console.log(`[admin] getOrders: ${duration}ms`);
 
-	return orders;
+	return orders as GetOrdersReturnType;
 }
 
 export async function getCachedOrders(dateString?: string) {
