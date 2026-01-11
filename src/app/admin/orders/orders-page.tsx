@@ -1,154 +1,20 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Clock, Package, User } from "lucide-react";
+import { Package, User } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { DateSwitcher } from "@/components/date-switcher";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { type GetOrdersReturnType, getCachedOrders } from "./actions";
+import type { GetOrdersReturnType } from "./actions";
+import { getCachedOrders } from "./actions";
+import { OrderCard } from "./order-card";
 
 function formatDateString(date: Date): string {
 	const y = date.getFullYear();
 	const m = String(date.getMonth() + 1).padStart(2, "0");
 	const d = String(date.getDate()).padStart(2, "0");
 	return `${y}-${m}-${d}`;
-}
-
-function formatTime(date: Date | string) {
-	const d = typeof date === "string" ? new Date(date) : date;
-	return d.toLocaleTimeString("en-IN", {
-		hour: "2-digit",
-		minute: "2-digit",
-		hour12: true,
-		timeZone: "Asia/Kolkata",
-	});
-}
-
-function formatDate(date: Date | string) {
-	const d = typeof date === "string" ? new Date(date) : date;
-	return d.toLocaleDateString("en-IN", {
-		day: "numeric",
-		month: "short",
-		timeZone: "Asia/Kolkata",
-	});
-}
-
-function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
-	const [isExpanded, setIsExpanded] = useState(false);
-
-	const totalItems = order.orderItems.reduce(
-		(acc, item) => acc + item.quantity,
-		0,
-	);
-
-	const itemsSummary = order.orderItems
-		.map(
-			(item) =>
-				`${item.dessert.name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`,
-		)
-		.join(", ");
-
-	return (
-		<Card
-			className={cn(
-				"transition-all duration-200 active:scale-[0.99]",
-				isExpanded && "ring-2 ring-primary/20",
-			)}
-		>
-			<CardHeader
-				className="p-4 pb-2 cursor-pointer"
-				onClick={() => setIsExpanded(!isExpanded)}
-			>
-				<div className="flex items-start justify-between gap-2">
-					<div className="flex-1 min-w-0">
-						<CardTitle className="text-base font-semibold flex items-center gap-2">
-							<span className="text-muted-foreground text-sm font-normal">
-								#{order.id}
-							</span>
-							{order.customerName && (
-								<>
-									<span className="text-muted-foreground">•</span>
-									<span className="truncate">{order.customerName}</span>
-								</>
-							)}
-						</CardTitle>
-						<CardDescription
-							className="mt-1 flex items-center gap-1.5 text-xs"
-							suppressHydrationWarning
-						>
-							<Clock className="size-3" />
-							{formatTime(order.createdAt)}
-							<span className="text-muted-foreground/50">•</span>
-							{formatDate(order.createdAt)}
-						</CardDescription>
-					</div>
-					<div className="flex items-center gap-2">
-						<div className="text-right">
-							<p className="font-semibold text-base">₹{order.total}</p>
-							<p className="text-xs text-muted-foreground">
-								{totalItems} item{totalItems !== 1 ? "s" : ""}
-							</p>
-						</div>
-						<Button variant="ghost" size="icon" className="size-8 shrink-0">
-							{isExpanded ? (
-								<ChevronUp className="size-4" />
-							) : (
-								<ChevronDown className="size-4" />
-							)}
-						</Button>
-					</div>
-				</div>
-
-				{/* Collapsed summary */}
-				{!isExpanded && (
-					<p className="text-xs text-muted-foreground mt-2 line-clamp-1">
-						{itemsSummary}
-					</p>
-				)}
-			</CardHeader>
-
-			{/* Expanded content */}
-			{isExpanded && (
-				<CardContent className="p-4 pt-0">
-					<Separator className="mb-3" />
-
-					<div className="space-y-2">
-						{order.orderItems.map((item) => (
-							<div
-								key={item.id}
-								className="flex items-center justify-between text-sm"
-							>
-								<span className="flex-1">{item.dessert.name}</span>
-								<span className="text-muted-foreground font-medium tabular-nums">
-									×{item.quantity}
-								</span>
-							</div>
-						))}
-					</div>
-
-					{order.deliveryCost && Number(order.deliveryCost) > 0 && (
-						<>
-							<Separator className="my-3" />
-							<div className="flex items-center justify-between text-sm">
-								<span className="text-muted-foreground">Delivery</span>
-								<span className="font-medium">₹{order.deliveryCost}</span>
-							</div>
-						</>
-					)}
-				</CardContent>
-			)}
-		</Card>
-	);
 }
 
 function OrdersSkeleton() {
