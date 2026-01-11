@@ -345,170 +345,155 @@ export default function ManageDesserts({
 	};
 
 	return (
-		<div className="@container/desserts">
-			<div className="space-y-4 @md/desserts:space-y-6 @lg/desserts:space-y-8 p-2 @sm/desserts:p-4 @md/desserts:p-0">
-				<Dialog open={openModal} onOpenChange={handleCloseModal}>
-					<DialogContent className="mx-2 max-w-[calc(100vw-1rem)] sm:mx-4 sm:max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 md:-mt-28">
-						<DialogHeader>
-							<DialogTitle>
-								{editingDessert ? "Edit Dessert" : "Add New Dessert"}
-							</DialogTitle>
-						</DialogHeader>
-						<DessertForm
-							key={editingDessert?.id}
-							initialData={editingDessert ?? undefined}
-							onSubmit={handleSubmit}
-							onDelete={handleDelete}
-							isLoading={isLoading}
-						/>
-					</DialogContent>
-				</Dialog>
+		<div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+			<Dialog open={openModal} onOpenChange={handleCloseModal}>
+				<DialogContent className="max-w-lg">
+					<DialogHeader>
+						<DialogTitle>
+							{editingDessert ? "Edit Dessert" : "Add New Dessert"}
+						</DialogTitle>
+					</DialogHeader>
+					<DessertForm
+						key={editingDessert?.id}
+						initialData={editingDessert ?? undefined}
+						onSubmit={handleSubmit}
+						onDelete={handleDelete}
+						isLoading={isLoading}
+					/>
+				</DialogContent>
+			</Dialog>
 
-				<div className="flex flex-col space-y-3 @sm/desserts:space-y-4 @md/desserts:flex-row @md/desserts:justify-between @md/desserts:items-center @md/desserts:space-y-0">
-					<h2 className="text-xl @sm/desserts:text-2xl @lg/desserts:text-3xl font-bold">
-						Desserts
-					</h2>
-					<div className="flex flex-col space-y-2 @sm/desserts:flex-row @sm/desserts:gap-2 @sm/desserts:space-y-0 @md/desserts:gap-3">
+			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+				<div>
+					<h2 className="text-3xl font-bold tracking-tight">Desserts</h2>
+					<p className="text-muted-foreground">
+						Manage your dessert inventory and visibility
+					</p>
+				</div>
+				<div className="flex flex-col sm:flex-row gap-2">
+					<Button
+						type="button"
+						variant="outline"
+						onClick={handleDisableAll}
+						disabled={isLoading || desserts.every((d) => !d.enabled)}
+					>
+						{isLoading ? "Disabling..." : "Disable All"}
+					</Button>
+					<Button
+						type="button"
+						onClick={() => {
+							setEditingDessert(null);
+							handleOpenModal();
+						}}
+					>
+						Add Dessert
+					</Button>
+				</div>
+			</div>
+
+			<div className="flex items-center gap-4">
+				<Input
+					placeholder="Search desserts by name..."
+					value={searchTerm}
+					onChange={(e) => setSearchTerm(e.target.value)}
+					className="max-w-sm"
+				/>
+				{searchTerm && (
+					<Button
+						variant="ghost"
+						onClick={() => setSearchTerm("")}
+					>
+						Clear
+					</Button>
+				)}
+			</div>
+
+			{/* Enabled Desserts Section */}
+			{enabledDesserts.length > 0 && (
+				<div className="space-y-4">
+					<h3 className="text-lg font-semibold flex items-center gap-2">
+						<span className="size-2 rounded-full bg-green-500" />
+						Available Desserts ({enabledDesserts.length})
+					</h3>
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+						{enabledDesserts.map((dessert, index) => (
+							<DessertCard
+								key={dessert.id}
+								dessert={dessert}
+								index={index}
+								totalCount={enabledDesserts.length}
+								onEdit={(dessert) => {
+									setEditingDessert(dessert);
+									handleOpenModal();
+								}}
+								onToggle={handleToggleDessert}
+								onToggleStock={handleToggleOutOfStock}
+								onMoveUp={handleMoveUp}
+								onMoveDown={handleMoveDown}
+								onMoveToTop={handleMoveToTop}
+								onMoveToBottom={handleMoveToBottom}
+								isToggleLoading={toggleLoadingIds.has(dessert.id)}
+								isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+								isMoving={movingIds.has(dessert.id)}
+							/>
+						))}
+					</div>
+				</div>
+			)}
+
+			{/* Disabled Desserts Section */}
+			{disabledDesserts.length > 0 && (
+				<div className="space-y-4 pt-4">
+					<h3 className="text-lg font-semibold flex items-center gap-2">
+						<span className="size-2 rounded-full bg-red-500" />
+						Disabled Desserts ({disabledDesserts.length})
+					</h3>
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+						{disabledDesserts.map((dessert, index) => (
+							<DessertCard
+								key={dessert.id}
+								dessert={dessert}
+								index={index}
+								totalCount={disabledDesserts.length}
+								onEdit={(dessert) => {
+									setEditingDessert(dessert);
+									handleOpenModal();
+								}}
+								onToggle={handleToggleDessert}
+								onToggleStock={handleToggleOutOfStock}
+								onMoveUp={handleMoveUp}
+								onMoveDown={handleMoveDown}
+								onMoveToTop={handleMoveToTop}
+								onMoveToBottom={handleMoveToBottom}
+								isToggleLoading={toggleLoadingIds.has(dessert.id)}
+								isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+								isMoving={movingIds.has(dessert.id)}
+							/>
+						))}
+					</div>
+				</div>
+			)}
+
+			{/* Empty state */}
+			{filteredDesserts.length === 0 && (
+				<div className="flex flex-col items-center justify-center py-12 text-center">
+					<p className="text-muted-foreground mb-4">
+						{searchTerm
+							? "No desserts found matching your search."
+							: "No desserts available."}
+					</p>
+					{!searchTerm && (
 						<Button
-							type="button"
-							variant="outline"
-							onClick={handleDisableAll}
-							disabled={isLoading || desserts.every((d) => !d.enabled)}
-							className="w-full @sm/desserts:w-auto text-sm"
-							size="sm"
-						>
-							{isLoading ? "Disabling..." : "Disable All"}
-						</Button>
-						<Button
-							type="button"
 							onClick={() => {
 								setEditingDessert(null);
 								handleOpenModal();
 							}}
-							className="w-full @sm/desserts:w-auto text-sm"
-							size="sm"
 						>
-							Add Dessert
-						</Button>
-					</div>
-				</div>
-
-				<div className="flex flex-col space-y-2 @sm/desserts:flex-row @sm/desserts:gap-3 @sm/desserts:items-center @sm/desserts:space-y-0 @md/desserts:gap-4">
-					<Input
-						placeholder="Search desserts by name..."
-						value={searchTerm}
-						onChange={(e) => setSearchTerm(e.target.value)}
-						className="w-full @sm/desserts:flex-1 @md/desserts:max-w-sm text-sm"
-					/>
-					{searchTerm && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setSearchTerm("")}
-							className="w-full @sm/desserts:w-auto text-xs"
-						>
-							Clear
+							Add Your First Dessert
 						</Button>
 					)}
 				</div>
-
-				{/* Enabled Desserts Section */}
-				{enabledDesserts.length > 0 && (
-					<div>
-						<h3 className="text-lg font-semibold mb-4 text-green-700">
-							Available Desserts ({enabledDesserts.length})
-						</h3>
-						<div className="grid grid-cols-1 @sm/desserts:grid-cols-2 @lg/desserts:grid-cols-3 @xl/desserts:grid-cols-4 gap-4 @sm/desserts:gap-6">
-							{enabledDesserts.map((dessert, index) => (
-								<div
-									key={dessert.id}
-									className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300"
-									style={{ animationDelay: `${index * 50}ms` }}
-								>
-									<DessertCard
-										dessert={dessert}
-										index={index}
-										totalCount={enabledDesserts.length}
-										onEdit={(dessert) => {
-											setEditingDessert(dessert);
-											handleOpenModal();
-										}}
-										onToggle={handleToggleDessert}
-										onToggleStock={handleToggleOutOfStock}
-										onMoveUp={handleMoveUp}
-										onMoveDown={handleMoveDown}
-										onMoveToTop={handleMoveToTop}
-										onMoveToBottom={handleMoveToBottom}
-										isToggleLoading={toggleLoadingIds.has(dessert.id)}
-										isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
-										isMoving={movingIds.has(dessert.id)}
-									/>
-								</div>
-							))}
-						</div>
-					</div>
-				)}
-
-				{/* Disabled Desserts Section */}
-				{disabledDesserts.length > 0 && (
-					<div>
-						<h3 className="text-lg font-semibold mb-4 text-red-700">
-							Disabled Desserts ({disabledDesserts.length})
-						</h3>
-						<div className="grid grid-cols-1 @sm/desserts:grid-cols-2 @lg/desserts:grid-cols-3 @xl/desserts:grid-cols-4 gap-4 @sm/desserts:gap-6">
-							{disabledDesserts.map((dessert, index) => (
-								<div
-									key={dessert.id}
-									className="animate-in fade-in-0 slide-in-from-bottom-4 duration-300"
-									style={{
-										animationDelay: `${(enabledDesserts.length + index) * 50}ms`,
-									}}
-								>
-									<DessertCard
-										dessert={dessert}
-										index={index}
-										totalCount={disabledDesserts.length}
-										onEdit={(dessert) => {
-											setEditingDessert(dessert);
-											handleOpenModal();
-										}}
-										onToggle={handleToggleDessert}
-										onToggleStock={handleToggleOutOfStock}
-										onMoveUp={handleMoveUp}
-										onMoveDown={handleMoveDown}
-										onMoveToTop={handleMoveToTop}
-										onMoveToBottom={handleMoveToBottom}
-										isToggleLoading={toggleLoadingIds.has(dessert.id)}
-										isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
-										isMoving={movingIds.has(dessert.id)}
-									/>
-								</div>
-							))}
-						</div>
-					</div>
-				)}
-
-				{/* Empty state */}
-				{filteredDesserts.length === 0 && (
-					<div className="text-center py-12">
-						<div className="text-muted-foreground mb-4">
-							{searchTerm
-								? "No desserts found matching your search."
-								: "No desserts available."}
-						</div>
-						{!searchTerm && (
-							<Button
-								onClick={() => {
-									setEditingDessert(null);
-									handleOpenModal();
-								}}
-							>
-								Add Your First Dessert
-							</Button>
-						)}
-					</div>
-				)}
-			</div>
+			)}
 		</div>
 	);
 }

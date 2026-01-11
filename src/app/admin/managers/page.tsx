@@ -1,7 +1,7 @@
-import { getCachedManagers } from "@/app/manager/action";
-import ManagersClientPage from "./component/managet-client-page";
+import { getCachedManagers } from "./actions";
+import ManagerClientPage from "./component/manager-client-page";
 
 export default function ManagersPage() {
 	const managers = getCachedManagers();
-	return <ManagersClientPage managers={managers} />;
+	return <ManagerClientPage managers={managers} />;
 }

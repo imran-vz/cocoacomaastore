@@ -22,9 +22,9 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarRail,
 } from "@/components/ui/sidebar";
 import { authClient } from "@/lib/auth-client";
-import { TextRoll } from "./ui/text-roll";
 
 const data = {
 	navMain: [
@@ -42,33 +42,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const session = authClient.useSession();
 
 	return (
-		<Sidebar collapsible="offcanvas" {...props}>
+		<Sidebar collapsible="icon" {...props}>
 			<SidebarHeader>
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
+							size="lg"
 							asChild
-							className="data-[slot=sidebar-menu-button]:p-1.5!"
+							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 						>
 							<a href="/admin">
-								<span className="flex items-center object-cover size-8 rounded-full overflow-hidden">
+								<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
 									<Image
 										src="/logo.png"
 										alt="Cocoacomaa Store"
 										width={32}
 										height={32}
+										className="rounded-lg"
 									/>
-								</span>
-								<TextRoll
-									transition={{
-										repeat: Number.POSITIVE_INFINITY,
-										repeatType: "loop",
-										repeatDelay: 10,
-									}}
-									className="text-base text-primary min-w-32 font-bold dark:text-white"
-								>
-									Cocoa Comaa
-								</TextRoll>
+								</div>
+								<div className="grid flex-1 text-left text-sm leading-tight">
+									<span className="truncate font-semibold">Cocoa Comaa</span>
+									<span className="truncate text-xs">Admin Panel</span>
+								</div>
 							</a>
 						</SidebarMenuButton>
 					</SidebarMenuItem>
@@ -87,6 +83,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					}
 				/>
 			</SidebarFooter>
+			<SidebarRail />
 		</Sidebar>
 	);
 }

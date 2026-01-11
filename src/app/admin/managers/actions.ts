@@ -19,7 +19,7 @@ async function requireAdmin() {
 	return session.user;
 }
 
-export async function getManagers() {
+export async function getCachedManagers() {
 	const managers = await db
 		.select({
 			id: userTable.id,
