@@ -1,11 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Nunito_Sans } from "next/font/google";
-
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Navbar from "@/components/navbar";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-
-import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 import "./globals.css";
 

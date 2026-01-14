@@ -87,6 +87,7 @@ export const createDessertSchema = z.object({
 	enabled: z.boolean().default(true),
 	isOutOfStock: z.boolean().default(false),
 	hasUnlimitedStock: z.boolean().default(false),
+	kind: z.enum(["base", "modifier"]),
 });
 
 export const updateDessertSchema = z.object({

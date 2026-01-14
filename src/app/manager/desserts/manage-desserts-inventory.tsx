@@ -43,7 +43,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { ComboWithDetails, Dessert } from "@/lib/types";
+import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { upsertInventoryWithAudit } from "./actions";
 
@@ -696,8 +696,8 @@ export default function ManageDessertsInventory({
 							: "No desserts available."}
 					</p>
 					{searchTerm && (
-						<Button 
-							variant="link" 
+						<Button
+							variant="link"
 							onClick={() => setSearchTerm("")}
 							className="mt-1 h-auto p-0 text-sm"
 						>
