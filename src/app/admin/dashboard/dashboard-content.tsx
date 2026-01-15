@@ -344,7 +344,6 @@ function AuditLogList({
 	logs: AuditLogEntry[];
 	isLoading?: boolean;
 }) {
-	console.log(logs);
 	const getActionBadge = (
 		action: AuditLogEntry["action"],
 		note?: string | null,
