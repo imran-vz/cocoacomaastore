@@ -31,6 +31,11 @@ import {
 } from "@/components/ui/chart";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
 	type AuditLogEntry,
@@ -339,7 +344,11 @@ function AuditLogList({
 	logs: AuditLogEntry[];
 	isLoading?: boolean;
 }) {
-	const getActionBadge = (action: AuditLogEntry["action"]) => {
+	console.log(logs);
+	const getActionBadge = (
+		action: AuditLogEntry["action"],
+		note?: string | null,
+	) => {
 		switch (action) {
 			case "set_stock":
 				return (
@@ -358,6 +367,19 @@ function AuditLogList({
 					<Badge variant="outline" className="text-xs">
 						Manual
 					</Badge>
+				);
+			case "order_cancelled":
+				return (
+					<Tooltip>
+						<TooltipTrigger>
+							<Badge variant="destructive" className="text-xs">
+								Cancelled
+							</Badge>
+						</TooltipTrigger>
+						<TooltipContent>
+							<p>{note}</p>
+						</TooltipContent>
+					</Tooltip>
 				);
 		}
 	};
@@ -396,7 +418,7 @@ function AuditLogList({
 											<span className="font-medium text-sm">
 												{log.dessertName}
 											</span>
-											{getActionBadge(log.action)}
+											{getActionBadge(log.action, log.note)}
 										</div>
 										<div className="flex items-center gap-2 text-xs text-muted-foreground">
 											<span className="tabular-nums font-medium">

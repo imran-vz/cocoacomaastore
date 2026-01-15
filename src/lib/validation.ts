@@ -76,6 +76,11 @@ export const deleteOrderSchema = z.object({
 	orderId: z.number().int().positive(),
 });
 
+export const cancelOrderSchema = z.object({
+	orderId: z.number().int().positive(),
+	reason: z.string().trim().min(1).max(500).optional(),
+});
+
 // ============================================================================
 // Dessert Validation
 // ============================================================================

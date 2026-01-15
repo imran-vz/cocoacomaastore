@@ -134,7 +134,7 @@ export const ordersTable = pgTable(
 		deliveryCost: numeric({ precision: 5, scale: 2 }).notNull().default("0.00"),
 		total: numeric({ precision: 10, scale: 2 }).notNull(),
 		status: varchar("status", {
-			enum: ["pending", "completed"],
+			enum: ["pending", "completed", "cancelled"],
 		}).notNull(),
 		isDeleted: boolean().notNull().default(false),
 	},
@@ -338,7 +338,12 @@ export const inventoryAuditLogTable = pgTable(
 			.notNull()
 			.references(() => dessertsTable.id, { onDelete: "cascade" }),
 		action: varchar("action", {
-			enum: ["set_stock", "order_deducted", "manual_adjustment"],
+			enum: [
+				"set_stock",
+				"order_deducted",
+				"manual_adjustment",
+				"order_cancelled",
+			],
 		}).notNull(),
 		previousQuantity: integer().notNull(),
 		newQuantity: integer().notNull(),
@@ -355,6 +360,8 @@ export const inventoryAuditLogTable = pgTable(
 		index("inventory_audit_log_order_idx").on(table.orderId),
 	],
 );
+
+export type InventoryAuditLog = typeof inventoryAuditLogTable.$inferSelect;
 
 export const inventoryAuditLogRelations = relations(
 	inventoryAuditLogTable,

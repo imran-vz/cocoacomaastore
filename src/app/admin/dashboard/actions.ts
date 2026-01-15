@@ -8,6 +8,7 @@ import { db } from "@/db";
 import {
 	dailyDessertInventoryTable,
 	dessertsTable,
+	type InventoryAuditLog,
 	inventoryAuditLogTable,
 	orderItemsTable,
 	ordersTable,
@@ -49,15 +50,18 @@ export type DessertStock = {
 	enabled: boolean;
 };
 
-export type AuditLogEntry = {
-	id: number;
-	day: Date;
+export type AuditLogEntry = Pick<
+	InventoryAuditLog,
+	| "id"
+	| "day"
+	| "action"
+	| "previousQuantity"
+	| "newQuantity"
+	| "orderId"
+	| "createdAt"
+	| "note"
+> & {
 	dessertName: string;
-	action: "set_stock" | "order_deducted" | "manual_adjustment";
-	previousQuantity: number;
-	newQuantity: number;
-	orderId: number | null;
-	createdAt: Date;
 };
 
 // Get dashboard stats for a specific day
@@ -174,6 +178,7 @@ async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 			newQuantity: inventoryAuditLogTable.newQuantity,
 			orderId: inventoryAuditLogTable.orderId,
 			createdAt: inventoryAuditLogTable.createdAt,
+			note: inventoryAuditLogTable.note,
 		})
 		.from(inventoryAuditLogTable)
 		.innerJoin(
@@ -192,7 +197,7 @@ async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 	const duration = performance.now() - start;
 	console.log(`getAuditLogs: ${duration.toFixed(2)}ms`);
 
-	return logs as AuditLogEntry[];
+	return logs;
 }
 
 // Get daily revenue for the past N days ending on a specific date (for chart)

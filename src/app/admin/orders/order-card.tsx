@@ -50,11 +50,17 @@ export function OrderCard({
 		})
 		.join(", ");
 
+	const isCancelled = order.status === "cancelled";
+
 	return (
 		<Card
 			className={cn(
 				"transition-all duration-200 border-l-4",
-				isExpanded ? "border-l-primary shadow-md" : "border-l-transparent",
+				isCancelled
+					? "border-l-destructive/50 opacity-60"
+					: isExpanded
+						? "border-l-primary shadow-md"
+						: "border-l-transparent",
 			)}
 		>
 			<div className="flex flex-col">
@@ -76,6 +82,11 @@ export function OrderCard({
 								<Badge variant="outline" className="font-mono text-xs">
 									#{order.id}
 								</Badge>
+								{isCancelled && (
+									<Badge variant="destructive" className="text-xs">
+										Cancelled
+									</Badge>
+								)}
 								<span className="text-xs text-muted-foreground flex items-center gap-1">
 									<Clock className="size-3" />
 									{formatTime(order.createdAt)}
@@ -94,7 +105,14 @@ export function OrderCard({
 						</div>
 
 						<div className="flex flex-col items-end gap-1">
-							<span className="font-bold text-lg">₹{order.total}</span>
+							<span
+								className={cn(
+									"font-bold text-lg",
+									isCancelled && "line-through",
+								)}
+							>
+								₹{order.total}
+							</span>
 							<Badge variant="secondary" className="text-xs">
 								{totalItems} item{totalItems !== 1 ? "s" : ""}
 							</Badge>

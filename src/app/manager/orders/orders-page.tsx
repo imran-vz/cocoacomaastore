@@ -1,13 +1,27 @@
 "use client";
 
-import { Clock, Package } from "lucide-react";
+import { Clock, Package, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import {
 	Table,
 	TableBody,
@@ -17,7 +31,11 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { type GetOrdersReturnType, getCachedOrders } from "./actions";
+import {
+	cancelOrder,
+	type GetOrdersReturnType,
+	getCachedOrders,
+} from "./actions";
 
 function formatTime(date: Date | string) {
 	const d = typeof date === "string" ? new Date(date) : date;
@@ -28,8 +46,42 @@ function formatTime(date: Date | string) {
 		timeZone: "Asia/Kolkata",
 	});
 }
-function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
+
+const CANCELLATION_REASONS = [
+	"Customer requested cancellation",
+	"Out of stock",
+	"Duplicate order",
+	"Wrong order placed",
+	"Payment issue",
+];
+function OrderCard({
+	order,
+	onOrderCancelled,
+}: {
+	order: GetOrdersReturnType[number];
+	onOrderCancelled: () => void;
+}) {
 	const [isExpanded, setIsExpanded] = useState(false);
+	const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+	const [cancelReason, setCancelReason] = useState("");
+	const [isCancelling, setIsCancelling] = useState(false);
+
+	const handleCancelOrder = async () => {
+		setIsCancelling(true);
+		try {
+			await cancelOrder(order.id, cancelReason.trim() || undefined);
+			toast.success(`Order #${order.id} has been cancelled`);
+			setIsCancelDialogOpen(false);
+			setCancelReason("");
+			onOrderCancelled();
+		} catch (error) {
+			toast.error(
+				error instanceof Error ? error.message : "Failed to cancel order",
+			);
+		} finally {
+			setIsCancelling(false);
+		}
+	};
 
 	const totalItems = order.orderItems.reduce(
 		(acc, item) => acc + item.quantity,
@@ -45,11 +97,17 @@ function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
 		})
 		.join(", ");
 
+	const isCancelled = order.status === "cancelled";
+
 	return (
 		<Card
 			className={cn(
 				"transition-all duration-200 border-l-4",
-				isExpanded ? "border-l-primary shadow-md" : "border-l-transparent",
+				isCancelled
+					? "border-l-destructive/50 opacity-60"
+					: isExpanded
+						? "border-l-primary shadow-md"
+						: "border-l-transparent",
 			)}
 		>
 			<div className="flex flex-col">
@@ -71,6 +129,11 @@ function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
 								<Badge variant="outline" className="font-mono text-xs">
 									#{order.id}
 								</Badge>
+								{isCancelled && (
+									<Badge variant="destructive" className="text-xs">
+										Cancelled
+									</Badge>
+								)}
 								<span className="text-xs text-muted-foreground flex items-center gap-1">
 									<Clock className="size-3" />
 									{formatTime(order.createdAt)}
@@ -89,7 +152,14 @@ function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
 						</div>
 
 						<div className="flex flex-col items-end gap-1">
-							<span className="font-bold text-lg">₹{order.total}</span>
+							<span
+								className={cn(
+									"font-bold text-lg",
+									isCancelled && "line-through",
+								)}
+							>
+								₹{order.total}
+							</span>
 							<Badge variant="secondary" className="text-xs">
 								{totalItems} item{totalItems !== 1 ? "s" : ""}
 							</Badge>
@@ -161,6 +231,77 @@ function OrderCard({ order }: { order: GetOrdersReturnType[number] }) {
 								<div className="flex items-center justify-between text-sm px-2">
 									<span className="text-muted-foreground">Delivery Cost</span>
 									<span className="font-medium">₹{order.deliveryCost}</span>
+								</div>
+							)}
+
+							{/* Cancel Order Button */}
+							{!isCancelled && (
+								<div className="pt-3 border-t mt-3">
+									<Dialog
+										open={isCancelDialogOpen}
+										onOpenChange={setIsCancelDialogOpen}
+									>
+										<DialogTrigger asChild>
+											<Button
+												variant="destructive"
+												size="sm"
+												className="w-full"
+											>
+												<XCircle className="size-4 mr-2" />
+												Cancel Order
+											</Button>
+										</DialogTrigger>
+										<DialogContent>
+											<DialogHeader>
+												<DialogTitle>Cancel Order #{order.id}</DialogTitle>
+												<DialogDescription>
+													Are you sure you want to cancel this order? The
+													inventory will be restored automatically.
+												</DialogDescription>
+											</DialogHeader>
+											<div className="space-y-4 py-4">
+												<div className="space-y-2">
+													<Label htmlFor="cancel-reason">
+														Reason (optional)
+													</Label>
+													<Input
+														id="cancel-reason"
+														list="cancel-reasons"
+														placeholder="Select or type a reason..."
+														value={cancelReason}
+														onChange={(e) => setCancelReason(e.target.value)}
+														disabled={isCancelling}
+													/>
+													<datalist id="cancel-reasons">
+														{CANCELLATION_REASONS.map((reason) => (
+															<option key={reason} value={reason} />
+														))}
+													</datalist>
+												</div>
+											</div>
+											<DialogFooter>
+												<DialogClose asChild>
+													<Button variant="outline" disabled={isCancelling}>
+														Keep Order
+													</Button>
+												</DialogClose>
+												<Button
+													variant="destructive"
+													onClick={handleCancelOrder}
+													disabled={isCancelling}
+												>
+													{isCancelling ? (
+														<>
+															<Spinner className="size-4 mr-2" />
+															Cancelling...
+														</>
+													) : (
+														"Cancel Order"
+													)}
+												</Button>
+											</DialogFooter>
+										</DialogContent>
+									</Dialog>
 								</div>
 							)}
 						</div>
@@ -252,7 +393,13 @@ export default function OrdersPage({
 			{/* Orders List */}
 			<div className="space-y-4">
 				{orders.length > 0 ? (
-					orders.map((order) => <OrderCard key={order.id} order={order} />)
+					orders.map((order) => (
+						<OrderCard
+							key={order.id}
+							order={order}
+							onOrderCancelled={refetch}
+						/>
+					))
 				) : (
 					<Card className="py-12 border-dashed">
 						<div className="flex flex-col items-center justify-center text-center text-muted-foreground">
