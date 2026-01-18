@@ -44,5 +44,6 @@ next-env.d.ts
 scripts/seed-admin.ts
 
 certificates
+
 postgres-data
 redis-data

@@ -161,12 +161,15 @@ export const orderItemsTable = pgTable(
 		dessertId: integer().notNull(),
 		quantity: integer().notNull(),
 		unitPrice: numeric({ precision: 10, scale: 2 }).notNull().default("0.00"), // snapshotted price per unit at order time
+		comboId: integer()
+			.references(() => dessertCombosTable.id, { onDelete: "set null" }),
 		comboName: varchar({ length: 255 }), // optional: name of the combo if this item was part of one
 	},
 	(table) => [
 		// Performance: Indexes for foreign key joins
 		index("order_items_order_id_idx").on(table.orderId),
 		index("order_items_dessert_id_idx").on(table.dessertId),
+		index("order_items_combo_id_idx").on(table.comboId),
 	],
 );
 
@@ -380,3 +383,150 @@ export const inventoryAuditLogRelations = relations(
 		}),
 	}),
 );
+
+// ============================================================================
+// Analytics Tables - Pre-computed metrics for dashboard performance
+// ============================================================================
+
+export const analyticsDailyRevenueTable = pgTable(
+	"analytics_daily_revenue",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		day: timestamp().notNull(),
+		grossRevenue: numeric("gross_revenue", {
+			precision: 10,
+			scale: 2,
+		}).notNull(),
+		orderCount: integer("order_count").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("analytics_daily_revenue_day_unique").on(table.day),
+		index("analytics_daily_revenue_day_idx").on(table.day),
+	],
+);
+
+export type AnalyticsDailyRevenue =
+	typeof analyticsDailyRevenueTable.$inferSelect;
+
+export const analyticsDailyDessertRevenueTable = pgTable(
+	"analytics_daily_dessert_revenue",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		day: timestamp().notNull(),
+		dessertId: integer("dessert_id")
+			.notNull()
+			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+		grossRevenue: numeric("gross_revenue", {
+			precision: 10,
+			scale: 2,
+		}).notNull(),
+		quantitySold: integer("quantity_sold").notNull(),
+		orderCount: integer("order_count").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("analytics_daily_dessert_revenue_unique").on(
+			table.day,
+			table.dessertId,
+		),
+		index("analytics_daily_dessert_revenue_day_idx").on(table.day),
+		index("analytics_daily_dessert_revenue_dessert_idx").on(table.dessertId),
+	],
+);
+
+export type AnalyticsDailyDessertRevenue =
+	typeof analyticsDailyDessertRevenueTable.$inferSelect;
+
+export const analyticsDailyDessertRevenueRelations = relations(
+	analyticsDailyDessertRevenueTable,
+	({ one }) => ({
+		dessert: one(dessertsTable, {
+			fields: [analyticsDailyDessertRevenueTable.dessertId],
+			references: [dessertsTable.id],
+		}),
+	}),
+);
+
+export const analyticsWeeklyRevenueTable = pgTable(
+	"analytics_weekly_revenue",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		weekStart: timestamp("week_start").notNull(),
+		weekEnd: timestamp("week_end").notNull(),
+		grossRevenue: numeric("gross_revenue", {
+			precision: 10,
+			scale: 2,
+		}).notNull(),
+		orderCount: integer("order_count").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("analytics_weekly_revenue_week_unique").on(table.weekStart),
+		index("analytics_weekly_revenue_week_idx").on(table.weekStart),
+	],
+);
+
+export type AnalyticsWeeklyRevenue =
+	typeof analyticsWeeklyRevenueTable.$inferSelect;
+
+export const analyticsMonthlyEodStockTable = pgTable(
+	"analytics_monthly_eod_stock",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		month: varchar({ length: 7 }).notNull(),
+		dessertId: integer("dessert_id")
+			.notNull()
+			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+		snapshotDay: timestamp("snapshot_day").notNull(),
+		quantity: integer().notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("analytics_monthly_eod_stock_unique").on(
+			table.month,
+			table.dessertId,
+		),
+		index("analytics_monthly_eod_stock_month_idx").on(table.month),
+		index("analytics_monthly_eod_stock_dessert_idx").on(table.dessertId),
+	],
+);
+
+export type AnalyticsMonthlyEodStock =
+	typeof analyticsMonthlyEodStockTable.$inferSelect;
+
+export const analyticsMonthlyEodStockRelations = relations(
+	analyticsMonthlyEodStockTable,
+	({ one }) => ({
+		dessert: one(dessertsTable, {
+			fields: [analyticsMonthlyEodStockTable.dessertId],
+			references: [dessertsTable.id],
+		}),
+	}),
+);
+
+export const analyticsDailyItemSalesTable = pgTable(
+	"analytics_daily_item_sales",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		day: timestamp().notNull(),
+		itemType: varchar("item_type", {
+			length: 10,
+			enum: ["dessert", "combo"],
+		}).notNull(),
+		itemId: integer("item_id").notNull(),
+		quantitySold: integer("quantity_sold").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("analytics_daily_item_sales_unique").on(
+			table.day,
+			table.itemType,
+			table.itemId,
+		),
+		index("analytics_daily_item_sales_day_idx").on(table.day),
+	],
+);
+
+export type AnalyticsDailyItemSales =
+	typeof analyticsDailyItemSalesTable.$inferSelect;

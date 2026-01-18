@@ -1,0 +1,20 @@
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# Build backfill tool
+RUN CGO_ENABLED=0 GOOS=linux go build -o backfill ./cmd/backfill
+
+# Build trigger tool
+RUN CGO_ENABLED=0 GOOS=linux go build -o trigger ./cmd/trigger
+
+FROM alpine:latest
+RUN apk --no-cache add ca-certificates tzdata
+WORKDIR /root/
+
+COPY --from=builder /app/backfill .
+COPY --from=builder /app/trigger .

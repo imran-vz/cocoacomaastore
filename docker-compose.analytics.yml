@@ -1,0 +1,71 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: cocoacomaa-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+  analytics-worker:
+    build:
+      context: ./analytics-worker
+      dockerfile: Dockerfile
+    container_name: cocoacomaa-analytics-worker
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@host.docker.internal:5432/postgres}
+      REDIS_URL: redis:6379
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  asynqmon:
+    image: hibiken/asynqmon:latest
+    container_name: cocoacomaa-asynqmon
+    ports:
+      - "8080:8080"
+    environment:
+      REDIS_ADDR: redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  # Manual tools (run on-demand with docker-compose run)
+  backfill:
+    build:
+      context: ./analytics-worker
+      dockerfile: Dockerfile.tools
+    container_name: cocoacomaa-backfill
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@host.docker.internal:5432/postgres}
+      REDIS_URL: redis:6379
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    command: ./backfill
+    profiles:
+      - tools
+
+  trigger:
+    build:
+      context: ./analytics-worker
+      dockerfile: Dockerfile.tools
+    container_name: cocoacomaa-trigger
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@host.docker.internal:5432/postgres}
+      REDIS_URL: redis:6379
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+    entrypoint: ./trigger
+    profiles:
+      - tools
+
+volumes:
+  redis-data:

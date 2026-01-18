@@ -1,35 +1,75 @@
 "use server";
 
 import { performance } from "node:perf_hooks";
-import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
-import { unstable_cache } from "next/cache";
+import { and, desc, eq, gte, lt, lte, sql, sum } from "drizzle-orm";
+import { unstable_cache as next_unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import {
+	analyticsDailyRevenueTable,
 	dailyDessertInventoryTable,
 	dessertsTable,
-	type InventoryAuditLog,
 	inventoryAuditLogTable,
 	orderItemsTable,
 	ordersTable,
 } from "@/db/schema";
 
-function getStartOfDay(date: Date = new Date()) {
-	const d = new Date(date);
-	d.setHours(0, 0, 0, 0);
-	return d;
+// biome-ignore lint/suspicious/noExplicitAny: for next unstable_cache
+type Callback = (...args: any[]) => Promise<any>;
+function unstable_cache<T extends Callback>(
+	cb: T,
+	keyParts?: string[],
+	options?: {
+		revalidate?: number | false;
+		tags?: string[];
+	},
+): T {
+	if (process.env.NODE_ENV === "development") {
+		return cb;
+	}
+
+	return next_unstable_cache(cb, keyParts, options);
+}
+// IST is UTC+5:30
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+// Get the IST date components for a given Date object
+function getISTDateParts(date: Date = new Date()) {
+	const istTime = new Date(date.getTime() + IST_OFFSET_MS);
+	return {
+		year: istTime.getUTCFullYear(),
+		month: istTime.getUTCMonth(),
+		day: istTime.getUTCDate(),
+	};
 }
 
-function getEndOfDay(date: Date = new Date()) {
-	const d = new Date(date);
-	d.setHours(23, 59, 59, 999);
-	return d;
+// Get IST midnight as a UTC timestamp (for querying orders by IST business day)
+function getStartOfDayIST(date: Date = new Date()) {
+	const ist = getISTDateParts(date);
+	// Create IST midnight, then subtract IST offset to get UTC
+	const istMidnight = Date.UTC(ist.year, ist.month, ist.day, 0, 0, 0, 0);
+	return new Date(istMidnight - IST_OFFSET_MS);
 }
 
-function getDayKey(day: Date) {
-	const y = day.getFullYear();
-	const m = String(day.getMonth() + 1).padStart(2, "0");
-	const d = String(day.getDate()).padStart(2, "0");
+// Get IST end of day as a UTC timestamp (for querying orders by IST business day)
+function getEndOfDayIST(date: Date = new Date()) {
+	const ist = getISTDateParts(date);
+	// Create IST 23:59:59.999, then subtract IST offset to get UTC
+	const istEndOfDay = Date.UTC(ist.year, ist.month, ist.day, 23, 59, 59, 999);
+	return new Date(istEndOfDay - IST_OFFSET_MS);
+}
+
+// Get UTC midnight for the IST date (for analytics day column which stores UTC midnight)
+function getStartOfDayUTC(date: Date = new Date()) {
+	const ist = getISTDateParts(date);
+	return new Date(Date.UTC(ist.year, ist.month, ist.day, 0, 0, 0, 0));
+}
+
+function getDayKey(date: Date = new Date()) {
+	const ist = getISTDateParts(date);
+	const y = ist.year;
+	const m = String(ist.month + 1).padStart(2, "0");
+	const d = String(ist.day).padStart(2, "0");
 	return `${y}-${m}-${d}`;
 }
 
@@ -50,17 +90,15 @@ export type DessertStock = {
 	enabled: boolean;
 };
 
-export type AuditLogEntry = Pick<
-	InventoryAuditLog,
-	| "id"
-	| "day"
-	| "action"
-	| "previousQuantity"
-	| "newQuantity"
-	| "orderId"
-	| "createdAt"
-	| "note"
-> & {
+export type AuditLogEntry = {
+	id: number;
+	day: string;
+	action: string;
+	previousQuantity: number;
+	newQuantity: number;
+	orderId: number | null;
+	createdAt: string;
+	note: string | null;
 	dessertName: string;
 };
 
@@ -68,65 +106,81 @@ export type AuditLogEntry = Pick<
 async function getDashboardStats(date: Date): Promise<DashboardStats> {
 	const start = performance.now();
 
-	const dayStart = getStartOfDay(date);
-	const dayEnd = getEndOfDay(date);
-	const weekAgo = new Date(dayStart);
-	weekAgo.setDate(weekAgo.getDate() - 7);
+	// For today's data, query live orders table using IST time range
+	const dayStartIST = getStartOfDayIST(date);
+	const dayEndIST = getEndOfDayIST(date);
 
-	// Day's stats
-	const dayStats = await db
-		.select({
-			count: sql<number>`count(*)::int`,
-			revenue: sql<number>`coalesce(sum(${ordersTable.total}), 0)::numeric`,
-		})
-		.from(ordersTable)
-		.where(
-			and(
-				eq(ordersTable.isDeleted, false),
-				gte(ordersTable.createdAt, dayStart),
-				lt(ordersTable.createdAt, dayEnd),
-			),
-		);
+	// For analytics (past 6 days + today = 7 days total), use UTC midnight
+	const dayStartUTC = getStartOfDayUTC(date);
+	const weekAgoUTC = new Date(dayStartUTC);
+	weekAgoUTC.setDate(weekAgoUTC.getDate() - 6);
 
-	// Day's items sold
-	const dayItems = await db
-		.select({
-			totalItems: sql<number>`coalesce(sum(${orderItemsTable.quantity}), 0)::int`,
-		})
-		.from(orderItemsTable)
-		.innerJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
-		.where(
-			and(
-				eq(ordersTable.isDeleted, false),
-				gte(ordersTable.createdAt, dayStart),
-				lt(ordersTable.createdAt, dayEnd),
+	// Today's stats from live orders table
+	const [todayOrders, todayItems, weekStats] = await Promise.all([
+		// Today's order count and revenue from orders table
+		db
+			.select({
+				count: sql<number>`count(*)::int`,
+				revenue: sql<string>`coalesce(sum(total), 0)`,
+			})
+			.from(ordersTable)
+			.where(
+				and(
+					eq(ordersTable.status, "completed"),
+					eq(ordersTable.isDeleted, false),
+					gte(ordersTable.createdAt, dayStartIST),
+					lte(ordersTable.createdAt, dayEndIST),
+				),
 			),
-		);
 
-	// Week stats (7 days before the selected date)
-	const weekStats = await db
-		.select({
-			count: sql<number>`count(*)::int`,
-			revenue: sql<number>`coalesce(sum(${ordersTable.total}), 0)::numeric`,
-		})
-		.from(ordersTable)
-		.where(
-			and(
-				eq(ordersTable.isDeleted, false),
-				gte(ordersTable.createdAt, weekAgo),
-				lt(ordersTable.createdAt, dayEnd),
+		// Today's items sold from order_items (only completed orders)
+		db
+			.select({
+				totalItems: sql<number>`coalesce(sum(${orderItemsTable.quantity}), 0)::int`,
+			})
+			.from(orderItemsTable)
+			.leftJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
+			.where(
+				and(
+					eq(ordersTable.status, "completed"),
+					eq(ordersTable.isDeleted, false),
+					gte(ordersTable.createdAt, dayStartIST),
+					lte(ordersTable.createdAt, dayEndIST),
+				),
 			),
-		);
+
+		// Week stats (past 7 days, excluding today) from analytics table
+		db
+			.select({
+				count: sum(analyticsDailyRevenueTable.orderCount).as("count"),
+				revenue: sum(analyticsDailyRevenueTable.grossRevenue).as("revenue"),
+			})
+			.from(analyticsDailyRevenueTable)
+			.where(
+				and(
+					gte(analyticsDailyRevenueTable.day, weekAgoUTC),
+					lt(analyticsDailyRevenueTable.day, dayStartUTC),
+				),
+			),
+	]);
+
+	const dayOrdersCount = todayOrders[0]?.count ?? 0;
+	const dayRevenue = Number(todayOrders[0]?.revenue ?? 0);
+	const dayItemsSold = todayItems[0]?.totalItems ?? 0;
+
+	// Combine today's data with past 7 days from analytics
+	const weekOrdersCount = Number(weekStats[0]?.count ?? 0) + dayOrdersCount;
+	const weekRevenue = Number(weekStats[0]?.revenue ?? 0) + dayRevenue;
 
 	const duration = performance.now() - start;
 	console.log(`getDashboardStats: ${duration.toFixed(2)}ms`);
 
 	return {
-		dayOrdersCount: dayStats[0]?.count ?? 0,
-		dayRevenue: Number(dayStats[0]?.revenue ?? 0),
-		dayItemsSold: dayItems[0]?.totalItems ?? 0,
-		weekOrdersCount: weekStats[0]?.count ?? 0,
-		weekRevenue: Number(weekStats[0]?.revenue ?? 0),
+		dayOrdersCount,
+		dayRevenue,
+		dayItemsSold,
+		weekOrdersCount,
+		weekRevenue,
 	};
 }
 
@@ -134,7 +188,7 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
 	const start = performance.now();
 
-	const dayStart = getStartOfDay(day);
+	const dayStart = getStartOfDayUTC(day);
 
 	const desserts = await db
 		.select({
@@ -165,8 +219,8 @@ async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
 async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 	const start = performance.now();
 
-	const dayStart = getStartOfDay(date);
-	const dayEnd = getEndOfDay(date);
+	const dayStart = getStartOfDayIST(date);
+	const dayEnd = getEndOfDayIST(date);
 
 	const logs = await db
 		.select({
@@ -197,7 +251,12 @@ async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 	const duration = performance.now() - start;
 	console.log(`getAuditLogs: ${duration.toFixed(2)}ms`);
 
-	return logs;
+	// Serialize Date objects to ISO strings for client transfer
+	return logs.map((log) => ({
+		...log,
+		day: log.day.toISOString(),
+		createdAt: log.createdAt.toISOString(),
+	}));
 }
 
 // Get daily revenue for the past N days ending on a specific date (for chart)
@@ -213,49 +272,86 @@ async function getDailyRevenue(
 ): Promise<DailyRevenue[]> {
 	const start = performance.now();
 
-	const results: DailyRevenue[] = [];
-	const endDay = getStartOfDay(endDate);
+	const endDay = getStartOfDayUTC(endDate);
+	const startDay = new Date(endDay);
+	startDay.setDate(startDay.getDate() - (days - 1));
 
-	for (let i = days - 1; i >= 0; i--) {
-		const dayStart = new Date(endDay);
-		dayStart.setDate(dayStart.getDate() - i);
-		const dayEnd = getEndOfDay(dayStart);
+	// Check if endDate is today in IST
+	const todayUTC = getStartOfDayUTC(new Date());
+	const isEndDateToday = endDay.getTime() === todayUTC.getTime();
 
-		const stats = await db
+	// Query analytics for historical days (exclude today if it's in range)
+	const analyticsEndDay = isEndDateToday
+		? new Date(endDay.getTime() - 24 * 60 * 60 * 1000)
+		: endDay;
+
+	const results = await db
+		.select({
+			day: analyticsDailyRevenueTable.day,
+			revenue: analyticsDailyRevenueTable.grossRevenue,
+			orders: analyticsDailyRevenueTable.orderCount,
+		})
+		.from(analyticsDailyRevenueTable)
+		.where(
+			and(
+				gte(analyticsDailyRevenueTable.day, startDay),
+				lte(analyticsDailyRevenueTable.day, analyticsEndDay),
+			),
+		)
+		.orderBy(analyticsDailyRevenueTable.day);
+
+	const dailyData: DailyRevenue[] = results.map((r) => ({
+		date: new Date(r.day).toLocaleDateString("en-IN", {
+			day: "numeric",
+			month: "short",
+			timeZone: "Asia/Kolkata",
+		}),
+		revenue: Number(r.revenue),
+		orders: r.orders,
+	}));
+
+	// If endDate is today, fetch live data from orders table
+	if (isEndDateToday) {
+		const dayStartIST = getStartOfDayIST(endDate);
+		const dayEndIST = getEndOfDayIST(endDate);
+
+		const [todayData] = await db
 			.select({
 				count: sql<number>`count(*)::int`,
-				revenue: sql<number>`coalesce(sum(${ordersTable.total}), 0)::numeric`,
+				revenue: sql<string>`coalesce(sum(total), 0)`,
 			})
 			.from(ordersTable)
 			.where(
 				and(
+					eq(ordersTable.status, "completed"),
 					eq(ordersTable.isDeleted, false),
-					gte(ordersTable.createdAt, dayStart),
-					lt(ordersTable.createdAt, dayEnd),
+					gte(ordersTable.createdAt, dayStartIST),
+					lte(ordersTable.createdAt, dayEndIST),
 				),
 			);
 
-		results.push({
-			date: dayStart.toLocaleDateString("en-IN", {
+		// Add today's data to the results
+		dailyData.push({
+			date: new Date(todayUTC).toLocaleDateString("en-IN", {
 				day: "numeric",
 				month: "short",
 				timeZone: "Asia/Kolkata",
 			}),
-			revenue: Number(stats[0]?.revenue ?? 0),
-			orders: stats[0]?.count ?? 0,
+			revenue: Number(todayData?.revenue ?? 0),
+			orders: todayData?.count ?? 0,
 		});
 	}
 
 	const duration = performance.now() - start;
 	console.log(`getDailyRevenue: ${duration.toFixed(2)}ms`);
 
-	return results;
+	return dailyData;
 }
 
 // Cached exports with date parameter
 export async function getCachedDashboardStats(dateString?: string) {
 	const date = dateString ? new Date(dateString) : new Date();
-	const dayKey = getDayKey(getStartOfDay(date));
+	const dayKey = getDayKey(date);
 
 	return unstable_cache(
 		() => getDashboardStats(date),
@@ -269,8 +365,8 @@ export async function getCachedDashboardStats(dateString?: string) {
 
 export async function getCachedStockPerDessert(dateString?: string) {
 	const date = dateString ? new Date(dateString) : new Date();
-	const day = getStartOfDay(date);
-	const dayKey = getDayKey(day);
+	const day = getStartOfDayUTC(date);
+	const dayKey = getDayKey(date);
 
 	return unstable_cache(
 		() => getStockPerDessert(day),
@@ -284,10 +380,9 @@ export async function getCachedStockPerDessert(dateString?: string) {
 
 export async function getCachedAuditLogs(dateString?: string) {
 	const date = dateString ? new Date(dateString) : new Date();
-	const day = getStartOfDay(date);
-	const dayKey = getDayKey(day);
+	const dayKey = getDayKey(date);
 
-	return unstable_cache(() => getAuditLogs(day), ["audit-logs", dayKey], {
+	return unstable_cache(() => getAuditLogs(date), ["audit-logs", dayKey], {
 		revalidate: 60,
 		tags: ["inventory", "dashboard"],
 	})();
@@ -295,7 +390,7 @@ export async function getCachedAuditLogs(dateString?: string) {
 
 export async function getCachedDailyRevenue(dateString?: string) {
 	const date = dateString ? new Date(dateString) : new Date();
-	const dayKey = getDayKey(getStartOfDay(date));
+	const dayKey = getDayKey(date);
 
 	return unstable_cache(
 		() => getDailyRevenue(date, 7),
