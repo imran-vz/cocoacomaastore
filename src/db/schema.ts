@@ -161,8 +161,9 @@ export const orderItemsTable = pgTable(
 		dessertId: integer().notNull(),
 		quantity: integer().notNull(),
 		unitPrice: numeric({ precision: 10, scale: 2 }).notNull().default("0.00"), // snapshotted price per unit at order time
-		comboId: integer()
-			.references(() => dessertCombosTable.id, { onDelete: "set null" }),
+		comboId: integer().references(() => dessertCombosTable.id, {
+			onDelete: "set null",
+		}),
 		comboName: varchar({ length: 255 }), // optional: name of the combo if this item was part of one
 	},
 	(table) => [
@@ -337,9 +338,9 @@ export const inventoryAuditLogTable = pgTable(
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
 		day: timestamp().notNull(),
-		dessertId: integer()
-			.notNull()
-			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+		dessertId: integer().references(() => dessertsTable.id, {
+			onDelete: "set null",
+		}),
 		action: varchar("action", {
 			enum: [
 				"set_stock",
@@ -470,36 +471,96 @@ export const analyticsWeeklyRevenueTable = pgTable(
 export type AnalyticsWeeklyRevenue =
 	typeof analyticsWeeklyRevenueTable.$inferSelect;
 
-export const analyticsMonthlyEodStockTable = pgTable(
-	"analytics_monthly_eod_stock",
+export const analyticsMonthlyRevenueTable = pgTable(
+	"analytics_monthly_revenue",
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
-		month: varchar({ length: 7 }).notNull(),
-		dessertId: integer("dessert_id")
-			.notNull()
-			.references(() => dessertsTable.id, { onDelete: "cascade" }),
-		snapshotDay: timestamp("snapshot_day").notNull(),
-		quantity: integer().notNull(),
+		month: varchar({ length: 7 }).notNull(), // YYYY-MM format
+		grossRevenue: numeric("gross_revenue", {
+			precision: 10,
+			scale: 2,
+		}).notNull(),
+		orderCount: integer("order_count").notNull(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => [
-		uniqueIndex("analytics_monthly_eod_stock_unique").on(
-			table.month,
-			table.dessertId,
-		),
-		index("analytics_monthly_eod_stock_month_idx").on(table.month),
-		index("analytics_monthly_eod_stock_dessert_idx").on(table.dessertId),
+		uniqueIndex("analytics_monthly_revenue_month_unique").on(table.month),
+		index("analytics_monthly_revenue_month_idx").on(table.month),
 	],
 );
 
-export type AnalyticsMonthlyEodStock =
-	typeof analyticsMonthlyEodStockTable.$inferSelect;
+export type AnalyticsMonthlyRevenue =
+	typeof analyticsMonthlyRevenueTable.$inferSelect;
 
-export const analyticsMonthlyEodStockRelations = relations(
-	analyticsMonthlyEodStockTable,
+export const analyticsMonthlyDessertRevenueTable = pgTable(
+	"analytics_monthly_dessert_revenue",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		month: varchar({ length: 7 }).notNull(), // YYYY-MM format
+		dessertId: integer("dessert_id")
+			.notNull()
+			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+		grossRevenue: numeric("gross_revenue", {
+			precision: 10,
+			scale: 2,
+		}).notNull(),
+		quantitySold: integer("quantity_sold").notNull(),
+		orderCount: integer("order_count").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("analytics_monthly_dessert_revenue_unique").on(
+			table.month,
+			table.dessertId,
+		),
+		index("analytics_monthly_dessert_revenue_month_idx").on(table.month),
+		index("analytics_monthly_dessert_revenue_dessert_idx").on(table.dessertId),
+	],
+);
+
+export type AnalyticsMonthlyDessertRevenue =
+	typeof analyticsMonthlyDessertRevenueTable.$inferSelect;
+
+export const analyticsMonthlyDessertRevenueRelations = relations(
+	analyticsMonthlyDessertRevenueTable,
 	({ one }) => ({
 		dessert: one(dessertsTable, {
-			fields: [analyticsMonthlyEodStockTable.dessertId],
+			fields: [analyticsMonthlyDessertRevenueTable.dessertId],
+			references: [dessertsTable.id],
+		}),
+	}),
+);
+
+export const analyticsDailyEodStockTable = pgTable(
+	"analytics_daily_eod_stock",
+	{
+		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		day: timestamp().notNull(),
+		dessertId: integer("dessert_id")
+			.notNull()
+			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+		initialStock: integer("initial_stock").notNull(),
+		remainingStock: integer("remaining_stock").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("analytics_daily_eod_stock_unique").on(
+			table.day,
+			table.dessertId,
+		),
+		index("analytics_daily_eod_stock_day_idx").on(table.day),
+		index("analytics_daily_eod_stock_dessert_idx").on(table.dessertId),
+	],
+);
+
+export type AnalyticsDailyEodStock =
+	typeof analyticsDailyEodStockTable.$inferSelect;
+
+export const analyticsDailyEodStockRelations = relations(
+	analyticsDailyEodStockTable,
+	({ one }) => ({
+		dessert: one(dessertsTable, {
+			fields: [analyticsDailyEodStockTable.dessertId],
 			references: [dessertsTable.id],
 		}),
 	}),

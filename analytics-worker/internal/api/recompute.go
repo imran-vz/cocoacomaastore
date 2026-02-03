@@ -51,6 +51,7 @@ func RecomputeDayHandler(client *asynq.Client) http.HandlerFunc {
 			{task: mustCreateTask(jobs.NewDailyRevenueTask(date)), name: "daily_revenue"},
 			{task: mustCreateTask(jobs.NewDailyDessertRevenueTask(date)), name: "daily_dessert_revenue"},
 			{task: mustCreateTask(jobs.NewDailyItemSalesTask(date)), name: "daily_item_sales"},
+			{task: mustCreateTask(jobs.NewDailyEodStockTask(date)), name: "daily_eod_stock"},
 		}
 
 		for _, t := range tasks {

@@ -47,6 +47,16 @@ func SetupScheduler(cfg *config.Config, redisAddr string) (*asynq.Scheduler, err
 		return nil, err
 	}
 
+	// Daily EOD stock - run at 1:00 AM IST for previous day
+	dailyEodStockTask, err := jobs.NewScheduledDailyEodStockTask()
+	if err != nil {
+		return nil, err
+	}
+	_, err = scheduler.Register("0 1 * * *", dailyEodStockTask, asynq.Queue("analytics"))
+	if err != nil {
+		return nil, err
+	}
+
 	// Weekly revenue - run at 1:00 AM IST every Monday for previous week (Mon-Sun)
 	weeklyRevenueTask, err := jobs.NewScheduledWeeklyRevenueTask()
 	if err != nil {
@@ -57,20 +67,30 @@ func SetupScheduler(cfg *config.Config, redisAddr string) (*asynq.Scheduler, err
 		return nil, err
 	}
 
-	// Monthly EOD stock - run at 1:00 AM IST on 1st of month for previous month
-	monthlyStockTask, err := jobs.NewScheduledMonthlyStockTask()
+	// Monthly revenue - run at 1:00 AM IST on 1st of month for previous month
+	monthlyRevenueTask, err := jobs.NewScheduledMonthlyRevenueTask()
 	if err != nil {
 		return nil, err
 	}
-	_, err = scheduler.Register("0 1 1 * *", monthlyStockTask, asynq.Queue("analytics"))
+	_, err = scheduler.Register("0 1 1 * *", monthlyRevenueTask, asynq.Queue("analytics"))
+	if err != nil {
+		return nil, err
+	}
+
+	// Monthly dessert revenue - run at 1:00 AM IST on 1st of month for previous month
+	monthlyDessertRevenueTask, err := jobs.NewScheduledMonthlyDessertRevenueTask()
+	if err != nil {
+		return nil, err
+	}
+	_, err = scheduler.Register("0 1 1 * *", monthlyDessertRevenueTask, asynq.Queue("analytics"))
 	if err != nil {
 		return nil, err
 	}
 
 	log.Println("INFO: Scheduler setup complete with IST timezone")
-	log.Println("INFO: Daily jobs (revenue, dessert revenue, item sales) run at 01:00 IST")
+	log.Println("INFO: Daily jobs (revenue, dessert revenue, item sales, EOD stock) run at 01:00 IST")
 	log.Println("INFO: Weekly job runs at 01:00 IST every Monday for previous week")
-	log.Println("INFO: Monthly job runs at 01:00 IST on 1st of month for previous month")
+	log.Println("INFO: Monthly jobs (revenue, dessert revenue) run at 01:00 IST on 1st of month")
 
 	return scheduler, nil
 }

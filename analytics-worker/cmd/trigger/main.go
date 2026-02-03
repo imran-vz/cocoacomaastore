@@ -41,10 +41,14 @@ func main() {
 		triggerDaily(client, cfg, os.Args[2:])
 	case "daily-dessert":
 		triggerDailyDessert(client, cfg, os.Args[2:])
+	case "daily-eod-stock":
+		triggerDailyEodStock(client, cfg, os.Args[2:])
 	case "weekly":
 		triggerWeekly(client, cfg, os.Args[2:])
-	case "monthly":
-		triggerMonthly(client, cfg, os.Args[2:])
+	case "monthly-revenue":
+		triggerMonthlyRevenue(client, cfg, os.Args[2:])
+	case "monthly-dessert-revenue":
+		triggerMonthlyDessertRevenue(client, cfg, os.Args[2:])
 	default:
 		log.Printf("ERROR: Unknown job type: %s", jobType)
 		printUsage()
@@ -56,21 +60,25 @@ func printUsage() {
 	fmt.Println("Usage: trigger <job-type> [date]")
 	fmt.Println()
 	fmt.Println("Job types:")
-	fmt.Println("  daily          - Daily revenue job")
-	fmt.Println("  daily-dessert  - Daily per-dessert revenue job")
-	fmt.Println("  weekly         - Weekly revenue job")
-	fmt.Println("  monthly        - Monthly stock job")
+	fmt.Println("  daily                   - Daily revenue job")
+	fmt.Println("  daily-dessert           - Daily per-dessert revenue job")
+	fmt.Println("  daily-eod-stock         - Daily end-of-day stock snapshot job")
+	fmt.Println("  weekly                  - Weekly revenue job")
+	fmt.Println("  monthly-revenue         - Monthly total revenue job")
+	fmt.Println("  monthly-dessert-revenue - Monthly per-dessert revenue job")
 	fmt.Println()
 	fmt.Println("Date formats:")
-	fmt.Println("  daily/daily-dessert: YYYY-MM-DD (defaults to yesterday)")
+	fmt.Println("  daily/daily-dessert/daily-eod-stock: YYYY-MM-DD (defaults to yesterday)")
 	fmt.Println("  weekly: YYYY-MM-DD (Monday, defaults to last Monday)")
-	fmt.Println("  monthly: YYYY-MM (defaults to last month)")
+	fmt.Println("  monthly-*: YYYY-MM (defaults to last month)")
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  trigger daily 2024-01-15")
 	fmt.Println("  trigger daily-dessert 2024-01-15")
+	fmt.Println("  trigger daily-eod-stock 2024-01-15")
 	fmt.Println("  trigger weekly 2024-01-08")
-	fmt.Println("  trigger monthly 2024-01")
+	fmt.Println("  trigger monthly-revenue 2024-01")
+	fmt.Println("  trigger monthly-dessert-revenue 2024-01")
 	fmt.Println("  trigger daily  # yesterday")
 }
 
@@ -128,6 +136,33 @@ func triggerDailyDessert(client *asynq.Client, cfg *config.Config, args []string
 	log.Printf("Task ID: %s, Queue: %s", info.ID, info.Queue)
 }
 
+func triggerDailyEodStock(client *asynq.Client, cfg *config.Config, args []string) {
+	var date time.Time
+	var err error
+
+	if len(args) > 0 {
+		date, err = time.Parse("2006-01-02", args[0])
+		if err != nil {
+			log.Fatalf("FATAL: Invalid date format: %v", err)
+		}
+	} else {
+		date = time.Now().In(cfg.ISTLocation).AddDate(0, 0, -1)
+	}
+
+	task, err := jobs.NewDailyEodStockTask(date)
+	if err != nil {
+		log.Fatalf("FATAL: Failed to create task: %v", err)
+	}
+
+	info, err := client.Enqueue(task, asynq.Queue("analytics"))
+	if err != nil {
+		log.Fatalf("FATAL: Failed to enqueue task: %v", err)
+	}
+
+	log.Printf("SUCCESS: Enqueued daily EOD stock job for %s", date.Format("2006-01-02"))
+	log.Printf("Task ID: %s, Queue: %s", info.ID, info.Queue)
+}
+
 func triggerWeekly(client *asynq.Client, cfg *config.Config, args []string) {
 	var date time.Time
 	var err error
@@ -159,7 +194,7 @@ func triggerWeekly(client *asynq.Client, cfg *config.Config, args []string) {
 	log.Printf("Task ID: %s, Queue: %s", info.ID, info.Queue)
 }
 
-func triggerMonthly(client *asynq.Client, cfg *config.Config, args []string) {
+func triggerMonthlyRevenue(client *asynq.Client, cfg *config.Config, args []string) {
 	var date time.Time
 	var err error
 
@@ -172,7 +207,7 @@ func triggerMonthly(client *asynq.Client, cfg *config.Config, args []string) {
 		date = time.Now().In(cfg.ISTLocation).AddDate(0, -1, 0)
 	}
 
-	task, err := jobs.NewMonthlyStockTask(date)
+	task, err := jobs.NewMonthlyRevenueTask(date)
 	if err != nil {
 		log.Fatalf("FATAL: Failed to create task: %v", err)
 	}
@@ -182,6 +217,33 @@ func triggerMonthly(client *asynq.Client, cfg *config.Config, args []string) {
 		log.Fatalf("FATAL: Failed to enqueue task: %v", err)
 	}
 
-	log.Printf("SUCCESS: Enqueued monthly stock job for month %s", date.Format("2006-01"))
+	log.Printf("SUCCESS: Enqueued monthly revenue job for month %s", date.Format("2006-01"))
+	log.Printf("Task ID: %s, Queue: %s", info.ID, info.Queue)
+}
+
+func triggerMonthlyDessertRevenue(client *asynq.Client, cfg *config.Config, args []string) {
+	var date time.Time
+	var err error
+
+	if len(args) > 0 {
+		date, err = time.Parse("2006-01", args[0])
+		if err != nil {
+			log.Fatalf("FATAL: Invalid month format: %v", err)
+		}
+	} else {
+		date = time.Now().In(cfg.ISTLocation).AddDate(0, -1, 0)
+	}
+
+	task, err := jobs.NewMonthlyDessertRevenueTask(date)
+	if err != nil {
+		log.Fatalf("FATAL: Failed to create task: %v", err)
+	}
+
+	info, err := client.Enqueue(task, asynq.Queue("analytics"))
+	if err != nil {
+		log.Fatalf("FATAL: Failed to enqueue task: %v", err)
+	}
+
+	log.Printf("SUCCESS: Enqueued monthly dessert revenue job for month %s", date.Format("2006-01"))
 	log.Printf("Task ID: %s, Queue: %s", info.ID, info.Queue)
 }

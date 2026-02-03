@@ -60,6 +60,16 @@ Core tables:
 - `inventory_audit_log`: Audit trail for inventory changes
 - Auth tables: `user`, `session`, `account`, `verification` (better-auth managed)
 
+Analytics tables (pre-computed by Go worker on home server):
+
+- `analytics_daily_revenue`: Daily total revenue and order count
+- `analytics_daily_dessert_revenue`: Per-dessert daily revenue (includes all sales - individual and combo)
+- `analytics_daily_item_sales`: Daily quantity sold by item type (dessert vs combo)
+- `analytics_daily_eod_stock`: Daily end-of-day stock snapshot with initial and remaining stock (only for stock > 0)
+- `analytics_weekly_revenue`: Weekly aggregated revenue
+- `analytics_monthly_revenue`: Monthly total revenue
+- `analytics_monthly_dessert_revenue`: Per-dessert monthly revenue aggregation (includes all sales)
+
 ### Route Structure
 
 ```text
@@ -72,6 +82,7 @@ src/app/
 │   └── inventory/      # Inventory actions
 ├── admin/              # Admin-only routes with separate layout
 │   ├── dashboard/      # Admin dashboard with stats and audit logs
+│   ├── analytics/      # Monthly revenue, per-dessert revenue, EOD stock trends
 │   ├── desserts/       # Manage desserts (CRUD)
 │   ├── managers/       # Manage manager accounts
 │   └── upi/            # Manage UPI accounts

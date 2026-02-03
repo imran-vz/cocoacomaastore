@@ -68,6 +68,7 @@ func HandleDailyDessertRevenue(pool *pgxpool.Pool, cfg *config.Config) asynq.Han
 
 		// Query joins orders, order_items, desserts
 		// Includes both base desserts and modifiers from order_item_modifiers
+		// Revenue is attributed to desserts regardless of how they were sold (individual or combo)
 		query := `
 			WITH base_items AS (
 				SELECT

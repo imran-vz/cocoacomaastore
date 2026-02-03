@@ -45,6 +45,7 @@
 		"pdfkit": "^0.17.2",
 		"postgres": "^3.4.7",
 		"qrcode.react": "^4.2.0",
+		"radix-ui": "^1.4.3",
 		"react": "^19.2.3",
 		"react-dom": "^19.2.3",
 		"react-use-measure": "^2.1.7",
