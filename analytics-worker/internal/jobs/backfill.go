@@ -56,10 +56,17 @@ func EnqueueBackfillTasks(
 			log.Printf("ERROR: Failed to enqueue daily item sales for %s: %v", d.Format("2006-01-02"), err)
 			return err
 		}
+
+		task, _ = NewDailyEodStockTask(d)
+		if _, err := client.Enqueue(task, asynq.Queue("analytics")); err != nil {
+			log.Printf("ERROR: Failed to enqueue daily EOD stock for %s: %v", d.Format("2006-01-02"), err)
+			return err
+		}
+
 		dayCount++
 	}
 
-	log.Printf("INFO: Enqueued %d daily job triples", dayCount)
+	log.Printf("INFO: Enqueued %d daily job quads (revenue, dessert revenue, item sales, EOD stock)", dayCount)
 
 	// Enqueue weekly jobs (every Monday)
 	weekCount := 0
@@ -85,11 +92,21 @@ func EnqueueBackfillTasks(
 		if d.Month() != currentMonth {
 			// We've entered a new month, process the previous month
 			prevMonth := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, cfg.ISTLocation)
-			task, _ := NewMonthlyStockTask(prevMonth)
+
+			// Monthly revenue
+			task, _ := NewMonthlyRevenueTask(prevMonth)
 			if _, err := client.Enqueue(task, asynq.Queue("analytics")); err != nil {
-				log.Printf("ERROR: Failed to enqueue monthly stock for %s: %v", prevMonth.Format("2006-01"), err)
+				log.Printf("ERROR: Failed to enqueue monthly revenue for %s: %v", prevMonth.Format("2006-01"), err)
 				return err
 			}
+
+			// Monthly dessert revenue
+			task, _ = NewMonthlyDessertRevenueTask(prevMonth)
+			if _, err := client.Enqueue(task, asynq.Queue("analytics")); err != nil {
+				log.Printf("ERROR: Failed to enqueue monthly dessert revenue for %s: %v", prevMonth.Format("2006-01"), err)
+				return err
+			}
+
 			monthCount++
 			currentMonth = d.Month()
 			currentYear = d.Year()
@@ -99,16 +116,26 @@ func EnqueueBackfillTasks(
 	// Process the last month if we ended in a different month than we started
 	if time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, cfg.ISTLocation).Before(yesterday) {
 		lastMonth := time.Date(currentYear, currentMonth, 1, 0, 0, 0, 0, cfg.ISTLocation)
-		task, _ := NewMonthlyStockTask(lastMonth)
+
+		// Monthly revenue
+		task, _ := NewMonthlyRevenueTask(lastMonth)
 		if _, err := client.Enqueue(task, asynq.Queue("analytics")); err != nil {
-			log.Printf("ERROR: Failed to enqueue monthly stock for %s: %v", lastMonth.Format("2006-01"), err)
+			log.Printf("ERROR: Failed to enqueue monthly revenue for %s: %v", lastMonth.Format("2006-01"), err)
 			return err
 		}
+
+		// Monthly dessert revenue
+		task, _ = NewMonthlyDessertRevenueTask(lastMonth)
+		if _, err := client.Enqueue(task, asynq.Queue("analytics")); err != nil {
+			log.Printf("ERROR: Failed to enqueue monthly dessert revenue for %s: %v", lastMonth.Format("2006-01"), err)
+			return err
+		}
+
 		monthCount++
 	}
 
-	log.Printf("INFO: Enqueued %d monthly jobs", monthCount)
-	log.Printf("INFO: Backfill complete - total tasks: %d daily triples, %d weekly, %d monthly", dayCount, weekCount, monthCount)
+	log.Printf("INFO: Enqueued %d monthly job pairs (revenue, dessert revenue)", monthCount)
+	log.Printf("INFO: Backfill complete - total tasks: %d daily quads, %d weekly, %d monthly pairs", dayCount, weekCount, monthCount)
 
 	return nil
 }

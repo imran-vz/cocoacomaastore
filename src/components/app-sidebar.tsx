@@ -2,6 +2,7 @@
 
 import {
 	IconChartBar,
+	IconChartPie,
 	IconDashboard,
 	IconDatabase,
 	IconFileDescription,
@@ -30,6 +31,7 @@ const data = {
 	navMain: [
 		{ title: "Home", url: "/admin", icon: IconDashboard },
 		{ title: "Dashboard", url: "/admin/dashboard", icon: IconChartBar },
+		{ title: "Analytics", url: "/admin/analytics", icon: IconChartPie },
 		{ title: "Orders", url: "/admin/orders", icon: IconShoppingCart },
 		{ title: "Desserts", url: "/admin/desserts", icon: IconFileDescription },
 		{ title: "Combos", url: "/admin/combos", icon: IconPackage },

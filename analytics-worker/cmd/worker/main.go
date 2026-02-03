@@ -90,8 +90,10 @@ func main() {
 	mux.HandleFunc(jobs.TypeDailyRevenue, jobs.HandleDailyRevenue(pool, cfg))
 	mux.HandleFunc(jobs.TypeDailyDessertRevenue, jobs.HandleDailyDessertRevenue(pool, cfg))
 	mux.HandleFunc(jobs.TypeDailyItemSales, jobs.HandleDailyItemSales(pool, cfg))
+	mux.HandleFunc(jobs.TypeDailyEodStock, jobs.HandleDailyEodStock(pool, cfg))
 	mux.HandleFunc(jobs.TypeWeeklyRevenue, jobs.HandleWeeklyRevenue(pool, cfg))
-	mux.HandleFunc(jobs.TypeMonthlyStock, jobs.HandleMonthlyStock(pool, cfg))
+	mux.HandleFunc(jobs.TypeMonthlyRevenue, jobs.HandleMonthlyRevenue(pool, cfg))
+	mux.HandleFunc(jobs.TypeMonthlyDessertRevenue, jobs.HandleMonthlyDessertRevenue(pool, cfg))
 
 	go func() {
 		log.Println("INFO: Worker started, processing tasks...")

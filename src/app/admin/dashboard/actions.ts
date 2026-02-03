@@ -6,7 +6,10 @@ import { unstable_cache as next_unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import {
+	analyticsDailyEodStockTable,
 	analyticsDailyRevenueTable,
+	analyticsMonthlyDessertRevenueTable,
+	analyticsMonthlyRevenueTable,
 	dailyDessertInventoryTable,
 	dessertsTable,
 	inventoryAuditLogTable,
@@ -100,6 +103,29 @@ export type AuditLogEntry = {
 	createdAt: string;
 	note: string | null;
 	dessertName: string;
+};
+
+export type MonthlyRevenue = {
+	month: string;
+	grossRevenue: number;
+	orderCount: number;
+};
+
+export type MonthlyDessertRevenue = {
+	month: string;
+	dessertId: number;
+	dessertName: string;
+	grossRevenue: number;
+	quantitySold: number;
+	orderCount: number;
+};
+
+export type DailyEodStock = {
+	day: string;
+	dessertId: number;
+	dessertName: string;
+	initialStock: number;
+	remainingStock: number;
 };
 
 // Get dashboard stats for a specific day
@@ -400,4 +426,178 @@ export async function getCachedDailyRevenue(dateString?: string) {
 			tags: ["orders", "dashboard"],
 		},
 	)();
+}
+
+// Get monthly revenue for the past N months
+async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
+	const start = performance.now();
+
+	const results = await db
+		.select({
+			month: analyticsMonthlyRevenueTable.month,
+			grossRevenue: analyticsMonthlyRevenueTable.grossRevenue,
+			orderCount: analyticsMonthlyRevenueTable.orderCount,
+		})
+		.from(analyticsMonthlyRevenueTable)
+		.orderBy(analyticsMonthlyRevenueTable.month)
+		.limit(months);
+
+	const duration = performance.now() - start;
+	console.log(`getMonthlyRevenue: ${duration.toFixed(2)}ms`);
+
+	return results.map((r) => ({
+		month: r.month,
+		grossRevenue: Number(r.grossRevenue),
+		orderCount: r.orderCount,
+	}));
+}
+
+export async function getCachedMonthlyRevenue(months = 6) {
+	return unstable_cache(
+		() => getMonthlyRevenue(months),
+		["monthly-revenue", String(months)],
+		{
+			revalidate: 60 * 60, // Revalidate every hour
+			tags: ["orders", "analytics"],
+		},
+	)();
+}
+
+// Get monthly per-dessert revenue for a specific month
+async function getMonthlyDessertRevenue(
+	month?: string,
+): Promise<MonthlyDessertRevenue[]> {
+	const start = performance.now();
+
+	// Default to current month if not specified
+	const targetMonth =
+		month ||
+		(() => {
+			const now = new Date();
+			const y = now.getFullYear();
+			const m = String(now.getMonth() + 1).padStart(2, "0");
+			return `${y}-${m}`;
+		})();
+
+	const results = await db
+		.select({
+			month: analyticsMonthlyDessertRevenueTable.month,
+			dessertId: analyticsMonthlyDessertRevenueTable.dessertId,
+			dessertName: dessertsTable.name,
+			grossRevenue: analyticsMonthlyDessertRevenueTable.grossRevenue,
+			quantitySold: analyticsMonthlyDessertRevenueTable.quantitySold,
+			orderCount: analyticsMonthlyDessertRevenueTable.orderCount,
+		})
+		.from(analyticsMonthlyDessertRevenueTable)
+		.innerJoin(
+			dessertsTable,
+			eq(analyticsMonthlyDessertRevenueTable.dessertId, dessertsTable.id),
+		)
+		.where(eq(analyticsMonthlyDessertRevenueTable.month, targetMonth))
+		.orderBy(desc(analyticsMonthlyDessertRevenueTable.grossRevenue));
+
+	const duration = performance.now() - start;
+	console.log(`getMonthlyDessertRevenue: ${duration.toFixed(2)}ms`);
+
+	return results.map((r) => ({
+		month: r.month,
+		dessertId: r.dessertId,
+		dessertName: r.dessertName,
+		grossRevenue: Number(r.grossRevenue),
+		quantitySold: r.quantitySold,
+		orderCount: r.orderCount,
+	}));
+}
+
+export async function getCachedMonthlyDessertRevenue(month?: string) {
+	const targetMonth =
+		month ||
+		(() => {
+			const now = new Date();
+			const y = now.getFullYear();
+			const m = String(now.getMonth() + 1).padStart(2, "0");
+			return `${y}-${m}`;
+		})();
+
+	return unstable_cache(
+		() => getMonthlyDessertRevenue(targetMonth),
+		["monthly-dessert-revenue", targetMonth],
+		{
+			revalidate: 60 * 60, // Revalidate every hour
+			tags: ["orders", "analytics", "desserts"],
+		},
+	)();
+}
+
+// Get EOD stock trends for the past N days for all desserts
+async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
+	const start = performance.now();
+
+	const endDay = getStartOfDayUTC(new Date());
+	const startDay = new Date(endDay);
+	startDay.setDate(startDay.getDate() - (days - 1));
+
+	const results = await db
+		.select({
+			day: analyticsDailyEodStockTable.day,
+			dessertId: analyticsDailyEodStockTable.dessertId,
+			dessertName: dessertsTable.name,
+			initialStock: analyticsDailyEodStockTable.initialStock,
+			remainingStock: analyticsDailyEodStockTable.remainingStock,
+		})
+		.from(analyticsDailyEodStockTable)
+		.innerJoin(
+			dessertsTable,
+			eq(analyticsDailyEodStockTable.dessertId, dessertsTable.id),
+		)
+		.where(
+			and(
+				gte(analyticsDailyEodStockTable.day, startDay),
+				lte(analyticsDailyEodStockTable.day, endDay),
+			),
+		)
+		.orderBy(analyticsDailyEodStockTable.day, dessertsTable.name);
+
+	const duration = performance.now() - start;
+	console.log(`getEodStockTrends: ${duration.toFixed(2)}ms`);
+
+	return results.map((r) => ({
+		day: r.day.toISOString().split("T")[0],
+		dessertId: r.dessertId,
+		dessertName: r.dessertName,
+		initialStock: r.initialStock,
+		remainingStock: r.remainingStock,
+	}));
+}
+
+export async function getCachedEodStockTrends(days = 14) {
+	const dayKey = getDayKey(new Date());
+
+	return unstable_cache(
+		() => getEodStockTrends(days),
+		["eod-stock-trends", dayKey, String(days)],
+		{
+			revalidate: 60 * 60, // Revalidate every hour
+			tags: ["inventory", "analytics"],
+		},
+	)();
+}
+
+// Get list of available months for analytics
+async function getAvailableMonths(): Promise<string[]> {
+	const results = await db
+		.select({
+			month: analyticsMonthlyRevenueTable.month,
+		})
+		.from(analyticsMonthlyRevenueTable)
+		.orderBy(desc(analyticsMonthlyRevenueTable.month));
+
+	return results.map((r) => r.month);
+}
+
+export async function getCachedAvailableMonths() {
+	return unstable_cache(() => getAvailableMonths(), ["available-months"], {
+		revalidate: 60 * 60 * 24, // Revalidate daily
+		tags: ["analytics"],
+	})();
 }
