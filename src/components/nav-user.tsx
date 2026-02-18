@@ -1,6 +1,11 @@
 "use client";
 
-import { IconDotsVertical, IconLogout } from "@tabler/icons-react";
+import {
+	IconDotsVertical,
+	IconLogout,
+	IconSettings,
+} from "@tabler/icons-react";
+import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -76,6 +81,13 @@ export function NavUser({
 								</div>
 							</div>
 						</DropdownMenuLabel>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem asChild>
+							<Link href="/admin/settings" className="cursor-pointer">
+								<IconSettings />
+								Settings
+							</Link>
+						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							onClick={async () => {

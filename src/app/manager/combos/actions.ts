@@ -24,9 +24,9 @@ async function requireManager() {
 	if (!session?.session || !session?.user) {
 		throw new Error("Unauthorized");
 	}
-	// Manager or Admin can access
-	if (session.user.role !== "manager" && session.user.role !== "admin") {
-		throw new Error("Manager access required");
+	// User or Admin can access
+	if (session.user.role !== "user" && session.user.role !== "admin") {
+		throw new Error("Access required");
 	}
 	return session.user;
 }

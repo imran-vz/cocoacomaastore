@@ -7,6 +7,7 @@ import {
 	IconDatabase,
 	IconFileDescription,
 	IconPackage,
+	IconSettings,
 	IconShoppingCart,
 	IconUsers,
 } from "@tabler/icons-react";
@@ -37,6 +38,7 @@ const data = {
 		{ title: "Combos", url: "/admin/combos", icon: IconPackage },
 		{ title: "Managers", url: "/admin/managers", icon: IconUsers },
 		{ title: "UPI Accounts", url: "/admin/upi", icon: IconDatabase },
+		{ title: "Settings", url: "/admin/settings", icon: IconSettings },
 	],
 };
 

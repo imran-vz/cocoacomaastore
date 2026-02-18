@@ -5,6 +5,7 @@ import {
 	IconComponents,
 	IconFileDescription,
 	IconLogout,
+	IconSettings,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -86,7 +87,13 @@ export default function Navbar() {
 									Orders
 								</Link>
 							</DropdownMenuItem>
-
+							<DropdownMenuSeparator />
+							<DropdownMenuItem asChild>
+								<Link href="/manager/settings" className="cursor-pointer">
+									<IconSettings />
+									Settings
+								</Link>
+							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								variant="destructive"

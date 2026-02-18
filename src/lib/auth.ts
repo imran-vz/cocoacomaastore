@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { admin } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
@@ -31,15 +32,12 @@ export const auth = betterAuth({
 			},
 		},
 	},
-	user: {
-		additionalFields: {
-			role: {
-				type: "string",
-				required: true,
-				defaultValue: "manager",
-			},
-		},
-	},
+	plugins: [
+		admin({
+			defaultRole: "user",
+			adminRoles: ["admin"],
+		}),
+	],
 	trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
 });
 

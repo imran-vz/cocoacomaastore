@@ -146,8 +146,10 @@ export const createManagerSchema = z.object({
 	name: z.string().trim().min(1).max(255),
 	email: z.email().max(255).toLowerCase(),
 	password: z.string().min(8).max(128),
-	role: z.enum(["admin", "manager"]),
+	role: z.enum(["admin", "user"]),
 });
+
+export type CreateManagerSchema = z.infer<typeof createManagerSchema>;
 
 export const deleteManagerSchema = z.object({
 	id: z.string(),

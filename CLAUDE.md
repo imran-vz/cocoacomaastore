@@ -41,7 +41,8 @@ Required environment variables (see `.env.example`):
 
 - **Library**: better-auth with Drizzle adapter
 - **Strategy**: Email/password authentication (no email verification)
-- **Roles**: `admin` and `manager` (default: manager)
+- **Roles**: `admin` and `user` (default: user)
+- **Plugins**: admin plugin for user management (ban, impersonate, create users)
 - **Middleware**: Route protection in `src/middleware.ts`
   - Public routes: `/login`, `/api/auth/*`
   - Admin-only routes: `/admin/*`

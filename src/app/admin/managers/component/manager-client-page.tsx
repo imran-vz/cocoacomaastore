@@ -49,7 +49,7 @@ export default function ManagerClientPage({
 		name: "",
 		email: "",
 		password: "",
-		role: "manager" as "admin" | "manager",
+		role: "user" as "admin" | "user",
 	});
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +60,7 @@ export default function ManagerClientPage({
 		if (result.success) {
 			toast.success("Manager created successfully");
 			setIsDialogOpen(false);
-			setFormData({ name: "", email: "", password: "", role: "manager" });
+			setFormData({ name: "", email: "", password: "", role: "user" });
 		} else {
 			toast.error(result.error || "Failed to create manager");
 		}
@@ -141,7 +141,7 @@ export default function ManagerClientPage({
 								<Label htmlFor={roleID}>Role</Label>
 								<Select
 									value={formData.role}
-									onValueChange={(value: "admin" | "manager") =>
+									onValueChange={(value: "admin" | "user") =>
 										setFormData({ ...formData, role: value })
 									}
 								>
@@ -149,7 +149,7 @@ export default function ManagerClientPage({
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="manager">Manager</SelectItem>
+										<SelectItem value="user">User</SelectItem>
 										<SelectItem value="admin">Admin</SelectItem>
 									</SelectContent>
 								</Select>

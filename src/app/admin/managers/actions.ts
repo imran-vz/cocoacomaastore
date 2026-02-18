@@ -2,11 +2,16 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import { userTable } from "@/db/schema";
 import { auth, getServerSession } from "@/lib/auth";
 import { sanitizeEmail } from "@/lib/sanitize";
-import { createManagerSchema, deleteManagerSchema } from "@/lib/validation";
+import {
+	type CreateManagerSchema,
+	createManagerSchema,
+	deleteManagerSchema,
+} from "@/lib/validation";
 
 async function requireAdmin() {
 	const session = await getServerSession();
@@ -34,12 +39,7 @@ export async function getCachedManagers() {
 	return managers;
 }
 
-export async function createManager(data: {
-	name: string;
-	email: string;
-	password: string;
-	role: "admin" | "manager";
-}) {
+export async function createManager(data: CreateManagerSchema) {
 	await requireAdmin();
 
 	// Validate and sanitize input
@@ -47,13 +47,15 @@ export async function createManager(data: {
 	const sanitizedEmail = sanitizeEmail(validated.email);
 
 	try {
-		await auth.api.signUpEmail({
+		// Create user with admin plugin's createUser API
+		await auth.api.createUser({
 			body: {
 				name: validated.name,
 				email: sanitizedEmail,
 				password: validated.password,
 				role: validated.role,
 			},
+			headers: await headers(),
 		});
 
 		revalidateTag("managers", "max");
