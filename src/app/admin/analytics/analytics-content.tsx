@@ -364,7 +364,10 @@ export function AnalyticsContent({
 									Revenue breakdown by dessert for selected month
 								</CardDescription>
 							</div>
-							<Select value={selectedMonth} onValueChange={handleMonthChange}>
+							<Select
+								value={selectedMonth}
+								onValueChange={(value) => handleMonthChange(value || "")}
+							>
 								<SelectTrigger className="w-40">
 									<SelectValue placeholder="Select month" />
 								</SelectTrigger>

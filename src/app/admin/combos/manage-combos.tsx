@@ -27,10 +27,10 @@ import { Switch } from "@/components/ui/switch";
 import type { ComboWithDetails } from "@/lib/types";
 import {
 	type BaseDessert,
-	type ModifierDessert,
 	createCombo,
 	deleteCombo,
 	getCachedAllCombos,
+	type ModifierDessert,
 	toggleCombo,
 	updateCombo,
 	updateComboItems,
@@ -78,7 +78,7 @@ export default function ManageCombos({
 	);
 
 	const refetch = useCallback(() => {
-		getCachedAllCombos().then(setCombos);
+		return getCachedAllCombos().then(setCombos);
 	}, []);
 
 	const handleOpenModal = (combo?: ComboWithDetails) => {
@@ -107,7 +107,7 @@ export default function ManageCombos({
 		setFormData(initialFormData);
 	};
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 
 		if (!formData.name.trim()) {
@@ -278,7 +278,7 @@ export default function ManageCombos({
 									onValueChange={(value) =>
 										setFormData((prev) => ({
 											...prev,
-											baseDessertId: Number.parseInt(value, 10),
+											baseDessertId: Number.parseInt(value || "", 10),
 										}))
 									}
 								>
@@ -332,9 +332,13 @@ export default function ManageCombos({
 								<div className="flex items-center justify-between gap-2">
 									<Label>Modifiers (Add-ons)</Label>
 									{modifiers.length === 0 && (
-										<Button asChild variant="outline" size="sm">
-											<Link href="/admin/desserts">Create add-ons</Link>
-										</Button>
+										<Button
+											variant="outline"
+											size="sm"
+											render={
+												<Link href="/admin/desserts">Create add-ons</Link>
+											}
+										></Button>
 									)}
 								</div>
 

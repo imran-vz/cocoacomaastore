@@ -109,25 +109,25 @@ export function DateSwitcher({
 				<Button
 					variant="outline"
 					className="min-w-36 justify-start gap-2 font-medium"
-					asChild
-				>
-					<label>
-						<CalendarDays className="size-4 text-muted-foreground" />
-						<span>{isToday ? "Today" : formatDateDisplay(selectedDate)}</span>
-						<input
-							type="date"
-							value={formatDateForInput(selectedDate)}
-							onChange={handleDateInputChange}
-							max={
-								maxDate
-									? formatDateForInput(maxDate)
-									: formatDateForInput(today)
-							}
-							min={minDate ? formatDateForInput(minDate) : undefined}
-							className="absolute inset-0 opacity-0 cursor-pointer"
-						/>
-					</label>
-				</Button>
+					render={
+						<label>
+							<CalendarDays className="size-4 text-muted-foreground" />
+							<span>{isToday ? "Today" : formatDateDisplay(selectedDate)}</span>
+							<input
+								type="date"
+								value={formatDateForInput(selectedDate)}
+								onChange={handleDateInputChange}
+								max={
+									maxDate
+										? formatDateForInput(maxDate)
+										: formatDateForInput(today)
+								}
+								min={minDate ? formatDateForInput(minDate) : undefined}
+								className="absolute inset-0 opacity-0 cursor-pointer"
+							/>
+						</label>
+					}
+				/>
 			</div>
 
 			<Button

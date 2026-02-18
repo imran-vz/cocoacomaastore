@@ -52,25 +52,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							size="lg"
-							asChild
 							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-						>
-							<a href="/admin">
-								<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-									<Image
-										src="/logo.png"
-										alt="Cocoacomaa Store"
-										width={32}
-										height={32}
-										className="rounded-lg"
-									/>
-								</div>
-								<div className="grid flex-1 text-left text-sm leading-tight">
-									<span className="truncate font-semibold">Cocoa Comaa</span>
-									<span className="truncate text-xs">Admin Panel</span>
-								</div>
-							</a>
-						</SidebarMenuButton>
+							render={
+								<a href="/admin">
+									<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+										<Image
+											src="/logo.png"
+											alt="Cocoacomaa Store"
+											width={32}
+											height={32}
+											className="rounded-lg"
+										/>
+									</div>
+									<div className="grid flex-1 text-left text-sm leading-tight">
+										<span className="truncate font-semibold">Cocoa Comaa</span>
+										<span className="truncate text-xs">Admin Panel</span>
+									</div>
+								</a>
+							}
+						/>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>

@@ -129,8 +129,8 @@ export function DessertForm({
 						<Label htmlFor={field.name}>Type</Label>
 						<Select
 							value={field.state.value}
-							onValueChange={(value: "base" | "modifier") =>
-								field.handleChange(value)
+							onValueChange={(value) =>
+								field.handleChange(value as "base" | "modifier")
 							}
 						>
 							<SelectTrigger>

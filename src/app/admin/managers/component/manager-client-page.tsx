@@ -52,7 +52,7 @@ export default function ManagerClientPage({
 		role: "user" as "admin" | "user",
 	});
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 
 		const result = await createManager(formData);
@@ -141,8 +141,11 @@ export default function ManagerClientPage({
 								<Label htmlFor={roleID}>Role</Label>
 								<Select
 									value={formData.role}
-									onValueChange={(value: "admin" | "user") =>
-										setFormData({ ...formData, role: value })
+									onValueChange={(value) =>
+										setFormData({
+											...formData,
+											role: value as "user" | "admin",
+										})
 									}
 								>
 									<SelectTrigger>

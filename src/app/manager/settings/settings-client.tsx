@@ -19,11 +19,16 @@ export default function SettingsClient({ user }: SettingsClientProps) {
 		<div className="space-y-6">
 			{/* Header */}
 			<div className="flex items-center gap-3">
-				<Button variant="ghost" size="icon" asChild className="-ml-2">
-					<Link href="/manager">
-						<IconArrowLeft className="size-5" />
-					</Link>
-				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="-ml-2"
+					render={
+						<Link href="/manager">
+							<IconArrowLeft className="size-5" />
+						</Link>
+					}
+				/>
 				<div>
 					<h1 className="text-2xl font-bold tracking-tight">Settings</h1>
 					<p className="text-sm text-muted-foreground">

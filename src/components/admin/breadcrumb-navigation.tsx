@@ -97,11 +97,13 @@ export function BreadcrumbNavigation() {
 								{isLast ? (
 									<BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
 								) : (
-									<BreadcrumbLink asChild>
-										<Link href={breadcrumb.href || "/"}>
-											{breadcrumb.label}
-										</Link>
-									</BreadcrumbLink>
+									<BreadcrumbLink
+										render={
+											<Link href={breadcrumb.href || "/"}>
+												{breadcrumb.label}
+											</Link>
+										}
+									/>
 								)}
 							</BreadcrumbItem>
 							{!isLast && <BreadcrumbSeparator />}

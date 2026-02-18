@@ -184,16 +184,19 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 							Copy UPI
 						</Button>
 						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									type="button"
-									size="sm"
-									variant="outline"
-									className="rounded-l-none px-2"
-								>
-									<ChevronDown className="h-4 w-4" />
-								</Button>
-							</DropdownMenuTrigger>
+							<DropdownMenuTrigger
+								render={
+									<Button
+										type="button"
+										size="sm"
+										variant="outline"
+										className="rounded-l-none px-2"
+									>
+										<ChevronDown className="h-4 w-4" />
+									</Button>
+								}
+							/>
+
 							<DropdownMenuContent align="end">
 								{upiAccounts.map((account) => (
 									<DropdownMenuItem

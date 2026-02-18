@@ -56,44 +56,58 @@ export default function Navbar() {
 
 				{session?.user.id && (
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<button
-								className="focus:outline-none focus:ring-2 focus:ring-primary rounded-full"
-								type="button"
-							>
-								<Avatar>
-									<AvatarFallback>
-										{getInitials(session.user.name)}
-									</AvatarFallback>
-								</Avatar>
-							</button>
-						</DropdownMenuTrigger>
+						<DropdownMenuTrigger
+							render={
+								<button
+									className="focus:outline-none focus:ring-2 focus:ring-primary rounded-full"
+									type="button"
+								>
+									<Avatar>
+										<AvatarFallback>
+											{getInitials(session.user.name)}
+										</AvatarFallback>
+									</Avatar>
+								</button>
+							}
+						/>
 						<DropdownMenuContent align="end" className="w-56">
-							<DropdownMenuItem asChild>
-								<Link href="/manager/desserts" className="cursor-pointer">
-									<IconCakeRoll />
-									Desserts & Stock
-								</Link>
-							</DropdownMenuItem>
-							<DropdownMenuItem asChild>
-								<Link href="/manager/combos" className="cursor-pointer">
-									<IconComponents />
-									Combos
-								</Link>
-							</DropdownMenuItem>
-							<DropdownMenuItem asChild>
-								<Link href="/manager/orders" className="cursor-pointer">
-									<IconFileDescription />
-									Orders
-								</Link>
-							</DropdownMenuItem>
+							<DropdownMenuItem
+								render={
+									<Link href="/manager/desserts" className="cursor-pointer">
+										<IconCakeRoll />
+										Desserts & Stock
+									</Link>
+								}
+							/>
+
+							<DropdownMenuItem
+								render={
+									<Link href="/manager/combos" className="cursor-pointer">
+										<IconComponents />
+										Combos
+									</Link>
+								}
+							/>
+
+							<DropdownMenuItem
+								render={
+									<Link href="/manager/orders" className="cursor-pointer">
+										<IconFileDescription />
+										Orders
+									</Link>
+								}
+							/>
+
 							<DropdownMenuSeparator />
-							<DropdownMenuItem asChild>
-								<Link href="/manager/settings" className="cursor-pointer">
-									<IconSettings />
-									Settings
-								</Link>
-							</DropdownMenuItem>
+							<DropdownMenuItem
+								render={
+									<Link href="/manager/settings" className="cursor-pointer">
+										<IconSettings />
+										Settings
+									</Link>
+								}
+							/>
+
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
 								variant="destructive"

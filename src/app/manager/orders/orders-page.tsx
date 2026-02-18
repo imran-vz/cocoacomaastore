@@ -241,16 +241,19 @@ function OrderCard({
 										open={isCancelDialogOpen}
 										onOpenChange={setIsCancelDialogOpen}
 									>
-										<DialogTrigger asChild>
-											<Button
-												variant="destructive"
-												size="sm"
-												className="w-full"
-											>
-												<XCircle className="size-4 mr-2" />
-												Cancel Order
-											</Button>
-										</DialogTrigger>
+										<DialogTrigger
+											render={
+												<Button
+													variant="destructive"
+													size="sm"
+													className="w-full"
+												>
+													<XCircle className="size-4 mr-2" />
+													Cancel Order
+												</Button>
+											}
+										/>
+
 										<DialogContent>
 											<DialogHeader>
 												<DialogTitle>Cancel Order #{order.id}</DialogTitle>
@@ -280,11 +283,13 @@ function OrderCard({
 												</div>
 											</div>
 											<DialogFooter>
-												<DialogClose asChild>
-													<Button variant="outline" disabled={isCancelling}>
-														Keep Order
-													</Button>
-												</DialogClose>
+												<DialogClose
+													render={
+														<Button variant="outline" disabled={isCancelling}>
+															Keep Order
+														</Button>
+													}
+												/>
 												<Button
 													variant="destructive"
 													onClick={handleCancelOrder}

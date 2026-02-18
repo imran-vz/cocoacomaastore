@@ -1,44 +1,32 @@
 "use client";
 
-import * as React from "react";
+import { Switch as SwitchPrimitive } from "@base-ui/react/switch";
+
 import { cn } from "@/lib/utils";
 
-interface SwitchProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-	checked?: boolean;
-	onCheckedChange?: (checked: boolean) => void;
+function Switch({
+	className,
+	size = "default",
+	...props
+}: SwitchPrimitive.Root.Props & {
+	size?: "sm" | "default";
+}) {
+	return (
+		<SwitchPrimitive.Root
+			data-slot="switch"
+			data-size={size}
+			className={cn(
+				"data-checked:bg-primary data-unchecked:bg-input focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 dark:data-unchecked:bg-input/80 shrink-0 rounded-full border border-transparent focus-visible:ring-3 aria-invalid:ring-3 data-[size=default]:h-[18.4px] data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6 peer group/switch relative inline-flex items-center transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2 data-disabled:cursor-not-allowed data-disabled:opacity-50",
+				className,
+			)}
+			{...props}
+		>
+			<SwitchPrimitive.Thumb
+				data-slot="switch-thumb"
+				className="bg-background dark:data-unchecked:bg-foreground dark:data-checked:bg-primary-foreground rounded-full group-data-[size=default]/switch:size-4 group-data-[size=sm]/switch:size-3 group-data-[size=default]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=sm]/switch:data-checked:translate-x-[calc(100%-2px)] group-data-[size=default]/switch:data-unchecked:translate-x-0 group-data-[size=sm]/switch:data-unchecked:translate-x-0 pointer-events-none block ring-0 transition-transform"
+			/>
+		</SwitchPrimitive.Root>
+	);
 }
-
-const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
-	({ className, checked = false, onCheckedChange, disabled, ...props }, ref) => {
-		return (
-			<button
-				type="button"
-				role="switch"
-				aria-checked={checked}
-				data-state={checked ? "checked" : "unchecked"}
-				disabled={disabled}
-				ref={ref}
-				onClick={() => onCheckedChange?.(!checked)}
-				className={cn(
-					"peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-xs transition-colors",
-					"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-					"disabled:cursor-not-allowed disabled:opacity-50",
-					checked ? "bg-primary" : "bg-input",
-					className,
-				)}
-				{...props}
-			>
-				<span
-					data-state={checked ? "checked" : "unchecked"}
-					className={cn(
-						"pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
-						checked ? "translate-x-4" : "translate-x-0",
-					)}
-				/>
-			</button>
-		);
-	},
-);
-Switch.displayName = "Switch";
 
 export { Switch };

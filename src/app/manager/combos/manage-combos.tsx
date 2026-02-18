@@ -24,17 +24,17 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { ComboWithDetails } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import {
 	type BaseDessert,
-	type ModifierDessert,
 	createCombo,
 	deleteCombo,
 	getCachedAllCombos,
+	type ModifierDessert,
 	toggleCombo,
 	updateCombo,
 	updateComboItems,
 } from "./actions";
-import { cn } from "@/lib/utils";
 
 interface ComboFormData {
 	name: string;
@@ -360,7 +360,7 @@ export default function ManageCombos({
 									onValueChange={(val) =>
 										setFormData((prev) => ({
 											...prev,
-											baseDessertId: Number.parseInt(val, 10),
+											baseDessertId: Number.parseInt(val || "", 10),
 										}))
 									}
 								>

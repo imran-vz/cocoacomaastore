@@ -26,7 +26,7 @@ export function OutOfStockSection({
 	if (desserts.length === 0) return null;
 
 	return (
-		<Accordion type="single" collapsible>
+		<Accordion>
 			<AccordionItem value="out-of-stock">
 				<AccordionTrigger>
 					<div className="space-x-2">
