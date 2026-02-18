@@ -18,6 +18,8 @@ export default async function ManagerLayout({
 	}
 
 	return (
-		<div className="min-h-[calc(100vh-52px)] md:px-4 md:py-6">{children}</div>
+		<div className="min-h-[calc(100vh-52px)] bg-gradient-to-b from-background to-muted/20">
+			{children}
+		</div>
 	);
 }

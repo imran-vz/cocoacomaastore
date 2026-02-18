@@ -5,12 +5,15 @@ import {
 	IconComponents,
 	IconFileDescription,
 	IconLogout,
+	IconMenu2,
 	IconSettings,
 } from "@tabler/icons-react";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { authClient, signOut } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import {
 	DropdownMenu,
@@ -19,12 +22,12 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { TextRoll } from "./ui/text-roll";
 
 export default function Navbar() {
 	const { data: session } = authClient.useSession();
 	const pathname = usePathname();
 
+	// Hide navbar on admin routes (admin has its own sidebar)
 	if (pathname.startsWith("/admin")) {
 		return null;
 	}
@@ -39,42 +42,70 @@ export default function Navbar() {
 	};
 
 	return (
-		<div className="shadow-md z-50 sticky top-0 bg-white">
-			<div className="flex justify-between px-3 sm:px-4 md:px-6 py-3 items-center max-w-7xl mx-auto">
-				<Link href="/manager">
-					<TextRoll
-						transition={{
-							repeat: Number.POSITIVE_INFINITY,
-							repeatType: "loop",
-							repeatDelay: 10,
-						}}
-						className="text-xl text-primary font-bold dark:text-white"
+		<motion.header
+			initial={{ y: -20, opacity: 0 }}
+			animate={{ y: 0, opacity: 1 }}
+			transition={{ duration: 0.3, ease: "easeOut" }}
+			className={cn(
+				"sticky top-0 z-50 h-[52px]",
+				"bg-background/80 backdrop-blur-lg",
+				"border-b border-border/50",
+				"supports-[backdrop-filter]:bg-background/60",
+			)}
+		>
+			<div className="h-full flex items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">
+				{/* Logo */}
+				<Link href="/manager" className="flex items-center gap-2 group">
+					<motion.div
+						whileHover={{ rotate: [0, -10, 10, -5, 0] }}
+						transition={{ duration: 0.5 }}
+						className="text-2xl"
 					>
+						🧁
+					</motion.div>
+					<span className="text-lg font-bold text-primary group-hover:text-primary/80 transition-colors">
 						Cocoa Comaa
-					</TextRoll>
+					</span>
 				</Link>
 
+				{/* Right Side - User Menu */}
 				{session?.user.id && (
 					<DropdownMenu>
 						<DropdownMenuTrigger
 							render={
-								<button
-									className="focus:outline-none focus:ring-2 focus:ring-primary rounded-full"
+								<motion.button
+									whileTap={{ scale: 0.95 }}
+									className={cn(
+										"flex items-center gap-2 p-1.5 pr-3 rounded-full",
+										"bg-muted/50 hover:bg-muted transition-colors",
+										"focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+									)}
 									type="button"
 								>
-									<Avatar>
-										<AvatarFallback>
+									<Avatar className="size-7">
+										<AvatarFallback className="text-xs bg-primary text-primary-foreground">
 											{getInitials(session.user.name)}
 										</AvatarFallback>
 									</Avatar>
-								</button>
+									<IconMenu2 className="size-4 text-muted-foreground" />
+								</motion.button>
 							}
 						/>
 						<DropdownMenuContent align="end" className="w-56">
+							{/* User Info Header */}
+							<div className="px-2 py-2 border-b mb-1">
+								<p className="text-sm font-medium truncate">
+									{session.user.name}
+								</p>
+								<p className="text-xs text-muted-foreground truncate">
+									{session.user.email}
+								</p>
+							</div>
+
 							<DropdownMenuItem
 								render={
 									<Link href="/manager/desserts" className="cursor-pointer">
-										<IconCakeRoll />
+										<IconCakeRoll className="size-4" />
 										Desserts & Stock
 									</Link>
 								}
@@ -83,7 +114,7 @@ export default function Navbar() {
 							<DropdownMenuItem
 								render={
 									<Link href="/manager/combos" className="cursor-pointer">
-										<IconComponents />
+										<IconComponents className="size-4" />
 										Combos
 									</Link>
 								}
@@ -92,23 +123,25 @@ export default function Navbar() {
 							<DropdownMenuItem
 								render={
 									<Link href="/manager/orders" className="cursor-pointer">
-										<IconFileDescription />
+										<IconFileDescription className="size-4" />
 										Orders
 									</Link>
 								}
 							/>
 
 							<DropdownMenuSeparator />
+
 							<DropdownMenuItem
 								render={
 									<Link href="/manager/settings" className="cursor-pointer">
-										<IconSettings />
+										<IconSettings className="size-4" />
 										Settings
 									</Link>
 								}
 							/>
 
 							<DropdownMenuSeparator />
+
 							<DropdownMenuItem
 								variant="destructive"
 								onClick={async () => {
@@ -117,13 +150,13 @@ export default function Navbar() {
 								}}
 								className="cursor-pointer"
 							>
-								<IconLogout />
+								<IconLogout className="size-4" />
 								Log out
 							</DropdownMenuItem>
 						</DropdownMenuContent>
 					</DropdownMenu>
 				)}
 			</div>
-		</div>
+		</motion.header>
 	);
 }
