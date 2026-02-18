@@ -1,12 +1,29 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronUp, Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import {
+	Check,
+	ChevronDown,
+	ChevronUp,
+	Copy,
+	Loader2,
+	Minus,
+	Plus,
+	ReceiptIndianRupee,
+	ShoppingBag,
+	Trash2,
+	X,
+} from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
+import { createOrderWithLines } from "@/app/manager/orders/actions";
+import type { UpiAccount } from "@/db/schema";
 import { useLongPress } from "@/hooks/use-long-press";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useUpiStore } from "@/store/upi-store";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -18,7 +35,31 @@ interface MobileCartSheetProps {
 	// biome-ignore lint/suspicious/noExplicitAny: TanStack form has complex generics
 	form: any;
 	total: number;
-	onCheckout: () => void;
+	upiAccounts: UpiAccount[];
+	customerName: string;
+	onOrderSaved: () => void | Promise<void>;
+	clearCart: () => void;
+}
+
+function capitalize(str: string) {
+	return str
+		.split(" ")
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+}
+
+function getUPIString(total: number, lines: CartLine[], upiId: string): string {
+	const transactionNote = `${lines
+		.map((line) => line.comboName ?? line.baseDessertName)
+		.join(", ")
+		.slice(0, 60)}...`;
+
+	const params = new URLSearchParams();
+	params.set("am", total.toString());
+	params.set("pn", "Cocoa Comaa");
+	params.set("tn", transactionNote);
+
+	return `upi://pay?pa=${upiId}&${params.toString()}`;
 }
 
 function CartLineItem({
@@ -160,12 +201,42 @@ export function MobileCartSheet({
 	removeFromCart,
 	form,
 	total,
-	onCheckout,
+	upiAccounts,
+	customerName,
+	onOrderSaved,
+	clearCart,
 }: MobileCartSheetProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [showForm, setShowForm] = useState(false);
+	const [showOnlineOptions, setShowOnlineOptions] = useState(false);
+	const [isSaving, setIsSaving] = useState(false);
+	const [copiedOrder, setCopiedOrder] = useState(false);
+	const [copiedQr, setCopiedQr] = useState(false);
+	const qrCodeRef = useRef<SVGSVGElement>(null);
+
+	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
 
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
+
+	// Initialize with first available account
+	useEffect(() => {
+		const isValid = upiAccounts.some(
+			(account) => account.id.toString() === selectedUpiId,
+		);
+		if (!isValid && upiAccounts.length > 0) {
+			setSelectedUpiId(upiAccounts[0].id.toString());
+		}
+	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
+
+	const selectedAccount = upiAccounts.find(
+		(account) => account.id.toString() === selectedUpiId,
+	);
+
+	const UPI_STRING = getUPIString(
+		total,
+		cart,
+		selectedAccount?.upiId || upiAccounts[0]?.upiId || "",
+	);
 
 	const handleToggle = useCallback(() => {
 		setIsOpen((prev) => !prev);
@@ -174,6 +245,109 @@ export function MobileCartSheet({
 	const handleClose = useCallback(() => {
 		setIsOpen(false);
 	}, []);
+
+	const handleSaveOrder = async () => {
+		if (cart.length === 0 || isSaving) return;
+
+		try {
+			setIsSaving(true);
+			await createOrderWithLines({
+				customerName: customerName.trim(),
+				lines: cart,
+				deliveryCost: form.state.values.deliveryCost || "0",
+			});
+			toast.success("Order saved!");
+			await onOrderSaved();
+			clearCart();
+			setIsOpen(false);
+		} catch (err) {
+			console.error("Failed to create order:", err);
+			toast.error(err instanceof Error ? err.message : "Failed to save order");
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	const copyOrderDetails = async () => {
+		if (cart.length === 0) return;
+
+		const deliveryCost = Number.parseFloat(
+			form.state.values.deliveryCost || "0",
+		);
+		const orderItemsText = cart
+			.map((line) => {
+				const displayName = line.comboName ?? line.baseDessertName;
+				const modifierText =
+					line.modifiers.length > 0 && !line.comboName
+						? ` (+ ${line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")})`
+						: "";
+				return `${capitalize(displayName.trim())}${modifierText} × ${line.quantity} = ₹${(line.unitPrice * line.quantity).toFixed(2)}`;
+			})
+			.join("\n");
+
+		const deliveryLine =
+			deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
+		const orderText = `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
+
+		await navigator.clipboard.writeText(orderText);
+		setCopiedOrder(true);
+		toast.info("Order copied!", { duration: 1000 });
+		setTimeout(() => setCopiedOrder(false), 2000);
+	};
+
+	const getQrCodeDataUrl = async (): Promise<string> => {
+		if (!qrCodeRef.current) return "";
+
+		const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
+		const svgBlob = new Blob([svgData], {
+			type: "image/svg+xml;charset=utf-8",
+		});
+		const url = URL.createObjectURL(svgBlob);
+
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
+		const img = new Image(400, 400);
+
+		await new Promise((resolve, reject) => {
+			img.onload = resolve;
+			img.onerror = reject;
+			img.src = url;
+		});
+
+		const padding = 48;
+		canvas.width = img.width + padding * 2;
+		canvas.height = img.height + padding * 2;
+
+		if (ctx) {
+			ctx.fillStyle = "white";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(img, padding, padding);
+		}
+
+		URL.revokeObjectURL(url);
+		return canvas.toDataURL("image/png");
+	};
+
+	const copyQrCode = async () => {
+		if (!qrCodeRef.current) return;
+
+		try {
+			const dataUrl = await getQrCodeDataUrl();
+			const response = await fetch(dataUrl);
+			const blob = await response.blob();
+
+			await navigator.clipboard.write([
+				new ClipboardItem({ "image/png": blob }),
+			]);
+
+			setCopiedQr(true);
+			toast.info("QR copied!", { duration: 1000 });
+			setTimeout(() => setCopiedQr(false), 2000);
+		} catch (err) {
+			console.error("Failed to copy QR:", err);
+			toast.error("Failed to copy QR code");
+		}
+	};
 
 	// Close sheet when cart becomes empty
 	useEffect(() => {
@@ -189,6 +363,14 @@ export function MobileCartSheet({
 
 	return (
 		<>
+			{/* Hidden QR Code for copying */}
+			<QRCodeSVG
+				ref={qrCodeRef}
+				value={UPI_STRING}
+				size={400}
+				className="hidden"
+			/>
+
 			{/* Backdrop */}
 			<AnimatePresence>
 				{isOpen && (
@@ -394,15 +576,120 @@ export function MobileCartSheet({
 										))}
 									</AnimatePresence>
 								</div>
+
+								{/* Online Order Options - Collapsed by default */}
+								<div className="mt-4 pt-4 border-t">
+									<button
+										type="button"
+										onClick={() => setShowOnlineOptions(!showOnlineOptions)}
+										className="w-full flex items-center justify-between py-2 text-sm text-muted-foreground"
+									>
+										<span>Online Order Options</span>
+										<ChevronDown
+											className={cn(
+												"size-4 transition-transform",
+												showOnlineOptions && "rotate-180",
+											)}
+										/>
+									</button>
+
+									<AnimatePresence>
+										{showOnlineOptions && (
+											<motion.div
+												initial={{ height: 0, opacity: 0 }}
+												animate={{ height: "auto", opacity: 1 }}
+												exit={{ height: 0, opacity: 0 }}
+												className="overflow-hidden"
+											>
+												<div className="pt-3 space-y-3">
+													{/* UPI Account Selector */}
+													{upiAccounts.length > 1 && (
+														<div className="flex items-center justify-between">
+															<span className="text-xs text-muted-foreground">
+																UPI Account
+															</span>
+															<select
+																value={selectedUpiId}
+																onChange={(e) =>
+																	setSelectedUpiId(e.target.value)
+																}
+																className="text-xs border rounded-lg px-2 py-1 bg-muted"
+															>
+																{upiAccounts.map((account) => (
+																	<option
+																		key={account.id}
+																		value={account.id.toString()}
+																	>
+																		{account.label}
+																	</option>
+																))}
+															</select>
+														</div>
+													)}
+
+													{/* Copy Buttons */}
+													<div className="grid grid-cols-2 gap-3">
+														<motion.button
+															type="button"
+															whileTap={{ scale: 0.95 }}
+															onClick={copyOrderDetails}
+															className={cn(
+																"flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all",
+																copiedOrder
+																	? "bg-green-50 border-green-200 text-green-600"
+																	: "bg-muted/50 hover:bg-muted",
+															)}
+														>
+															{copiedOrder ? (
+																<Check className="size-4" />
+															) : (
+																<Copy className="size-4" />
+															)}
+															<span className="text-sm font-medium">
+																{copiedOrder ? "Copied!" : "Copy Order"}
+															</span>
+														</motion.button>
+
+														<motion.button
+															type="button"
+															whileTap={{ scale: 0.95 }}
+															onClick={copyQrCode}
+															className={cn(
+																"flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all",
+																copiedQr
+																	? "bg-green-50 border-green-200 text-green-600"
+																	: "bg-muted/50 hover:bg-muted",
+															)}
+														>
+															{copiedQr ? (
+																<Check className="size-4" />
+															) : (
+																<ReceiptIndianRupee className="size-4" />
+															)}
+															<span className="text-sm font-medium">
+																{copiedQr ? "Copied!" : "Copy QR"}
+															</span>
+														</motion.button>
+													</div>
+												</div>
+											</motion.div>
+										)}
+									</AnimatePresence>
+								</div>
 							</div>
 
-							{/* Checkout Button - Fixed at bottom */}
+							{/* Save Order Button - Fixed at bottom */}
 							<div className="shrink-0 p-4 border-t bg-background">
 								<Button
-									onClick={onCheckout}
+									onClick={handleSaveOrder}
+									disabled={isSaving}
 									className="w-full h-12 text-base font-semibold rounded-xl"
 								>
-									Checkout · ₹{total.toFixed(0)}
+									{isSaving ? (
+										<Loader2 className="size-5 animate-spin" />
+									) : (
+										`Save Order · ₹${total.toFixed(0)}`
+									)}
 								</Button>
 							</div>
 						</div>

@@ -296,14 +296,14 @@ export function ComboCard({
 			animate={{ opacity: 1, scale: 1 }}
 			exit={{ opacity: 0, scale: 0.95 }}
 			transition={{ duration: 0.2 }}
-			className="relative select-none"
+			className="relative select-none h-full"
 		>
 			<motion.button
 				type="button"
 				onClick={handleAddToCart}
 				whileTap={{ scale: 0.97 }}
 				className={cn(
-					"w-full text-left rounded-2xl bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary/20 overflow-hidden transition-all duration-200",
+					"w-full h-full text-left rounded-2xl bg-linear-to-br from-primary/5 to-primary/10 border-2 border-primary/20 overflow-hidden transition-all duration-200",
 					"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 					"hover:border-primary/40 hover:shadow-md active:border-primary/50",
 					compact ? "p-3" : "p-4",
@@ -316,22 +316,12 @@ export function ComboCard({
 					animate={overlayControls}
 				/>
 
-				<div className="relative z-10">
+				<div className="relative z-10 flex flex-col h-full">
 					{/* Header */}
 					<div className="flex items-start justify-between gap-2 mb-1">
-						<div className="flex items-center gap-1.5">
-							<span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-								Combo
-							</span>
-							<h3
-								className={cn(
-									"font-semibold leading-tight truncate",
-									compact ? "text-sm" : "text-base",
-								)}
-							>
-								{combo.name}
-							</h3>
-						</div>
+						<span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
+							Combo
+						</span>
 						<span
 							className={cn(
 								"shrink-0 font-bold text-primary tabular-nums",
@@ -342,13 +332,23 @@ export function ComboCard({
 						</span>
 					</div>
 
+					{/* Name */}
+					<h3
+						className={cn(
+							"font-semibold leading-tight line-clamp-2 mb-1",
+							compact ? "text-sm" : "text-base",
+						)}
+					>
+						{combo.name}
+					</h3>
+
 					{/* Description */}
-					<p className="text-xs text-muted-foreground line-clamp-2 mb-2.5 leading-relaxed">
+					<p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1">
 						{comboDescription}
 					</p>
 
 					{/* Add Button */}
-					<div className="flex justify-end">
+					<div className="flex justify-end mt-2">
 						<motion.div
 							animate={buttonControls}
 							className={cn(

@@ -14,7 +14,6 @@ import type { UpiAccount } from "@/db/schema";
 import type { CartLine, ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDessertStore } from "@/store/dessert-store";
-import { CheckoutSheet } from "./checkout-sheet";
 import { cartFormSchema } from "./form-schema/cart";
 import { MobileCartSheet } from "./mobile-cart-sheet";
 import { ProductGrid } from "./product-grid";
@@ -45,7 +44,6 @@ export default function POSHome({
 	const combosList = use(combos);
 
 	const [cart, setCart] = useState<CartLine[]>([]);
-	const [showCheckout, setShowCheckout] = useState(false);
 	const [inventoryByDessertId, setInventoryByDessertId] = useState<
 		Record<number, number>
 	>(() => {
@@ -311,7 +309,6 @@ export default function POSHome({
 	const clearCart = useCallback(() => {
 		setCart([]);
 		form.reset();
-		setShowCheckout(false);
 	}, [form]);
 
 	const handleToggleStock = useCallback(
@@ -361,7 +358,7 @@ export default function POSHome({
 				<motion.div
 					initial={{ opacity: 0, y: -10 }}
 					animate={{ opacity: 1, y: 0 }}
-					className="sticky top-[52px] z-30 bg-background/80 backdrop-blur-lg md:relative md:top-0 md:bg-transparent md:backdrop-blur-none"
+					className="sticky top-13 z-30 bg-background/80 backdrop-blur-lg md:relative md:top-0 md:bg-transparent md:backdrop-blur-none"
 				>
 					<div className="px-4 py-3 md:px-0 md:py-4">
 						<div className="relative">
@@ -418,34 +415,28 @@ export default function POSHome({
 					removeFromCart={removeFromCart}
 					form={form}
 					total={total}
-					onCheckout={() => setShowCheckout(true)}
+					upiAccounts={upiAccountsList}
+					customerName={customerName}
+					onOrderSaved={refreshInventory}
+					clearCart={clearCart}
 				/>
 			</div>
 
 			{/* Cart - Tablet Sidebar */}
-			<div className="hidden md:block md:w-[340px] lg:w-[380px] xl:w-[400px] shrink-0 sticky top-[52px] h-[calc(100vh-52px-24px)] py-4 pr-4">
+			<div className="hidden md:block md:w-85 lg:w-95 xl:w-100 shrink-0 sticky top-13 h-[calc(100vh-52px-24px)] py-4 pr-4">
 				<TabletCartSidebar
 					cart={cart}
 					updateQuantity={updateQuantity}
 					removeFromCart={removeFromCart}
 					form={form}
 					total={total}
-					onCheckout={() => setShowCheckout(true)}
+					upiAccounts={upiAccountsList}
+					onOrderSaved={refreshInventory}
+					clearCart={clearCart}
+					customerName={customerName}
+					deliveryCost={Number.parseFloat(deliveryCost || "0")}
 				/>
 			</div>
-
-			{/* Checkout Sheet */}
-			<CheckoutSheet
-				isOpen={showCheckout}
-				onClose={() => setShowCheckout(false)}
-				cart={cart}
-				total={total}
-				deliveryCost={Number.parseFloat(deliveryCost || "0")}
-				customerName={customerName}
-				upiAccounts={upiAccountsList}
-				onOrderSaved={refreshInventory}
-				clearCart={clearCart}
-			/>
 		</div>
 	);
 }

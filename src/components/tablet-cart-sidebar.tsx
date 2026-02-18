@@ -1,12 +1,28 @@
 "use client";
 
+import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
-import { useEffect, useRef } from "react";
-
+import {
+	Check,
+	ChevronDown,
+	Copy,
+	Loader2,
+	Minus,
+	Plus,
+	ReceiptIndianRupee,
+	ShoppingBag,
+	Trash2,
+	X,
+} from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { createOrderWithLines } from "@/app/manager/orders/actions";
+import type { UpiAccount } from "@/db/schema";
 import { useLongPress } from "@/hooks/use-long-press";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useUpiStore } from "@/store/upi-store";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -19,7 +35,32 @@ interface TabletCartSidebarProps {
 	// biome-ignore lint/suspicious/noExplicitAny: TanStack form has complex generics
 	form: any;
 	total: number;
-	onCheckout: () => void;
+	upiAccounts: UpiAccount[];
+	onOrderSaved: () => void | Promise<void>;
+	clearCart: () => void;
+	customerName: string;
+	deliveryCost: number;
+}
+
+function capitalize(str: string) {
+	return str
+		.split(" ")
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
+}
+
+function getUPIString(total: number, lines: CartLine[], upiId: string): string {
+	const transactionNote = `${lines
+		.map((line) => line.comboName ?? line.baseDessertName)
+		.join(", ")
+		.slice(0, 60)}...`;
+
+	const params = new URLSearchParams();
+	params.set("am", total.toString());
+	params.set("pn", "Cocoa Comaa");
+	params.set("tn", transactionNote);
+
+	return `upi://pay?pa=${upiId}&${params.toString()}`;
 }
 
 function SidebarCartItem({
@@ -168,14 +209,144 @@ export function TabletCartSidebar({
 	removeFromCart,
 	form,
 	total,
-	onCheckout,
+	upiAccounts,
+	onOrderSaved,
+	clearCart,
+	customerName,
+	deliveryCost,
 }: TabletCartSidebarProps) {
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
+	const [isSaving, setIsSaving] = useState(false);
+	const [copiedOrder, setCopiedOrder] = useState(false);
+	const [copiedQr, setCopiedQr] = useState(false);
+	const [isOnlineOrderOpen, setIsOnlineOrderOpen] = useState(false);
+	const qrCodeRef = useRef<SVGSVGElement>(null);
+
+	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
+
+	// Initialize with first available account
+	useEffect(() => {
+		const isValid = upiAccounts.some(
+			(account) => account.id.toString() === selectedUpiId,
+		);
+		if (!isValid && upiAccounts.length > 0) {
+			setSelectedUpiId(upiAccounts[0].id.toString());
+		}
+	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
+
+	const selectedAccount = upiAccounts.find(
+		(account) => account.id.toString() === selectedUpiId,
+	);
+
+	const UPI_STRING = getUPIString(
+		total,
+		cart,
+		selectedAccount?.upiId || upiAccounts[0]?.upiId || "",
+	);
+
+	const handleSaveOrder = async () => {
+		if (cart.length === 0 || isSaving) return;
+
+		try {
+			setIsSaving(true);
+			await createOrderWithLines({
+				customerName: customerName.trim(),
+				lines: cart,
+				deliveryCost: deliveryCost.toFixed(2),
+			});
+			toast.success("Order saved!");
+			await onOrderSaved();
+			clearCart();
+		} catch (err) {
+			console.error("Failed to create order:", err);
+			toast.error(err instanceof Error ? err.message : "Failed to save order");
+		} finally {
+			setIsSaving(false);
+		}
+	};
+
+	const copyOrderDetails = async () => {
+		if (cart.length === 0) return;
+
+		const orderItemsText = cart
+			.map((line) => {
+				const displayName = line.comboName ?? line.baseDessertName;
+				const modifierText =
+					line.modifiers.length > 0 && !line.comboName
+						? ` (+ ${line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")})`
+						: "";
+				return `${capitalize(displayName.trim())}${modifierText} × ${line.quantity} = ₹${(line.unitPrice * line.quantity).toFixed(2)}`;
+			})
+			.join("\n");
+
+		const deliveryLine =
+			deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
+		const orderText = `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
+
+		await navigator.clipboard.writeText(orderText);
+		setCopiedOrder(true);
+		toast.info("Order copied!", { duration: 1000 });
+		setTimeout(() => setCopiedOrder(false), 2000);
+	};
+
+	const getQrCodeDataUrl = async (): Promise<string> => {
+		if (!qrCodeRef.current) return "";
+
+		const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
+		const svgBlob = new Blob([svgData], {
+			type: "image/svg+xml;charset=utf-8",
+		});
+		const url = URL.createObjectURL(svgBlob);
+
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
+		const img = new Image(400, 400);
+
+		await new Promise((resolve, reject) => {
+			img.onload = resolve;
+			img.onerror = reject;
+			img.src = url;
+		});
+
+		const padding = 48;
+		canvas.width = img.width + padding * 2;
+		canvas.height = img.height + padding * 2;
+
+		if (ctx) {
+			ctx.fillStyle = "white";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.drawImage(img, padding, padding);
+		}
+
+		URL.revokeObjectURL(url);
+		return canvas.toDataURL("image/png");
+	};
+
+	const copyQrCode = async () => {
+		if (!qrCodeRef.current) return;
+
+		try {
+			const dataUrl = await getQrCodeDataUrl();
+			const response = await fetch(dataUrl);
+			const blob = await response.blob();
+
+			await navigator.clipboard.write([
+				new ClipboardItem({ "image/png": blob }),
+			]);
+
+			setCopiedQr(true);
+			toast.info("QR copied!", { duration: 1000 });
+			setTimeout(() => setCopiedQr(false), 2000);
+		} catch (err) {
+			console.error("Failed to copy QR:", err);
+			toast.error("Failed to copy QR code");
+		}
+	};
 
 	return (
 		<div className="h-full flex flex-col bg-muted/30 rounded-2xl border-2 overflow-hidden">
 			{/* Header */}
-			<div className="flex-shrink-0 px-4 py-3 bg-background border-b">
+			<div className="shrink-0 px-4 py-3 bg-background border-b">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<div className="relative">
@@ -211,7 +382,7 @@ export function TabletCartSidebar({
 			</div>
 
 			{/* Form Fields */}
-			<div className="flex-shrink-0 px-4 py-3 bg-background/50 border-b">
+			<div className="shrink-0 px-4 py-3 bg-background/50 border-b">
 				<div className="grid grid-cols-2 gap-2">
 					<form.Field name="name">
 						{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
@@ -296,10 +467,10 @@ export function TabletCartSidebar({
 				</div>
 			</ScrollArea>
 
-			{/* Footer with Total and Checkout */}
-			<div className="flex-shrink-0 p-3 bg-background border-t">
+			{/* Footer with Total and Actions */}
+			<div className="shrink-0 p-3 bg-background border-t space-y-3">
 				{/* Total */}
-				<div className="flex items-center justify-between mb-3 px-1">
+				<div className="flex items-center justify-between px-1">
 					<span className="text-sm text-muted-foreground">Total</span>
 					<motion.span
 						key={total}
@@ -311,15 +482,106 @@ export function TabletCartSidebar({
 					</motion.span>
 				</div>
 
-				{/* Checkout Button */}
+				{/* Online Order Section - Collapsed by default */}
+				{cart.length > 0 && (
+					<CollapsiblePrimitive.Root
+						open={isOnlineOrderOpen}
+						onOpenChange={setIsOnlineOrderOpen}
+					>
+						<CollapsiblePrimitive.Trigger className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors">
+							<span className="font-medium">Online Order (Instagram)</span>
+							<ChevronDown
+								className={cn(
+									"size-4 transition-transform duration-200",
+									isOnlineOrderOpen && "rotate-180",
+								)}
+							/>
+						</CollapsiblePrimitive.Trigger>
+						<CollapsiblePrimitive.Panel className="overflow-hidden h-(--collapsible-panel-height) data-ending-style:h-0 data-starting-style:h-0 transition-all duration-200 ease-out">
+							<div className="space-y-2 pt-2">
+								{/* UPI Account Selector */}
+								{upiAccounts.length > 1 && (
+									<div className="px-1">
+										<select
+											value={selectedUpiId}
+											onChange={(e) => setSelectedUpiId(e.target.value)}
+											className="w-full text-xs border rounded-lg px-2 py-1.5 bg-muted"
+										>
+											{upiAccounts.map((account) => (
+												<option key={account.id} value={account.id.toString()}>
+													{account.label}
+												</option>
+											))}
+										</select>
+									</div>
+								)}
+
+								{/* Copy Buttons */}
+								<div className="grid grid-cols-2 gap-2">
+									<motion.button
+										type="button"
+										whileTap={{ scale: 0.95 }}
+										onClick={copyOrderDetails}
+										className={cn(
+											"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-all",
+											copiedOrder
+												? "bg-green-50 border-green-200 text-green-600"
+												: "bg-muted/50 hover:bg-muted",
+										)}
+									>
+										{copiedOrder ? (
+											<Check className="size-3.5" />
+										) : (
+											<Copy className="size-3.5" />
+										)}
+										<span>{copiedOrder ? "Copied!" : "Copy Order"}</span>
+									</motion.button>
+
+									<motion.button
+										type="button"
+										whileTap={{ scale: 0.95 }}
+										onClick={copyQrCode}
+										className={cn(
+											"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-all",
+											copiedQr
+												? "bg-green-50 border-green-200 text-green-600"
+												: "bg-muted/50 hover:bg-muted",
+										)}
+									>
+										{copiedQr ? (
+											<Check className="size-3.5" />
+										) : (
+											<ReceiptIndianRupee className="size-3.5" />
+										)}
+										<span>{copiedQr ? "Copied!" : "Copy QR"}</span>
+									</motion.button>
+								</div>
+
+								{/* Hidden QR Code for copying */}
+								<QRCodeSVG
+									ref={qrCodeRef}
+									value={UPI_STRING}
+									size={400}
+									className="hidden"
+								/>
+							</div>
+						</CollapsiblePrimitive.Panel>
+					</CollapsiblePrimitive.Root>
+				)}
+
+				{/* Save Order Button */}
 				<Button
-					onClick={onCheckout}
-					disabled={cart.length === 0}
+					onClick={handleSaveOrder}
+					disabled={cart.length === 0 || isSaving}
 					className="w-full h-11 text-sm font-semibold rounded-xl"
 				>
-					{cart.length === 0
-						? "Add items to checkout"
-						: `Checkout · ₹${total.toFixed(0)}`}
+					{isSaving ? (
+						<Loader2 className="size-4 animate-spin" />
+					) : cart.length === 0 ? (
+						"Add items to save"
+					) : (
+						`Save Order · ₹${total.toFixed(0)}`
+					)}
 				</Button>
 			</div>
 		</div>

@@ -77,7 +77,7 @@ export function Cart({
 					</form.Field>
 				</div>
 
-				<div className="flex-1 min-h-[300px] max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-md p-1">
+				<div className="flex-1 min-h-75 max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-md p-1">
 					<AnimatePresence mode="popLayout" initial={false}>
 						{cart.length === 0 ? (
 							<div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center border-2 border-dashed rounded-lg">

@@ -18,7 +18,7 @@ export default async function ManagerLayout({
 	}
 
 	return (
-		<div className="min-h-[calc(100vh-52px)] bg-gradient-to-b from-background to-muted/20">
+		<div className="min-h-[calc(100vh-52px)] bg-linear-to-b from-background to-muted/20">
 			{children}
 		</div>
 	);

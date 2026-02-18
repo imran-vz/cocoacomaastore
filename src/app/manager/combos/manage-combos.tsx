@@ -413,7 +413,7 @@ export default function ManageCombos({
 
 						<div className="space-y-3">
 							<Label>Combo Items (Modifiers)</Label>
-							<div className="border rounded-md divide-y max-h-[300px] overflow-y-auto">
+							<div className="border rounded-md divide-y max-h-75 overflow-y-auto">
 								{modifiers.map((modifier) => {
 									const selectedItem = formData.items.find(
 										(i) => i.dessertId === modifier.id,
