@@ -6,7 +6,7 @@ import { dessertsTable } from "@/db/schema";
 export async function updateSequence(id: number, score: number): Promise<void> {
 	await db
 		.update(dessertsTable)
-		.set({ sequence: score })
+		.set({ sequence: sql<number>`${score}::integer` })
 		.where(eq(dessertsTable.id, id));
 }
 
@@ -31,13 +31,16 @@ export async function bulkUpdateSequences(
 	const ids = updates.map((u) => u.id);
 
 	const caseStatements = updates
-		.map((u) => sql`WHEN ${dessertsTable.id} = ${u.id} THEN ${u.sequence}`)
+		.map(
+			(u) =>
+				sql`WHEN ${dessertsTable.id} = ${u.id} THEN ${u.sequence}::integer`,
+		)
 		.reduce((acc, curr) => sql`${acc} ${curr}`);
 
 	await db
 		.update(dessertsTable)
 		.set({
-			sequence: sql`CASE ${caseStatements} END`,
+			sequence: sql<number>`CASE ${caseStatements} END`,
 		})
 		.where(inArray(dessertsTable.id, ids));
 }

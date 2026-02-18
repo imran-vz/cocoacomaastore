@@ -16,7 +16,7 @@ export default async function page() {
 	});
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-3 pb-6 max-w-7xl mx-auto">
+		<main className="min-h-[calc(100vh-52px)] p-3 pb-6">
 			<ManageDesserts initialDesserts={desserts} />
 		</main>
 	);
