@@ -144,13 +144,13 @@ export const batchUpdateDessertSequencesSchema = z.object({
 
 export const createManagerSchema = z.object({
 	name: z.string().trim().min(1).max(255),
-	email: z.string().email().max(255).toLowerCase(),
+	email: z.email().max(255).toLowerCase(),
 	password: z.string().min(8).max(128),
 	role: z.enum(["admin", "manager"]),
 });
 
 export const deleteManagerSchema = z.object({
-	id: z.string().uuid(),
+	id: z.string(),
 });
 
 // ============================================================================
