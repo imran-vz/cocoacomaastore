@@ -207,6 +207,7 @@ export function MobileCartSheet({
 	clearCart,
 }: MobileCartSheetProps) {
 	const [isOpen, setIsOpen] = useState(false);
+	const [shouldRender, setShouldRender] = useState(false);
 	const [showForm, setShowForm] = useState(false);
 	const [showOnlineOptions, setShowOnlineOptions] = useState(false);
 	const [isSaving, setIsSaving] = useState(false);
@@ -239,11 +240,18 @@ export function MobileCartSheet({
 	);
 
 	const handleToggle = useCallback(() => {
-		setIsOpen((prev) => !prev);
+		setIsOpen((prev) => {
+			if (!prev) setShouldRender(true);
+			return !prev;
+		});
 	}, []);
 
 	const handleClose = useCallback(() => {
 		setIsOpen(false);
+	}, []);
+
+	const handleExitComplete = useCallback(() => {
+		setShouldRender(false);
 	}, []);
 
 	const handleSaveOrder = async () => {
@@ -356,8 +364,8 @@ export function MobileCartSheet({
 		}
 	}, [cart.length, isOpen]);
 
-	// Don't render if cart is empty
-	if (cart.length === 0) {
+	// Don't render if cart is empty and not animating out
+	if (cart.length === 0 && !shouldRender) {
 		return null;
 	}
 
@@ -371,8 +379,8 @@ export function MobileCartSheet({
 				className="hidden"
 			/>
 
-			{/* Backdrop */}
-			<AnimatePresence>
+			{/* Backdrop - blocks interactions while sheet is open or animating out */}
+			<AnimatePresence onExitComplete={handleExitComplete}>
 				{isOpen && (
 					<motion.div
 						initial={{ opacity: 0 }}
@@ -384,6 +392,11 @@ export function MobileCartSheet({
 					/>
 				)}
 			</AnimatePresence>
+
+			{/* Invisible blocker during exit animation to prevent click-through */}
+			{shouldRender && !isOpen && (
+				<div className="fixed inset-0 z-40 md:hidden" />
+			)}
 
 			{/* Collapsed Bar - Fixed at bottom */}
 			<AnimatePresence>
