@@ -39,6 +39,7 @@ export const auth = betterAuth({
 		}),
 	],
 	trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
+	baseURL: process.env.BETTER_AUTH_BASE_URL,
 });
 
 export type ServerSession = Awaited<ReturnType<typeof auth.api.getSession>>;
