@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import {
 	getCachedAvailableMonths,
-	getCachedEodStockTrends,
 	getCachedMonthlyDessertRevenue,
 	getCachedMonthlyRevenue,
 } from "@/app/admin/dashboard/actions";
@@ -32,10 +31,9 @@ function AnalyticsSkeleton() {
 }
 
 export default async function AnalyticsPage() {
-	const [monthlyRevenue, availableMonths, eodStockTrends] = await Promise.all([
+	const [monthlyRevenue, availableMonths] = await Promise.all([
 		getCachedMonthlyRevenue(12),
 		getCachedAvailableMonths(),
-		getCachedEodStockTrends(14),
 	]);
 
 	// Get the most recent month for initial dessert revenue
@@ -55,7 +53,6 @@ export default async function AnalyticsPage() {
 					monthlyDessertRevenue={monthlyDessertRevenue}
 					availableMonths={availableMonths}
 					initialMonth={currentMonth}
-					eodStockTrends={eodStockTrends}
 				/>
 			</Suspense>
 		</main>
