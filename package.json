@@ -12,7 +12,9 @@
 		"lint": "biome check src/**/*.{ts,tsx}",
 		"lint:fix": "biome check --write src/**/*.{ts,tsx}",
 		"format": "biome format --write src/**/*.{ts,tsx}",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit",
+		"analytics": "bun run src/scripts/compile-analytics.ts",
+		"analytics:backfill": "bun run src/scripts/compile-analytics.ts --backfill"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.2.0",
