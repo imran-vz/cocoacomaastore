@@ -1,24 +1,12 @@
 import { Box } from "lucide-react";
 import type { DessertStock } from "@/app/admin/dashboard/actions";
 import { Badge } from "@/components/ui/badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-export default function StockList({
-	stock,
-	isLoading,
-}: {
-	stock: DessertStock[];
-	isLoading?: boolean;
-}) {
+export default function StockList({ stock, isLoading }: { stock: DessertStock[]; isLoading?: boolean }) {
 	const filteredStock = stock.filter((item) => item.enabled);
 
 	return (
@@ -71,11 +59,7 @@ export default function StockList({
 										) : (
 											<Badge
 												variant={
-													item.currentStock > 10
-														? "secondary"
-														: item.currentStock > 0
-															? "outline"
-															: "destructive"
+													item.currentStock > 10 ? "secondary" : item.currentStock > 0 ? "outline" : "destructive"
 												}
 												className="text-xs tabular-nums min-w-12 justify-center"
 											>

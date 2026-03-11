@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	motion,
-	type Target,
-	type TargetAndTransition,
-	type Transition,
-	type VariantLabels,
-} from "motion/react";
+import { motion, type Target, type TargetAndTransition, type Transition, type VariantLabels } from "motion/react";
 
 type TextRollProps = {
 	children: string;
@@ -63,12 +57,8 @@ export function TextRoll({
 					>
 						<motion.span
 							className="absolute inline-block backface-hidden origin-[50%_25%]"
-							initial={
-								variants?.enter?.initial ?? defaultVariants.enter.initial
-							}
-							animate={
-								variants?.enter?.animate ?? defaultVariants.enter.animate
-							}
+							initial={variants?.enter?.initial ?? defaultVariants.enter.initial}
+							animate={variants?.enter?.animate ?? defaultVariants.enter.animate}
 							transition={{
 								...transition,
 								duration,
@@ -86,15 +76,11 @@ export function TextRoll({
 								duration,
 								delay: getExitDelay(i),
 							}}
-							onAnimationComplete={
-								letters.length === i + 1 ? onAnimationComplete : undefined
-							}
+							onAnimationComplete={letters.length === i + 1 ? onAnimationComplete : undefined}
 						>
 							{letter === " " ? "\u00A0" : letter}
 						</motion.span>
-						<span className="invisible">
-							{letter === " " ? "\u00A0" : letter}
-						</span>
+						<span className="invisible">{letter === " " ? "\u00A0" : letter}</span>
 					</span>
 				);
 			})}

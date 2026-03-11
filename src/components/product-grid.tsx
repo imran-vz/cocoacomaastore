@@ -4,12 +4,7 @@ import { IconCake } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { ComboCard, ProductCard } from "./product-card";
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "./ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 
 interface ProductGridProps {
 	desserts: Dessert[];
@@ -33,14 +28,10 @@ export function ProductGrid({
 	// Helper to check if dessert is unavailable
 	const isUnavailable = (dessert: Dessert) =>
 		dessert.isOutOfStock ||
-		(!dessert.hasUnlimitedStock &&
-			(dessert.inventoryQuantity === undefined ||
-				dessert.inventoryQuantity <= 0));
+		(!dessert.hasUnlimitedStock && (dessert.inventoryQuantity === undefined || dessert.inventoryQuantity <= 0));
 
 	// Filter desserts based on search
-	const filteredDesserts = desserts.filter((dessert) =>
-		dessert.name.toLowerCase().includes(searchQuery.toLowerCase()),
-	);
+	const filteredDesserts = desserts.filter((dessert) => dessert.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
 	// Separate available and unavailable desserts
 	const availableDesserts = filteredDesserts.filter((d) => !isUnavailable(d));
@@ -64,9 +55,7 @@ export function ProductGrid({
 				<div className="size-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
 					<IconCake className="size-8 text-muted-foreground/50" />
 				</div>
-				<h3 className="text-lg font-semibold text-foreground mb-1">
-					No items found
-				</h3>
+				<h3 className="text-lg font-semibold text-foreground mb-1">No items found</h3>
 				<p className="text-sm text-muted-foreground max-w-xs">
 					{searchQuery
 						? `No items match "${searchQuery}". Try a different search.`
@@ -101,10 +90,7 @@ export function ProductGrid({
 									}}
 									exit={{ opacity: 0, scale: 0.95 }}
 								>
-									<ComboCard
-										combo={combo}
-										onAddToCart={() => onAddComboToCart(combo)}
-									/>
+									<ComboCard combo={combo} onAddToCart={() => onAddComboToCart(combo)} />
 								</motion.div>
 							))}
 						</AnimatePresence>
@@ -174,9 +160,7 @@ export function ProductGrid({
 												dessert={dessert}
 												onAddToCart={onAddToCart}
 												onToggleStock={onToggleStock}
-												isStockToggleLoading={stockToggleLoadingIds.has(
-													dessert.id,
-												)}
+												isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
 											/>
 										))}
 									</AnimatePresence>

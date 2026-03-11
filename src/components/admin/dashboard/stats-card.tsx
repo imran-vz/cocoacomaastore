@@ -27,19 +27,11 @@ export default function StatCard({
 				<Icon className="h-4 w-4 text-muted-foreground" />
 			</CardHeader>
 			<CardContent>
-				{isLoading ? (
-					<Skeleton className="h-8 w-20" />
-				) : (
-					<div className="text-2xl font-bold">{value}</div>
-				)}
+				{isLoading ? <Skeleton className="h-8 w-20" /> : <div className="text-2xl font-bold">{value}</div>}
 				{subtitle && (
 					<p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-						{trend === "up" && (
-							<ArrowUpRight className="size-3 text-green-500" />
-						)}
-						{trend === "down" && (
-							<ArrowDownRight className="size-3 text-red-500" />
-						)}
+						{trend === "up" && <ArrowUpRight className="size-3 text-green-500" />}
+						{trend === "down" && <ArrowDownRight className="size-3 text-red-500" />}
 						{subtitle}
 					</p>
 				)}

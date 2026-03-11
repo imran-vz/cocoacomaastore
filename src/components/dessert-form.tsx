@@ -5,21 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { dessertFormSchema } from "./form-schema/dessert";
 
-type onSubmit = (
-	values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">,
-) => Promise<void>;
+type onSubmit = (values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">) => Promise<void>;
 
 type DessertFormProps = {
 	initialData?: Dessert;
@@ -28,12 +20,7 @@ type DessertFormProps = {
 	isLoading?: boolean;
 };
 
-export function DessertForm({
-	initialData,
-	onSubmit,
-	onDelete,
-	isLoading,
-}: DessertFormProps) {
+export function DessertForm({ initialData, onSubmit, onDelete, isLoading }: DessertFormProps) {
 	const form = useForm({
 		defaultValues: {
 			name: initialData?.name || "",
@@ -72,9 +59,7 @@ export function DessertForm({
 						/>
 						{field.state.meta.errors.length > 0 && (
 							<p className="text-sm text-destructive">
-								{field.state.meta.errors
-									.map((e) => (typeof e === "string" ? e : ""))
-									.join(", ")}
+								{field.state.meta.errors.map((e) => (typeof e === "string" ? e : "")).join(", ")}
 							</p>
 						)}
 					</div>
@@ -114,9 +99,7 @@ export function DessertForm({
 						/>
 						{field.state.meta.errors.length > 0 && (
 							<p className="text-sm text-destructive">
-								{field.state.meta.errors
-									.map((e) => (typeof e === "string" ? e : ""))
-									.join(", ")}
+								{field.state.meta.errors.map((e) => (typeof e === "string" ? e : "")).join(", ")}
 							</p>
 						)}
 					</div>
@@ -129,9 +112,7 @@ export function DessertForm({
 						<Label htmlFor={field.name}>Type</Label>
 						<Select
 							value={field.state.value}
-							onValueChange={(value) =>
-								field.handleChange(value as "base" | "modifier")
-							}
+							onValueChange={(value) => field.handleChange(value as "base" | "modifier")}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Select type" />
@@ -142,8 +123,7 @@ export function DessertForm({
 							</SelectContent>
 						</Select>
 						<p className="text-xs text-muted-foreground">
-							Base desserts have inventory tracking. Modifiers are add-ons for
-							combos.
+							Base desserts have inventory tracking. Modifiers are add-ons for combos.
 						</p>
 					</div>
 				)}
@@ -163,15 +143,10 @@ export function DessertForm({
 							}}
 						/>
 						<div className="space-y-1 leading-none">
-							<Label
-								htmlFor={field.name}
-								className="font-normal cursor-pointer"
-							>
+							<Label htmlFor={field.name} className="font-normal cursor-pointer">
 								Unlimited stock
 							</Label>
-							<p className="text-sm text-muted-foreground">
-								For items like water that don't need inventory tracking
-							</p>
+							<p className="text-sm text-muted-foreground">For items like water that don't need inventory tracking</p>
 						</div>
 					</div>
 				)}
@@ -190,10 +165,7 @@ export function DessertForm({
 								/>
 								<Label
 									htmlFor={field.name}
-									className={cn(
-										"font-normal cursor-pointer",
-										hasUnlimitedStock && "text-muted-foreground",
-									)}
+									className={cn("font-normal cursor-pointer", hasUnlimitedStock && "text-muted-foreground")}
 								>
 									Mark as out of stock
 								</Label>

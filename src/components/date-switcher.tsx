@@ -38,13 +38,7 @@ function isSameDay(date1: Date, date2: Date): boolean {
 	);
 }
 
-export function DateSwitcher({
-	selectedDate,
-	onDateChange,
-	minDate,
-	maxDate,
-	className,
-}: DateSwitcherProps) {
+export function DateSwitcher({ selectedDate, onDateChange, minDate, maxDate, className }: DateSwitcherProps) {
 	const today = useMemo(() => {
 		const d = new Date();
 		d.setHours(0, 0, 0, 0);
@@ -117,11 +111,7 @@ export function DateSwitcher({
 								type="date"
 								value={formatDateForInput(selectedDate)}
 								onChange={handleDateInputChange}
-								max={
-									maxDate
-										? formatDateForInput(maxDate)
-										: formatDateForInput(today)
-								}
+								max={maxDate ? formatDateForInput(maxDate) : formatDateForInput(today)}
 								min={minDate ? formatDateForInput(minDate) : undefined}
 								className="absolute inset-0 opacity-0 cursor-pointer"
 							/>
@@ -142,12 +132,7 @@ export function DateSwitcher({
 			</Button>
 
 			{!isToday && (
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={goToToday}
-					className="text-xs text-muted-foreground"
-				>
+				<Button variant="ghost" size="sm" onClick={goToToday} className="text-xs text-muted-foreground">
 					Today
 				</Button>
 			)}

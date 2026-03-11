@@ -11,12 +11,7 @@ interface DessertGridProps {
 	stockToggleLoadingIds: Set<number>;
 }
 
-export function DessertGrid({
-	desserts,
-	onAddToCart,
-	onToggleStock,
-	stockToggleLoadingIds,
-}: DessertGridProps) {
+export function DessertGrid({ desserts, onAddToCart, onToggleStock, stockToggleLoadingIds }: DessertGridProps) {
 	return (
 		<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
 			<AnimatePresence mode="popLayout">

@@ -12,11 +12,7 @@ export function ComboGrid({ combos, onAddComboToCart }: ComboGridProps) {
 	return (
 		<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
 			{combos.map((combo) => (
-				<ComboGridItem
-					key={combo.id}
-					combo={combo}
-					onAddComboToCart={onAddComboToCart}
-				/>
+				<ComboGridItem key={combo.id} combo={combo} onAddComboToCart={onAddComboToCart} />
 			))}
 		</div>
 	);

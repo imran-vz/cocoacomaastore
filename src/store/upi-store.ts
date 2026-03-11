@@ -7,13 +7,7 @@ interface UpiStore {
 }
 
 export const useUpiStore = create<UpiStore>()(
-	persist(
-		(set) => ({
-			selectedUpiId: "1",
-			setSelectedUpiId: (id) => set({ selectedUpiId: id }),
-		}),
-		{
-			name: "cocoacomaa-selected-upi-id",
-		},
-	),
+	persist((set) => ({ selectedUpiId: "1", setSelectedUpiId: (id) => set({ selectedUpiId: id }) }), {
+		name: "cocoacomaa-selected-upi-id",
+	}),
 );

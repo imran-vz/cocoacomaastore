@@ -44,9 +44,7 @@ export default function POSHome({
 	const combosList = use(combos);
 
 	const [cart, setCart] = useState<CartLine[]>([]);
-	const [inventoryByDessertId, setInventoryByDessertId] = useState<
-		Record<number, number>
-	>(() => {
+	const [inventoryByDessertId, setInventoryByDessertId] = useState<Record<number, number>>(() => {
 		const next: Record<number, number> = {};
 		for (const row of initialInventory) {
 			next[row.dessertId] = row.quantity;
@@ -100,9 +98,7 @@ export default function POSHome({
 		() =>
 			localDesserts.map((dessert) => ({
 				...dessert,
-				inventoryQuantity: dessert.hasUnlimitedStock
-					? undefined
-					: (inventoryByDessertId[dessert.id] ?? 0),
+				inventoryQuantity: dessert.hasUnlimitedStock ? undefined : (inventoryByDessertId[dessert.id] ?? 0),
 			})),
 		[localDesserts, inventoryByDessertId],
 	);
@@ -133,9 +129,7 @@ export default function POSHome({
 
 	const addToCart = useCallback(
 		(dessert: Dessert) => {
-			const available = dessert.hasUnlimitedStock
-				? Number.POSITIVE_INFINITY
-				: (inventoryByDessertId[dessert.id] ?? 0);
+			const available = dessert.hasUnlimitedStock ? Number.POSITIVE_INFINITY : (inventoryByDessertId[dessert.id] ?? 0);
 			const usedInCart = cartInventoryUsage.get(dessert.id) ?? 0;
 			const remaining = available - usedInCart;
 
@@ -144,10 +138,7 @@ export default function POSHome({
 				return;
 			}
 
-			const existingLine = cart.find(
-				(line) =>
-					line.baseDessertId === dessert.id && line.modifiers.length === 0,
-			);
+			const existingLine = cart.find((line) => line.baseDessertId === dessert.id && line.modifiers.length === 0);
 
 			if (existingLine) {
 				if (existingLine.quantity >= available) {
@@ -221,12 +212,8 @@ export default function POSHome({
 					quantity: item.quantity,
 				}));
 
-				const modifierTotal = modifiers.reduce(
-					(sum, mod) => sum + mod.price * mod.quantity,
-					0,
-				);
-				const unitPrice =
-					combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
+				const modifierTotal = modifiers.reduce((sum, mod) => sum + mod.price * mod.quantity, 0);
+				const unitPrice = combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
 
 				const newLine: CartLine = {
 					cartLineId: generateCartLineId(),
@@ -269,11 +256,7 @@ export default function POSHome({
 				: (inventoryByDessertId[line.baseDessertId] ?? 0);
 
 			const usedByOthers = cart
-				.filter(
-					(l) =>
-						l.baseDessertId === line.baseDessertId &&
-						l.cartLineId !== cartLineId,
-				)
+				.filter((l) => l.baseDessertId === line.baseDessertId && l.cartLineId !== cartLineId)
 				.reduce((sum, l) => sum + l.quantity, 0);
 
 			const maxAllowed = available - usedByOthers;
@@ -285,11 +268,7 @@ export default function POSHome({
 			}
 
 			if (quantity > maxAllowed) {
-				setCart((cart) =>
-					cart.map((l) =>
-						l.cartLineId === cartLineId ? { ...l, quantity: maxAllowed } : l,
-					),
-				);
+				setCart((cart) => cart.map((l) => (l.cartLineId === cartLineId ? { ...l, quantity: maxAllowed } : l)));
 				toast.error(`Only ${maxAllowed} available`);
 				return;
 			}
@@ -299,9 +278,7 @@ export default function POSHome({
 				return;
 			}
 
-			setCart((cart) =>
-				cart.map((l) => (l.cartLineId === cartLineId ? { ...l, quantity } : l)),
-			);
+			setCart((cart) => cart.map((l) => (l.cartLineId === cartLineId ? { ...l, quantity } : l)));
 		},
 		[cart, dessertById, inventoryByDessertId, removeFromCart],
 	);
@@ -321,9 +298,7 @@ export default function POSHome({
 
 			try {
 				await toggleOutOfStock(dessert.id, newOutOfStockState);
-				toast.success(
-					`Marked as ${newOutOfStockState ? "out of stock" : "back in stock"}`,
-				);
+				toast.success(`Marked as ${newOutOfStockState ? "out of stock" : "back in stock"}`);
 			} catch (error) {
 				toast.error("Failed to update stock status");
 				console.error("Failed to toggle stock status:", error);
@@ -335,17 +310,11 @@ export default function POSHome({
 		[addStockToggleLoadingId, updateDessert, removeStockToggleLoadingId],
 	);
 
-	const deliveryCost = useStore(
-		form.store,
-		(state) => state.values.deliveryCost,
-	);
+	const deliveryCost = useStore(form.store, (state) => state.values.deliveryCost);
 	const customerName = useStore(form.store, (state) => state.values.name);
 
 	const total = useMemo(() => {
-		const itemCost = cart.reduce(
-			(sum, line) => sum + line.unitPrice * line.quantity,
-			0,
-		);
+		const itemCost = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 		const dc = Number.parseFloat(deliveryCost || "0");
 		return itemCost + dc;
 	}, [cart, deliveryCost]);

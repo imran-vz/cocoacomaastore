@@ -17,20 +17,17 @@ async function main() {
 		{
 			name: "Choco Fudge Brownie",
 			price: 70,
-			description:
-				"A rich, decadent chocolate brownie with a fudge-like texture.",
+			description: "A rich, decadent chocolate brownie with a fudge-like texture.",
 		},
 		{
 			name: "Chocolate Chip Cookie",
 			price: 50,
-			description:
-				"A soft, chewy chocolate chip cookie with a crispy exterior.",
+			description: "A soft, chewy chocolate chip cookie with a crispy exterior.",
 		},
 		{
 			name: "Nutella Brownie",
 			price: 85,
-			description:
-				"A rich, creamy Nutella brownie with a smooth and rich flavor.",
+			description: "A rich, creamy Nutella brownie with a smooth and rich flavor.",
 		},
 	];
 

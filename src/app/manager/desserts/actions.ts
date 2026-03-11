@@ -4,22 +4,16 @@ import { performance } from "node:perf_hooks";
 import { eq, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { db } from "@/db";
-import {
-	dailyDessertInventoryTable,
-	inventoryAuditLogTable,
-} from "@/db/schema";
+import { dailyDessertInventoryTable, inventoryAuditLogTable } from "@/db/schema";
 import { getServerSession } from "@/lib/auth";
 
 function getStartOfDay(date: Date = new Date()) {
 	const d = new Date(date);
-	d.setHours(0, 0, 0, 0);
-	return d;
+	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
 }
 
 // Manager-specific action for inventory management
-export async function upsertInventoryWithAudit(
-	updates: Array<{ dessertId: number; quantity: number }>,
-) {
+export async function upsertInventoryWithAudit(updates: Array<{ dessertId: number; quantity: number }>) {
 	const start = performance.now();
 	const day = getStartOfDay();
 	const now = new Date();
@@ -39,9 +33,7 @@ export async function upsertInventoryWithAudit(
 			.from(dailyDessertInventoryTable)
 			.where(eq(dailyDessertInventoryTable.day, day));
 
-		const currentMap = new Map(
-			currentInventory.map((r) => [r.dessertId, r.quantity]),
-		);
+		const currentMap = new Map(currentInventory.map((r) => [r.dessertId, r.quantity]));
 
 		// Prepare bulk data
 		const auditLogEntries: Array<{
@@ -63,9 +55,7 @@ export async function upsertInventoryWithAudit(
 		}> = [];
 
 		for (const update of updates) {
-			const quantity = Number.isFinite(update.quantity)
-				? Math.max(0, Math.floor(update.quantity))
-				: 0;
+			const quantity = Number.isFinite(update.quantity) ? Math.max(0, Math.floor(update.quantity)) : 0;
 
 			const previousQuantity = currentMap.get(update.dessertId) ?? 0;
 
@@ -102,10 +92,7 @@ export async function upsertInventoryWithAudit(
 				.insert(dailyDessertInventoryTable)
 				.values(inventoryValues)
 				.onConflictDoUpdate({
-					target: [
-						dailyDessertInventoryTable.day,
-						dailyDessertInventoryTable.dessertId,
-					],
+					target: [dailyDessertInventoryTable.day, dailyDessertInventoryTable.dessertId],
 					set: {
 						quantity: sql`excluded.quantity`,
 						updatedAt: sql`excluded."updatedAt"`,

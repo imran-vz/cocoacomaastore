@@ -56,11 +56,7 @@ export default function Navbar() {
 			<div className="h-full flex items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">
 				{/* Logo */}
 				<Link href="/manager" className="flex items-center gap-2 group">
-					<motion.div
-						whileHover={{ rotate: [0, -10, 10, -5, 0] }}
-						transition={{ duration: 0.5 }}
-						className="text-2xl"
-					>
+					<motion.div whileHover={{ rotate: [0, -10, 10, -5, 0] }} transition={{ duration: 0.5 }} className="text-2xl">
 						🧁
 					</motion.div>
 					<span className="text-lg font-bold text-primary group-hover:text-primary/80 transition-colors">
@@ -94,12 +90,8 @@ export default function Navbar() {
 						<DropdownMenuContent align="end" className="w-56">
 							{/* User Info Header */}
 							<div className="px-2 py-2 border-b mb-1">
-								<p className="text-sm font-medium truncate">
-									{session.user.name}
-								</p>
-								<p className="text-xs text-muted-foreground truncate">
-									{session.user.email}
-								</p>
+								<p className="text-sm font-medium truncate">{session.user.name}</p>
+								<p className="text-xs text-muted-foreground truncate">{session.user.email}</p>
 							</div>
 
 							<DropdownMenuItem

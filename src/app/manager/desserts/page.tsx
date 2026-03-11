@@ -31,10 +31,7 @@ export default async function DessertsPage() {
 					</div>
 				}
 			>
-				<ManageDessertsInventory
-					initialDesserts={desserts}
-					initialInventory={inventory}
-				/>
+				<ManageDessertsInventory initialDesserts={desserts} initialInventory={inventory} />
 			</Suspense>
 		</main>
 	);

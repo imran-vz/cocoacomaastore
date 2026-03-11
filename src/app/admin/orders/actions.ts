@@ -25,14 +25,12 @@ async function requireAdmin() {
 
 function getStartOfDay(date: Date = new Date()) {
 	const d = new Date(date);
-	d.setHours(0, 0, 0, 0);
-	return d;
+	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
 }
 
 function getEndOfDay(date: Date = new Date()) {
 	const d = new Date(date);
-	d.setHours(23, 59, 59, 999);
-	return d;
+	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 23, 59, 59, 999));
 }
 
 function getDayKey(day: Date) {

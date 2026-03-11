@@ -24,14 +24,13 @@ export type TodayInventoryRow = {
 
 function getStartOfDay(date: Date = new Date()) {
 	const d = new Date(date);
-	d.setHours(0, 0, 0, 0);
-	return d;
+	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
 }
 
 function getDayKey(day: Date) {
-	const y = day.getFullYear();
-	const m = String(day.getMonth() + 1).padStart(2, "0");
-	const d = String(day.getDate()).padStart(2, "0");
+	const y = day.getUTCFullYear();
+	const m = String(day.getUTCMonth() + 1).padStart(2, "0");
+	const d = String(day.getUTCDate()).padStart(2, "0");
 	return `${y}-${m}-${d}`;
 }
 

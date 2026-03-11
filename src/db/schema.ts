@@ -1,16 +1,6 @@
 import crypto from "node:crypto";
 import { relations } from "drizzle-orm";
-import {
-	boolean,
-	index,
-	integer,
-	numeric,
-	pgTable,
-	text,
-	timestamp,
-	uniqueIndex,
-	varchar,
-} from "drizzle-orm/pg-core";
+import { boolean, index, integer, numeric, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const dessertsTable = pgTable(
 	"desserts",
@@ -33,11 +23,7 @@ export const dessertsTable = pgTable(
 		index("desserts_enabled_idx").on(table.enabled),
 		index("desserts_sequence_idx").on(table.sequence),
 		index("desserts_kind_idx").on(table.kind),
-		index("desserts_active_idx").on(
-			table.isDeleted,
-			table.enabled,
-			table.sequence,
-		),
+		index("desserts_active_idx").on(table.isDeleted, table.enabled, table.sequence),
 	],
 );
 
@@ -72,16 +58,13 @@ export const dessertCombosTable = pgTable(
 
 export type DessertCombo = typeof dessertCombosTable.$inferSelect;
 
-export const dessertCombosRelations = relations(
-	dessertCombosTable,
-	({ one, many }) => ({
-		baseDessert: one(dessertsTable, {
-			fields: [dessertCombosTable.baseDessertId],
-			references: [dessertsTable.id],
-		}),
-		items: many(dessertComboItemsTable),
+export const dessertCombosRelations = relations(dessertCombosTable, ({ one, many }) => ({
+	baseDessert: one(dessertsTable, {
+		fields: [dessertCombosTable.baseDessertId],
+		references: [dessertsTable.id],
 	}),
-);
+	items: many(dessertComboItemsTable),
+}));
 
 // ============================================================================
 // Dessert Combo Items - modifiers included in a combo
@@ -102,28 +85,22 @@ export const dessertComboItemsTable = pgTable(
 	(table) => [
 		index("dessert_combo_items_combo_idx").on(table.comboId),
 		index("dessert_combo_items_dessert_idx").on(table.dessertId),
-		uniqueIndex("dessert_combo_items_unique").on(
-			table.comboId,
-			table.dessertId,
-		),
+		uniqueIndex("dessert_combo_items_unique").on(table.comboId, table.dessertId),
 	],
 );
 
 export type DessertComboItem = typeof dessertComboItemsTable.$inferSelect;
 
-export const dessertComboItemsRelations = relations(
-	dessertComboItemsTable,
-	({ one }) => ({
-		combo: one(dessertCombosTable, {
-			fields: [dessertComboItemsTable.comboId],
-			references: [dessertCombosTable.id],
-		}),
-		dessert: one(dessertsTable, {
-			fields: [dessertComboItemsTable.dessertId],
-			references: [dessertsTable.id],
-		}),
+export const dessertComboItemsRelations = relations(dessertComboItemsTable, ({ one }) => ({
+	combo: one(dessertCombosTable, {
+		fields: [dessertComboItemsTable.comboId],
+		references: [dessertCombosTable.id],
 	}),
-);
+	dessert: one(dessertsTable, {
+		fields: [dessertComboItemsTable.dessertId],
+		references: [dessertsTable.id],
+	}),
+}));
 
 export const ordersTable = pgTable(
 	"orders",
@@ -176,20 +153,17 @@ export const orderItemsTable = pgTable(
 
 export type OrderItem = typeof orderItemsTable.$inferSelect;
 
-export const orderItemsRelations = relations(
-	orderItemsTable,
-	({ one, many }) => ({
-		order: one(ordersTable, {
-			fields: [orderItemsTable.orderId],
-			references: [ordersTable.id],
-		}),
-		dessert: one(dessertsTable, {
-			fields: [orderItemsTable.dessertId],
-			references: [dessertsTable.id],
-		}),
-		modifiers: many(orderItemModifiersTable),
+export const orderItemsRelations = relations(orderItemsTable, ({ one, many }) => ({
+	order: one(ordersTable, {
+		fields: [orderItemsTable.orderId],
+		references: [ordersTable.id],
 	}),
-);
+	dessert: one(dessertsTable, {
+		fields: [orderItemsTable.dessertId],
+		references: [dessertsTable.id],
+	}),
+	modifiers: many(orderItemModifiersTable),
+}));
 
 // ============================================================================
 // Order Item Modifiers - persists modifier selections per order item
@@ -210,28 +184,22 @@ export const orderItemModifiersTable = pgTable(
 	(table) => [
 		index("order_item_modifiers_order_item_idx").on(table.orderItemId),
 		index("order_item_modifiers_dessert_idx").on(table.dessertId),
-		uniqueIndex("order_item_modifiers_unique").on(
-			table.orderItemId,
-			table.dessertId,
-		),
+		uniqueIndex("order_item_modifiers_unique").on(table.orderItemId, table.dessertId),
 	],
 );
 
 export type OrderItemModifier = typeof orderItemModifiersTable.$inferSelect;
 
-export const orderItemModifiersRelations = relations(
-	orderItemModifiersTable,
-	({ one }) => ({
-		orderItem: one(orderItemsTable, {
-			fields: [orderItemModifiersTable.orderItemId],
-			references: [orderItemsTable.id],
-		}),
-		dessert: one(dessertsTable, {
-			fields: [orderItemModifiersTable.dessertId],
-			references: [dessertsTable.id],
-		}),
+export const orderItemModifiersRelations = relations(orderItemModifiersTable, ({ one }) => ({
+	orderItem: one(orderItemsTable, {
+		fields: [orderItemModifiersTable.orderItemId],
+		references: [orderItemsTable.id],
 	}),
-);
+	dessert: one(dessertsTable, {
+		fields: [orderItemModifiersTable.dessertId],
+		references: [dessertsTable.id],
+	}),
+}));
 
 export const dailyDessertInventoryTable = pgTable(
 	"daily_dessert_inventory",
@@ -245,23 +213,17 @@ export const dailyDessertInventoryTable = pgTable(
 		updatedAt: timestamp().notNull().defaultNow(),
 	},
 	(table) => [
-		uniqueIndex("daily_dessert_inventory_day_dessert_unique").on(
-			table.day,
-			table.dessertId,
-		),
+		uniqueIndex("daily_dessert_inventory_day_dessert_unique").on(table.day, table.dessertId),
 		index("daily_dessert_inventory_day_idx").on(table.day),
 	],
 );
 
-export const dailyDessertInventoryRelations = relations(
-	dailyDessertInventoryTable,
-	({ one }) => ({
-		dessert: one(dessertsTable, {
-			fields: [dailyDessertInventoryTable.dessertId],
-			references: [dessertsTable.id],
-		}),
+export const dailyDessertInventoryRelations = relations(dailyDessertInventoryTable, ({ one }) => ({
+	dessert: one(dessertsTable, {
+		fields: [dailyDessertInventoryTable.dessertId],
+		references: [dessertsTable.id],
 	}),
-);
+}));
 
 export const upiAccountsTable = pgTable("upi_accounts", {
 	id: text("id")
@@ -368,12 +330,7 @@ export const inventoryAuditLogTable = pgTable(
 			onDelete: "set null",
 		}),
 		action: varchar("action", {
-			enum: [
-				"set_stock",
-				"order_deducted",
-				"manual_adjustment",
-				"order_cancelled",
-			],
+			enum: ["set_stock", "order_deducted", "manual_adjustment", "order_cancelled"],
 		}).notNull(),
 		previousQuantity: integer().notNull(),
 		newQuantity: integer().notNull(),
@@ -393,23 +350,20 @@ export const inventoryAuditLogTable = pgTable(
 
 export type InventoryAuditLog = typeof inventoryAuditLogTable.$inferSelect;
 
-export const inventoryAuditLogRelations = relations(
-	inventoryAuditLogTable,
-	({ one }) => ({
-		dessert: one(dessertsTable, {
-			fields: [inventoryAuditLogTable.dessertId],
-			references: [dessertsTable.id],
-		}),
-		order: one(ordersTable, {
-			fields: [inventoryAuditLogTable.orderId],
-			references: [ordersTable.id],
-		}),
-		user: one(userTable, {
-			fields: [inventoryAuditLogTable.userId],
-			references: [userTable.id],
-		}),
+export const inventoryAuditLogRelations = relations(inventoryAuditLogTable, ({ one }) => ({
+	dessert: one(dessertsTable, {
+		fields: [inventoryAuditLogTable.dessertId],
+		references: [dessertsTable.id],
 	}),
-);
+	order: one(ordersTable, {
+		fields: [inventoryAuditLogTable.orderId],
+		references: [ordersTable.id],
+	}),
+	user: one(userTable, {
+		fields: [inventoryAuditLogTable.userId],
+		references: [userTable.id],
+	}),
+}));
 
 // ============================================================================
 // Analytics Tables - Pre-computed metrics for dashboard performance
@@ -433,8 +387,7 @@ export const analyticsDailyRevenueTable = pgTable(
 	],
 );
 
-export type AnalyticsDailyRevenue =
-	typeof analyticsDailyRevenueTable.$inferSelect;
+export type AnalyticsDailyRevenue = typeof analyticsDailyRevenueTable.$inferSelect;
 
 export const analyticsDailyDessertRevenueTable = pgTable(
 	"analytics_daily_dessert_revenue",
@@ -453,27 +406,20 @@ export const analyticsDailyDessertRevenueTable = pgTable(
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => [
-		uniqueIndex("analytics_daily_dessert_revenue_unique").on(
-			table.day,
-			table.dessertId,
-		),
+		uniqueIndex("analytics_daily_dessert_revenue_unique").on(table.day, table.dessertId),
 		index("analytics_daily_dessert_revenue_day_idx").on(table.day),
 		index("analytics_daily_dessert_revenue_dessert_idx").on(table.dessertId),
 	],
 );
 
-export type AnalyticsDailyDessertRevenue =
-	typeof analyticsDailyDessertRevenueTable.$inferSelect;
+export type AnalyticsDailyDessertRevenue = typeof analyticsDailyDessertRevenueTable.$inferSelect;
 
-export const analyticsDailyDessertRevenueRelations = relations(
-	analyticsDailyDessertRevenueTable,
-	({ one }) => ({
-		dessert: one(dessertsTable, {
-			fields: [analyticsDailyDessertRevenueTable.dessertId],
-			references: [dessertsTable.id],
-		}),
+export const analyticsDailyDessertRevenueRelations = relations(analyticsDailyDessertRevenueTable, ({ one }) => ({
+	dessert: one(dessertsTable, {
+		fields: [analyticsDailyDessertRevenueTable.dessertId],
+		references: [dessertsTable.id],
 	}),
-);
+}));
 
 export const analyticsWeeklyRevenueTable = pgTable(
 	"analytics_weekly_revenue",
@@ -494,8 +440,7 @@ export const analyticsWeeklyRevenueTable = pgTable(
 	],
 );
 
-export type AnalyticsWeeklyRevenue =
-	typeof analyticsWeeklyRevenueTable.$inferSelect;
+export type AnalyticsWeeklyRevenue = typeof analyticsWeeklyRevenueTable.$inferSelect;
 
 export const analyticsMonthlyRevenueTable = pgTable(
 	"analytics_monthly_revenue",
@@ -515,8 +460,7 @@ export const analyticsMonthlyRevenueTable = pgTable(
 	],
 );
 
-export type AnalyticsMonthlyRevenue =
-	typeof analyticsMonthlyRevenueTable.$inferSelect;
+export type AnalyticsMonthlyRevenue = typeof analyticsMonthlyRevenueTable.$inferSelect;
 
 export const analyticsMonthlyDessertRevenueTable = pgTable(
 	"analytics_monthly_dessert_revenue",
@@ -535,27 +479,20 @@ export const analyticsMonthlyDessertRevenueTable = pgTable(
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => [
-		uniqueIndex("analytics_monthly_dessert_revenue_unique").on(
-			table.month,
-			table.dessertId,
-		),
+		uniqueIndex("analytics_monthly_dessert_revenue_unique").on(table.month, table.dessertId),
 		index("analytics_monthly_dessert_revenue_month_idx").on(table.month),
 		index("analytics_monthly_dessert_revenue_dessert_idx").on(table.dessertId),
 	],
 );
 
-export type AnalyticsMonthlyDessertRevenue =
-	typeof analyticsMonthlyDessertRevenueTable.$inferSelect;
+export type AnalyticsMonthlyDessertRevenue = typeof analyticsMonthlyDessertRevenueTable.$inferSelect;
 
-export const analyticsMonthlyDessertRevenueRelations = relations(
-	analyticsMonthlyDessertRevenueTable,
-	({ one }) => ({
-		dessert: one(dessertsTable, {
-			fields: [analyticsMonthlyDessertRevenueTable.dessertId],
-			references: [dessertsTable.id],
-		}),
+export const analyticsMonthlyDessertRevenueRelations = relations(analyticsMonthlyDessertRevenueTable, ({ one }) => ({
+	dessert: one(dessertsTable, {
+		fields: [analyticsMonthlyDessertRevenueTable.dessertId],
+		references: [dessertsTable.id],
 	}),
-);
+}));
 
 export const analyticsDailyEodStockTable = pgTable(
 	"analytics_daily_eod_stock",
@@ -570,27 +507,20 @@ export const analyticsDailyEodStockTable = pgTable(
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => [
-		uniqueIndex("analytics_daily_eod_stock_unique").on(
-			table.day,
-			table.dessertId,
-		),
+		uniqueIndex("analytics_daily_eod_stock_unique").on(table.day, table.dessertId),
 		index("analytics_daily_eod_stock_day_idx").on(table.day),
 		index("analytics_daily_eod_stock_dessert_idx").on(table.dessertId),
 	],
 );
 
-export type AnalyticsDailyEodStock =
-	typeof analyticsDailyEodStockTable.$inferSelect;
+export type AnalyticsDailyEodStock = typeof analyticsDailyEodStockTable.$inferSelect;
 
-export const analyticsDailyEodStockRelations = relations(
-	analyticsDailyEodStockTable,
-	({ one }) => ({
-		dessert: one(dessertsTable, {
-			fields: [analyticsDailyEodStockTable.dessertId],
-			references: [dessertsTable.id],
-		}),
+export const analyticsDailyEodStockRelations = relations(analyticsDailyEodStockTable, ({ one }) => ({
+	dessert: one(dessertsTable, {
+		fields: [analyticsDailyEodStockTable.dessertId],
+		references: [dessertsTable.id],
 	}),
-);
+}));
 
 export const analyticsDailyItemSalesTable = pgTable(
 	"analytics_daily_item_sales",
@@ -606,14 +536,9 @@ export const analyticsDailyItemSalesTable = pgTable(
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
 	(table) => [
-		uniqueIndex("analytics_daily_item_sales_unique").on(
-			table.day,
-			table.itemType,
-			table.itemId,
-		),
+		uniqueIndex("analytics_daily_item_sales_unique").on(table.day, table.itemType, table.itemId),
 		index("analytics_daily_item_sales_day_idx").on(table.day),
 	],
 );
 
-export type AnalyticsDailyItemSales =
-	typeof analyticsDailyItemSalesTable.$inferSelect;
+export type AnalyticsDailyItemSales = typeof analyticsDailyItemSalesTable.$inferSelect;

@@ -6,13 +6,7 @@ import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -106,18 +100,12 @@ export function SettingsPage({ user }: SettingsPageProps) {
 				<CardContent className="space-y-4">
 					<div className="flex items-center gap-4">
 						<Avatar className="size-16">
-							<AvatarFallback className="text-lg bg-primary/10 text-primary">
-								{getInitials(user.name)}
-							</AvatarFallback>
+							<AvatarFallback className="text-lg bg-primary/10 text-primary">{getInitials(user.name)}</AvatarFallback>
 						</Avatar>
 						<div className="min-w-0 flex-1">
 							<p className="font-medium text-base truncate">{user.name}</p>
-							<p className="text-sm text-muted-foreground truncate">
-								{user.email}
-							</p>
-							<p className="text-xs text-muted-foreground mt-1 capitalize">
-								Role: {user.role}
-							</p>
+							<p className="text-sm text-muted-foreground truncate">{user.email}</p>
+							<p className="text-xs text-muted-foreground mt-1 capitalize">Role: {user.role}</p>
 						</div>
 					</div>
 				</CardContent>
@@ -130,9 +118,7 @@ export function SettingsPage({ user }: SettingsPageProps) {
 						<IconKey className="size-5 text-muted-foreground" />
 						<div>
 							<CardTitle className="text-lg">Change Password</CardTitle>
-							<CardDescription>
-								Update your password to keep your account secure
-							</CardDescription>
+							<CardDescription>Update your password to keep your account secure</CardDescription>
 						</div>
 					</div>
 				</CardHeader>
@@ -158,11 +144,7 @@ export function SettingsPage({ user }: SettingsPageProps) {
 									className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 									tabIndex={-1}
 								>
-									{showCurrentPassword ? (
-										<IconEyeOff className="size-4" />
-									) : (
-										<IconEye className="size-4" />
-									)}
+									{showCurrentPassword ? <IconEyeOff className="size-4" /> : <IconEye className="size-4" />}
 								</button>
 							</div>
 						</div>
@@ -187,11 +169,7 @@ export function SettingsPage({ user }: SettingsPageProps) {
 									className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 									tabIndex={-1}
 								>
-									{showNewPassword ? (
-										<IconEyeOff className="size-4" />
-									) : (
-										<IconEye className="size-4" />
-									)}
+									{showNewPassword ? <IconEyeOff className="size-4" /> : <IconEye className="size-4" />}
 								</button>
 							</div>
 						</div>
@@ -216,32 +194,20 @@ export function SettingsPage({ user }: SettingsPageProps) {
 									className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
 									tabIndex={-1}
 								>
-									{showConfirmPassword ? (
-										<IconEyeOff className="size-4" />
-									) : (
-										<IconEye className="size-4" />
-									)}
+									{showConfirmPassword ? <IconEyeOff className="size-4" /> : <IconEye className="size-4" />}
 								</button>
 							</div>
 						</div>
 
-						{newPassword &&
-							confirmPassword &&
-							newPassword !== confirmPassword && (
-								<p className="text-sm text-destructive">
-									Passwords do not match
-								</p>
-							)}
+						{newPassword && confirmPassword && newPassword !== confirmPassword && (
+							<p className="text-sm text-destructive">Passwords do not match</p>
+						)}
 
 						<Button
 							type="submit"
 							className="w-full"
 							disabled={
-								isLoading ||
-								!currentPassword ||
-								!newPassword ||
-								!confirmPassword ||
-								newPassword !== confirmPassword
+								isLoading || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword
 							}
 						>
 							{isLoading ? (

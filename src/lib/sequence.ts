@@ -10,9 +10,7 @@ export async function updateSequence(id: number, score: number): Promise<void> {
 		.where(eq(dessertsTable.id, id));
 }
 
-export async function bulkUpdateSequences(
-	updates: Array<{ id: number; sequence: number }>,
-): Promise<void> {
+export async function bulkUpdateSequences(updates: Array<{ id: number; sequence: number }>): Promise<void> {
 	if (updates.length === 0) return;
 
 	// For a single update, use the simple approach
@@ -31,10 +29,7 @@ export async function bulkUpdateSequences(
 	const ids = updates.map((u) => u.id);
 
 	const caseStatements = updates
-		.map(
-			(u) =>
-				sql`WHEN ${dessertsTable.id} = ${u.id} THEN ${u.sequence}::integer`,
-		)
+		.map((u) => sql`WHEN ${dessertsTable.id} = ${u.id} THEN ${u.sequence}::integer`)
 		.reduce((acc, curr) => sql`${acc} ${curr}`);
 
 	await db

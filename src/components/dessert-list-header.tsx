@@ -2,11 +2,7 @@
 
 import { Edit3, Save, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-	InputGroup,
-	InputGroupAddon,
-	InputGroupInput,
-} from "@/components/ui/input-group";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { useDessertStore } from "@/store/dessert-store";
 
 interface DessertListHeaderProps {
@@ -56,12 +52,7 @@ export function DessertListHeader({
 							</Button>
 						</>
 					) : (
-						<Button
-							onClick={onToggleEditMode}
-							variant="outline"
-							size="sm"
-							className="flex items-center gap-2"
-						>
+						<Button onClick={onToggleEditMode} variant="outline" size="sm" className="flex items-center gap-2">
 							<Edit3 className="h-4 w-4" />
 							Edit Order
 						</Button>

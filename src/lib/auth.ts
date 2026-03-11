@@ -5,10 +5,7 @@ import { admin } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import {
-	DatabaseUnavailableError,
-	isDatabaseUnavailableError,
-} from "@/lib/errors";
+import { DatabaseUnavailableError, isDatabaseUnavailableError } from "@/lib/errors";
 
 export const auth = betterAuth({
 	database: drizzleAdapter(db, {
@@ -24,20 +21,11 @@ export const auth = betterAuth({
 		enabled: true,
 		requireEmailVerification: false,
 		password: {
-			async hash(password) {
-				return await bcrypt.hash(password, 12);
-			},
-			async verify({ password, hash }) {
-				return await bcrypt.compare(password, hash);
-			},
+			hash: async (password) => await bcrypt.hash(password, 12),
+			verify: async ({ password, hash }) => bcrypt.compare(password, hash),
 		},
 	},
-	plugins: [
-		admin({
-			defaultRole: "user",
-			adminRoles: ["admin"],
-		}),
-	],
+	plugins: [admin({ defaultRole: "user", adminRoles: ["admin"] })],
 	trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
 	baseURL: process.env.BETTER_AUTH_BASE_URL,
 });

@@ -26,10 +26,7 @@ export function ProductCard({
 	const buttonControls = useAnimation();
 
 	const inventoryQty = dessert.inventoryQuantity;
-	const isInventoryOutOfStock =
-		!dessert.hasUnlimitedStock &&
-		inventoryQty !== undefined &&
-		inventoryQty <= 0;
+	const isInventoryOutOfStock = !dessert.hasUnlimitedStock && inventoryQty !== undefined && inventoryQty <= 0;
 	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock;
 
 	const handleAddToCart = useCallback(async () => {
@@ -147,9 +144,7 @@ export function ProductCard({
 
 					{/* Description */}
 					{dessert.description && !compact && (
-						<p className="text-xs text-muted-foreground line-clamp-2 mb-2.5 leading-relaxed">
-							{dessert.description}
-						</p>
+						<p className="text-xs text-muted-foreground line-clamp-2 mb-2.5 leading-relaxed">{dessert.description}</p>
 					)}
 
 					{/* Footer: Stock & Add Button */}
@@ -162,9 +157,7 @@ export function ProductCard({
 								className={cn(
 									"ml-auto flex items-center justify-center rounded-full transition-colors",
 									compact ? "size-8" : "size-9",
-									showAdded
-										? "bg-green-500 text-white"
-										: "bg-primary/10 text-primary hover:bg-primary/20",
+									showAdded ? "bg-green-500 text-white" : "bg-primary/10 text-primary hover:bg-primary/20",
 								)}
 							>
 								{showAdded ? (
@@ -235,22 +228,14 @@ interface ComboCardProps {
 	compact?: boolean;
 }
 
-export function ComboCard({
-	combo,
-	onAddToCart,
-	compact = false,
-}: ComboCardProps) {
+export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProps) {
 	const [showAdded, setShowAdded] = useState(false);
 	const overlayControls = useAnimation();
 	const buttonControls = useAnimation();
 
 	// Compute display price
-	const modifierTotal = combo.items.reduce(
-		(sum, item) => sum + item.dessert.price * item.quantity,
-		0,
-	);
-	const displayPrice =
-		combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
+	const modifierTotal = combo.items.reduce((sum, item) => sum + item.dessert.price * item.quantity, 0);
+	const displayPrice = combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
 
 	const handleAddToCart = useCallback(async () => {
 		onAddToCart();
@@ -281,11 +266,7 @@ export function ComboCard({
 		combo.baseDessert.name +
 		(combo.items.length > 0
 			? ` + ${combo.items
-					.map((item) =>
-						item.quantity > 1
-							? `${item.quantity}× ${item.dessert.name}`
-							: item.dessert.name,
-					)
+					.map((item) => (item.quantity > 1 ? `${item.quantity}× ${item.dessert.name}` : item.dessert.name))
 					.join(", ")}`
 			: "");
 
@@ -322,30 +303,18 @@ export function ComboCard({
 						<span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
 							Combo
 						</span>
-						<span
-							className={cn(
-								"shrink-0 font-bold text-primary tabular-nums",
-								compact ? "text-sm" : "text-base",
-							)}
-						>
+						<span className={cn("shrink-0 font-bold text-primary tabular-nums", compact ? "text-sm" : "text-base")}>
 							₹{displayPrice}
 						</span>
 					</div>
 
 					{/* Name */}
-					<h3
-						className={cn(
-							"font-semibold leading-tight line-clamp-2 mb-1",
-							compact ? "text-sm" : "text-base",
-						)}
-					>
+					<h3 className={cn("font-semibold leading-tight line-clamp-2 mb-1", compact ? "text-sm" : "text-base")}>
 						{combo.name}
 					</h3>
 
 					{/* Description */}
-					<p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1">
-						{comboDescription}
-					</p>
+					<p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1">{comboDescription}</p>
 
 					{/* Add Button */}
 					<div className="flex justify-end mt-2">
@@ -354,9 +323,7 @@ export function ComboCard({
 							className={cn(
 								"flex items-center justify-center rounded-full transition-colors",
 								compact ? "size-8" : "size-9",
-								showAdded
-									? "bg-green-500 text-white"
-									: "bg-primary text-primary-foreground",
+								showAdded ? "bg-green-500 text-white" : "bg-primary text-primary-foreground",
 							)}
 						>
 							{showAdded ? (

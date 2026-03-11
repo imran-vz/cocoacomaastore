@@ -36,9 +36,7 @@ export function Receipt({
 
 	// Initialize with first available account if selectedUpiId is invalid
 	useEffect(() => {
-		const isValid = upiAccounts.some(
-			(account) => account.id.toString() === selectedUpiId,
-		);
+		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
 		if (!isValid && upiAccounts.length > 0) {
 			setSelectedUpiId(upiAccounts[0].id.toString());
 		}
@@ -93,8 +91,7 @@ export function Receipt({
 						<tbody>
 							{cart.map((line) => {
 								const displayName = line.comboName ?? line.baseDessertName;
-								const hasModifiers =
-									line.modifiers.length > 0 && !line.comboName;
+								const hasModifiers = line.modifiers.length > 0 && !line.comboName;
 
 								return (
 									<tr key={line.cartLineId}>
@@ -103,20 +100,12 @@ export function Receipt({
 											{hasModifiers && (
 												<div className="text-[10px] text-gray-500 truncate max-w-37.5">
 													+{" "}
-													{line.modifiers
-														.map((m) =>
-															m.quantity > 1
-																? `${m.quantity}× ${m.name}`
-																: m.name,
-														)
-														.join(", ")}
+													{line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")}
 												</div>
 											)}
 										</td>
 										<td className="text-center align-top">{line.quantity}</td>
-										<td className="text-right align-top">
-											{(line.unitPrice * line.quantity).toFixed(2)}
-										</td>
+										<td className="text-right align-top">{(line.unitPrice * line.quantity).toFixed(2)}</td>
 									</tr>
 								);
 							})}
@@ -148,11 +137,7 @@ export function Receipt({
 					<X className="mr-2 h-4 w-4" />
 					Cancel
 				</Button>
-				<Button
-					onClick={handleSaveOrder}
-					className="flex-1"
-					disabled={isSavingOrder}
-				>
+				<Button onClick={handleSaveOrder} className="flex-1" disabled={isSavingOrder}>
 					{isSavingOrder ? <Spinner /> : "Save Order"}
 				</Button>
 			</div>

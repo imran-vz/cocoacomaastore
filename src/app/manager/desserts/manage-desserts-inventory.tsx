@@ -2,10 +2,7 @@
 
 import { use, useCallback, useState } from "react";
 import { getCachedDesserts } from "@/app/desserts/actions";
-import {
-	getCachedTodayInventory,
-	type TodayInventoryRow,
-} from "@/app/manager/inventory/actions";
+import { getCachedTodayInventory, type TodayInventoryRow } from "@/app/manager/inventory/actions";
 import { DessertsTable } from "@/components/desserts-table";
 import { useInventory } from "@/components/use-inventory";
 import type { Dessert } from "@/lib/types";

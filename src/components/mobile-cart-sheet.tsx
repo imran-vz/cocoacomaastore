@@ -136,17 +136,10 @@ function CartLineItem({
 		>
 			<div className="flex items-start justify-between gap-3">
 				<div className="flex-1 min-w-0">
-					<h4 className="font-semibold text-sm leading-tight capitalize truncate">
-						{displayName}
-					</h4>
+					<h4 className="font-semibold text-sm leading-tight capitalize truncate">{displayName}</h4>
 					{hasModifiers && (
 						<p className="text-xs text-muted-foreground mt-0.5 truncate">
-							+{" "}
-							{line.modifiers
-								.map((m) =>
-									m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name,
-								)
-								.join(", ")}
+							+ {line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")}
 						</p>
 					)}
 					<p className="text-xs text-muted-foreground mt-1 font-mono">
@@ -154,9 +147,7 @@ function CartLineItem({
 					</p>
 				</div>
 				<div className="text-right shrink-0">
-					<p className="font-bold text-sm text-primary">
-						₹{(line.unitPrice * line.quantity).toFixed(0)}
-					</p>
+					<p className="font-bold text-sm text-primary">₹{(line.unitPrice * line.quantity).toFixed(0)}</p>
 				</div>
 			</div>
 
@@ -170,9 +161,7 @@ function CartLineItem({
 					>
 						<Minus className="size-4" />
 					</motion.button>
-					<span className="w-10 text-center text-sm font-semibold tabular-nums">
-						{line.quantity}
-					</span>
+					<span className="w-10 text-center text-sm font-semibold tabular-nums">{line.quantity}</span>
 					<motion.button
 						whileTap={{ scale: 0.9 }}
 						type="button"
@@ -221,23 +210,15 @@ export function MobileCartSheet({
 
 	// Initialize with first available account
 	useEffect(() => {
-		const isValid = upiAccounts.some(
-			(account) => account.id.toString() === selectedUpiId,
-		);
+		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
 		if (!isValid && upiAccounts.length > 0) {
 			setSelectedUpiId(upiAccounts[0].id.toString());
 		}
 	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
 
-	const selectedAccount = upiAccounts.find(
-		(account) => account.id.toString() === selectedUpiId,
-	);
+	const selectedAccount = upiAccounts.find((account) => account.id.toString() === selectedUpiId);
 
-	const UPI_STRING = getUPIString(
-		total,
-		cart,
-		selectedAccount?.upiId || upiAccounts[0]?.upiId || "",
-	);
+	const UPI_STRING = getUPIString(total, cart, selectedAccount?.upiId || upiAccounts[0]?.upiId || "");
 
 	const handleToggle = useCallback(() => {
 		setIsOpen((prev) => {
@@ -279,9 +260,7 @@ export function MobileCartSheet({
 	const copyOrderDetails = async () => {
 		if (cart.length === 0) return;
 
-		const deliveryCost = Number.parseFloat(
-			form.state.values.deliveryCost || "0",
-		);
+		const deliveryCost = Number.parseFloat(form.state.values.deliveryCost || "0");
 		const orderItemsText = cart
 			.map((line) => {
 				const displayName = line.comboName ?? line.baseDessertName;
@@ -293,8 +272,7 @@ export function MobileCartSheet({
 			})
 			.join("\n");
 
-		const deliveryLine =
-			deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
+		const deliveryLine = deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
 		const orderText = `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
 
 		await navigator.clipboard.writeText(orderText);
@@ -344,9 +322,7 @@ export function MobileCartSheet({
 			const response = await fetch(dataUrl);
 			const blob = await response.blob();
 
-			await navigator.clipboard.write([
-				new ClipboardItem({ "image/png": blob }),
-			]);
+			await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 
 			setCopiedQr(true);
 			toast.info("QR copied!", { duration: 1000 });
@@ -372,12 +348,7 @@ export function MobileCartSheet({
 	return (
 		<>
 			{/* Hidden QR Code for copying */}
-			<QRCodeSVG
-				ref={qrCodeRef}
-				value={UPI_STRING}
-				size={400}
-				className="hidden"
-			/>
+			<QRCodeSVG ref={qrCodeRef} value={UPI_STRING} size={400} className="hidden" />
 
 			{/* Backdrop - blocks interactions while sheet is open or animating out */}
 			<AnimatePresence onExitComplete={handleExitComplete}>
@@ -394,9 +365,7 @@ export function MobileCartSheet({
 			</AnimatePresence>
 
 			{/* Invisible blocker during exit animation to prevent click-through */}
-			{shouldRender && !isOpen && (
-				<div className="fixed inset-0 z-40 md:hidden" />
-			)}
+			{shouldRender && !isOpen && <div className="fixed inset-0 z-40 md:hidden" />}
 
 			{/* Collapsed Bar - Fixed at bottom */}
 			<AnimatePresence>
@@ -424,9 +393,7 @@ export function MobileCartSheet({
 									<p className="text-sm font-medium">
 										{itemCount} {itemCount === 1 ? "item" : "items"}
 									</p>
-									<p className="text-xs text-muted-foreground">
-										Tap to view cart
-									</p>
+									<p className="text-xs text-muted-foreground">Tap to view cart</p>
 								</div>
 							</div>
 							<div className="flex items-center gap-2">
@@ -451,11 +418,7 @@ export function MobileCartSheet({
 					>
 						<div className="bg-background rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col max-h-[85vh]">
 							{/* Handle Bar */}
-							<button
-								type="button"
-								onClick={handleToggle}
-								className="shrink-0 w-full pt-3 pb-2"
-							>
+							<button type="button" onClick={handleToggle} className="shrink-0 w-full pt-3 pb-2">
 								<div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto" />
 							</button>
 
@@ -473,18 +436,13 @@ export function MobileCartSheet({
 											<p className="text-sm font-medium">
 												{itemCount} {itemCount === 1 ? "item" : "items"}
 											</p>
-											<p className="text-xs text-muted-foreground">
-												Tap handle to close
-											</p>
+											<p className="text-xs text-muted-foreground">Tap handle to close</p>
 										</div>
 									</div>
 									<div className="flex items-center gap-2">
 										<p className="text-lg font-bold">₹{total.toFixed(0)}</p>
 										<ChevronUp
-											className={cn(
-												"size-5 text-muted-foreground transition-transform",
-												isOpen && "rotate-180",
-											)}
+											className={cn("size-5 text-muted-foreground transition-transform", isOpen && "rotate-180")}
 										/>
 									</div>
 								</div>
@@ -509,19 +467,14 @@ export function MobileCartSheet({
 													{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
 													{(field: any) => (
 														<div className="space-y-1.5">
-															<Label
-																htmlFor={field.name}
-																className="text-xs font-medium text-muted-foreground"
-															>
+															<Label htmlFor={field.name} className="text-xs font-medium text-muted-foreground">
 																Customer
 															</Label>
 															<Input
 																id={field.name}
 																placeholder="Guest"
 																value={field.state.value}
-																onChange={(
-																	e: React.ChangeEvent<HTMLInputElement>,
-																) => field.handleChange(e.target.value)}
+																onChange={(e) => field.handleChange(e.target.value)}
 																onBlur={field.handleBlur}
 																className="h-10"
 															/>
@@ -533,10 +486,7 @@ export function MobileCartSheet({
 													{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
 													{(field: any) => (
 														<div className="space-y-1.5">
-															<Label
-																htmlFor={field.name}
-																className="text-xs font-medium text-muted-foreground"
-															>
+															<Label htmlFor={field.name} className="text-xs font-medium text-muted-foreground">
 																Delivery (₹)
 															</Label>
 															<Input
@@ -546,9 +496,7 @@ export function MobileCartSheet({
 																step="0.01"
 																min="0"
 																value={field.state.value}
-																onChange={(
-																	e: React.ChangeEvent<HTMLInputElement>,
-																) => field.handleChange(e.target.value)}
+																onChange={(e) => field.handleChange(e.target.value)}
 																onBlur={field.handleBlur}
 																className="h-10"
 															/>
@@ -598,12 +546,7 @@ export function MobileCartSheet({
 										className="w-full flex items-center justify-between py-2 text-sm text-muted-foreground"
 									>
 										<span>Online Order Options</span>
-										<ChevronDown
-											className={cn(
-												"size-4 transition-transform",
-												showOnlineOptions && "rotate-180",
-											)}
-										/>
+										<ChevronDown className={cn("size-4 transition-transform", showOnlineOptions && "rotate-180")} />
 									</button>
 
 									<AnimatePresence>
@@ -618,21 +561,14 @@ export function MobileCartSheet({
 													{/* UPI Account Selector */}
 													{upiAccounts.length > 1 && (
 														<div className="flex items-center justify-between">
-															<span className="text-xs text-muted-foreground">
-																UPI Account
-															</span>
+															<span className="text-xs text-muted-foreground">UPI Account</span>
 															<select
 																value={selectedUpiId}
-																onChange={(e) =>
-																	setSelectedUpiId(e.target.value)
-																}
+																onChange={(e) => setSelectedUpiId(e.target.value)}
 																className="text-xs border rounded-lg px-2 py-1 bg-muted"
 															>
 																{upiAccounts.map((account) => (
-																	<option
-																		key={account.id}
-																		value={account.id.toString()}
-																	>
+																	<option key={account.id} value={account.id.toString()}>
 																		{account.label}
 																	</option>
 																))}
@@ -653,14 +589,8 @@ export function MobileCartSheet({
 																	: "bg-muted/50 hover:bg-muted",
 															)}
 														>
-															{copiedOrder ? (
-																<Check className="size-4" />
-															) : (
-																<Copy className="size-4" />
-															)}
-															<span className="text-sm font-medium">
-																{copiedOrder ? "Copied!" : "Copy Order"}
-															</span>
+															{copiedOrder ? <Check className="size-4" /> : <Copy className="size-4" />}
+															<span className="text-sm font-medium">{copiedOrder ? "Copied!" : "Copy Order"}</span>
 														</motion.button>
 
 														<motion.button
@@ -669,19 +599,11 @@ export function MobileCartSheet({
 															onClick={copyQrCode}
 															className={cn(
 																"flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all",
-																copiedQr
-																	? "bg-green-50 border-green-200 text-green-600"
-																	: "bg-muted/50 hover:bg-muted",
+																copiedQr ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
 															)}
 														>
-															{copiedQr ? (
-																<Check className="size-4" />
-															) : (
-																<ReceiptIndianRupee className="size-4" />
-															)}
-															<span className="text-sm font-medium">
-																{copiedQr ? "Copied!" : "Copy QR"}
-															</span>
+															{copiedQr ? <Check className="size-4" /> : <ReceiptIndianRupee className="size-4" />}
+															<span className="text-sm font-medium">{copiedQr ? "Copied!" : "Copy QR"}</span>
 														</motion.button>
 													</div>
 												</div>
@@ -698,11 +620,7 @@ export function MobileCartSheet({
 									disabled={isSaving}
 									className="w-full h-12 text-base font-semibold rounded-xl"
 								>
-									{isSaving ? (
-										<Loader2 className="size-5 animate-spin" />
-									) : (
-										`Save Order · ₹${total.toFixed(0)}`
-									)}
+									{isSaving ? <Loader2 className="size-5 animate-spin" /> : `Save Order · ₹${total.toFixed(0)}`}
 								</Button>
 							</div>
 						</div>

@@ -3,23 +3,10 @@
 import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { isDatabaseUnavailableError } from "@/lib/errors";
 
-export default function GlobalError({
-	error,
-	reset,
-}: {
-	error: Error & { digest?: string };
-	reset: () => void;
-}) {
+export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
 	useEffect(() => {
 		console.error(error);
 	}, [error]);
@@ -32,9 +19,7 @@ export default function GlobalError({
 				<main className="min-h-screen flex items-center justify-center p-4 md:p-6 lg:p-8">
 					<Card className="w-full max-w-lg">
 						<CardHeader>
-							<CardTitle>
-								{isDbDown ? "Database unavailable" : "Something went wrong"}
-							</CardTitle>
+							<CardTitle>{isDbDown ? "Database unavailable" : "Something went wrong"}</CardTitle>
 							<CardDescription>
 								{isDbDown
 									? "The app can’t reach the database right now. Please make sure the database is running and try again."
@@ -50,10 +35,7 @@ export default function GlobalError({
 						</CardContent>
 						<CardFooter className="gap-2">
 							<Button onClick={() => reset()}>Retry</Button>
-							<Button
-								variant="secondary"
-								onClick={() => window.location.reload()}
-							>
+							<Button variant="secondary" onClick={() => window.location.reload()}>
 								Reload
 							</Button>
 						</CardFooter>

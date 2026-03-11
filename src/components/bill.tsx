@@ -7,12 +7,7 @@ import type { UpiAccount } from "@/db/schema";
 import type { CartLine } from "@/lib/types";
 import { useUpiStore } from "@/store/upi-store";
 import { Button } from "./ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 
 interface BillProps {
 	order: {
@@ -53,21 +48,14 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 
 	// Initialize with first available account if selectedUpiId is invalid
 	useEffect(() => {
-		const isValid = upiAccounts.some(
-			(account) => account.id.toString() === selectedUpiId,
-		);
+		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
 		if (!isValid && upiAccounts.length > 0) {
 			setSelectedUpiId(upiAccounts[0].id.toString());
 		}
 	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
 
-	const selectedAccount = upiAccounts.find(
-		(account) => account.id.toString() === selectedUpiId,
-	);
-	const UPI_STRING = getUPIString(
-		order,
-		selectedAccount?.upiId || upiAccounts[0]?.upiId || "",
-	);
+	const selectedAccount = upiAccounts.find((account) => account.id.toString() === selectedUpiId);
+	const UPI_STRING = getUPIString(order, selectedAccount?.upiId || upiAccounts[0]?.upiId || "");
 
 	const copyOrderDetails = () => {
 		if (order.lines.length === 0) return navigator.clipboard.writeText("");
@@ -82,10 +70,7 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 				return `${capitalize(displayName.trim())}${modifierText} × ${line.quantity} = ₹${(line.unitPrice * line.quantity).toFixed(2)}`;
 			})
 			.join("\n");
-		const deliveryLine =
-			order.deliveryCost > 0
-				? `\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}`
-				: "";
+		const deliveryLine = order.deliveryCost > 0 ? `\nDelivery Cost: ₹${order.deliveryCost.toFixed(2)}` : "";
 		const orderText = `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${order.total.toFixed(2)}`;
 
 		navigator.clipboard.writeText(orderText);
@@ -141,9 +126,7 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 			const response = await fetch(dataUrl);
 			const blob = await response.blob();
 
-			await navigator.clipboard.write([
-				new ClipboardItem({ "image/png": blob }),
-			]);
+			await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 
 			toast.info("QR code copied to clipboard", {
 				duration: 1000,
@@ -160,13 +143,7 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 		<>
 			{/* Order Details Section */}
 			<div className="flex gap-4 items-start justify-between">
-				<Button
-					onClick={copyOrderDetails}
-					type="button"
-					size="sm"
-					variant="outline"
-					className="flex-1"
-				>
+				<Button onClick={copyOrderDetails} type="button" size="sm" variant="outline" className="flex-1">
 					<Copy className="size-4" />
 					Copy Order
 				</Button>
@@ -186,12 +163,7 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 						<DropdownMenu>
 							<DropdownMenuTrigger
 								render={
-									<Button
-										type="button"
-										size="sm"
-										variant="outline"
-										className="rounded-l-none px-2"
-									>
+									<Button type="button" size="sm" variant="outline" className="rounded-l-none px-2">
 										<ChevronDown className="h-4 w-4" />
 									</Button>
 								}
@@ -202,9 +174,7 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 									<DropdownMenuItem
 										key={account.id}
 										onClick={() => setSelectedUpiId(account.id.toString())}
-										className={
-											selectedUpiId === account.id.toString() ? "bg-accent" : ""
-										}
+										className={selectedUpiId === account.id.toString() ? "bg-accent" : ""}
 									>
 										{account.label}
 									</DropdownMenuItem>
@@ -212,19 +182,12 @@ export default function Bill({ order, upiAccounts }: BillProps) {
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>
-					<p className="text-xs text-muted-foreground">
-						{selectedAccount?.label || "No UPI selected"}
-					</p>
+					<p className="text-xs text-muted-foreground">{selectedAccount?.label || "No UPI selected"}</p>
 				</div>
 			</div>
 
 			{/* QR Code Section */}
-			<QRCodeSVG
-				ref={qrCodeRef}
-				value={UPI_STRING}
-				size={500}
-				className="hidden"
-			/>
+			<QRCodeSVG ref={qrCodeRef} value={UPI_STRING} size={500} className="hidden" />
 		</>
 	);
 }

@@ -40,9 +40,7 @@ export default function Home({
 	const modifiersList = use(modifierDesserts);
 
 	const [cart, setCart] = useState<CartLine[]>([]);
-	const [inventoryByDessertId, setInventoryByDessertId] = useState<
-		Record<number, number>
-	>(() => {
+	const [inventoryByDessertId, setInventoryByDessertId] = useState<Record<number, number>>(() => {
 		const next: Record<number, number> = {};
 		for (const row of initialInventory) {
 			next[row.dessertId] = row.quantity;
@@ -82,9 +80,7 @@ export default function Home({
 		() =>
 			items.map((dessert) => ({
 				...dessert,
-				inventoryQuantity: dessert.hasUnlimitedStock
-					? undefined
-					: (inventoryByDessertId[dessert.id] ?? 0),
+				inventoryQuantity: dessert.hasUnlimitedStock ? undefined : (inventoryByDessertId[dessert.id] ?? 0),
 			})),
 		[items, inventoryByDessertId],
 	);
@@ -116,9 +112,7 @@ export default function Home({
 
 	// Add a simple base dessert to cart (no modifiers)
 	const addToCart = (dessert: Dessert) => {
-		const available = dessert.hasUnlimitedStock
-			? Number.POSITIVE_INFINITY
-			: (inventoryByDessertId[dessert.id] ?? 0);
+		const available = dessert.hasUnlimitedStock ? Number.POSITIVE_INFINITY : (inventoryByDessertId[dessert.id] ?? 0);
 		const usedInCart = cartInventoryUsage.get(dessert.id) ?? 0;
 		const remaining = available - usedInCart;
 
@@ -128,10 +122,7 @@ export default function Home({
 		}
 
 		// Check if there's already a cart line for this base dessert with no modifiers
-		const existingLine = cart.find(
-			(line) =>
-				line.baseDessertId === dessert.id && line.modifiers.length === 0,
-		);
+		const existingLine = cart.find((line) => line.baseDessertId === dessert.id && line.modifiers.length === 0);
 
 		if (existingLine) {
 			const currentQuantityInCart = existingLine.quantity;
@@ -142,10 +133,7 @@ export default function Home({
 
 			setCart((cart) =>
 				cart.map((line) => {
-					if (
-						line.cartLineId === existingLine.cartLineId &&
-						line.quantity < 199
-					) {
+					if (line.cartLineId === existingLine.cartLineId && line.quantity < 199) {
 						return {
 							...line,
 							quantity: line.quantity + 1,
@@ -200,10 +188,7 @@ export default function Home({
 
 			setCart((cart) =>
 				cart.map((line) => {
-					if (
-						line.cartLineId === existingLine.cartLineId &&
-						line.quantity < 199
-					) {
+					if (line.cartLineId === existingLine.cartLineId && line.quantity < 199) {
 						return {
 							...line,
 							quantity: line.quantity + 1,
@@ -222,12 +207,8 @@ export default function Home({
 			}));
 
 			// Compute unit price
-			const modifierTotal = modifiers.reduce(
-				(sum, mod) => sum + mod.price * mod.quantity,
-				0,
-			);
-			const unitPrice =
-				combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
+			const modifierTotal = modifiers.reduce((sum, mod) => sum + mod.price * mod.quantity, 0);
+			const unitPrice = combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
 
 			const newLine: CartLine = {
 				cartLineId: generateCartLineId(),
@@ -268,10 +249,7 @@ export default function Home({
 
 		// Calculate how much is used by OTHER lines with same base dessert
 		const usedByOthers = cart
-			.filter(
-				(l) =>
-					l.baseDessertId === line.baseDessertId && l.cartLineId !== cartLineId,
-			)
+			.filter((l) => l.baseDessertId === line.baseDessertId && l.cartLineId !== cartLineId)
 			.reduce((sum, l) => sum + l.quantity, 0);
 
 		const maxAllowed = available - usedByOthers;
@@ -283,11 +261,7 @@ export default function Home({
 		}
 
 		if (quantity > maxAllowed) {
-			setCart((cart) =>
-				cart.map((l) =>
-					l.cartLineId === cartLineId ? { ...l, quantity: maxAllowed } : l,
-				),
-			);
+			setCart((cart) => cart.map((l) => (l.cartLineId === cartLineId ? { ...l, quantity: maxAllowed } : l)));
 			toast.error(`Only ${maxAllowed} available`);
 			return;
 		}
@@ -297,9 +271,7 @@ export default function Home({
 			return;
 		}
 
-		setCart((cart) =>
-			cart.map((l) => (l.cartLineId === cartLineId ? { ...l, quantity } : l)),
-		);
+		setCart((cart) => cart.map((l) => (l.cartLineId === cartLineId ? { ...l, quantity } : l)));
 	};
 
 	const clearCart = () => {
@@ -308,16 +280,10 @@ export default function Home({
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	};
 
-	const deliveryCost = useStore(
-		form.store,
-		(state) => state.values.deliveryCost,
-	);
+	const deliveryCost = useStore(form.store, (state) => state.values.deliveryCost);
 	const name = useStore(form.store, (state) => state.values.name);
 	const total = useMemo(() => {
-		const itemCost = cart.reduce(
-			(sum, line) => sum + line.unitPrice * line.quantity,
-			0,
-		);
+		const itemCost = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
 		const dc = Number.parseFloat(deliveryCost || "0");
 		return itemCost + dc;
 	}, [cart, deliveryCost]);
@@ -339,12 +305,7 @@ export default function Home({
 			<div className="flex flex-col gap-4 md:sticky md:top-20">
 				<Card className="overflow-hidden shadow-sm border-2">
 					<CardContent className="p-3 sm:p-4">
-						<Cart
-							cart={cart}
-							updateQuantity={updateQuantity}
-							removeFromCart={removeFromCart}
-							form={form}
-						/>
+						<Cart cart={cart} updateQuantity={updateQuantity} removeFromCart={removeFromCart} form={form} />
 					</CardContent>
 				</Card>
 

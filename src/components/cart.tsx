@@ -15,12 +15,7 @@ interface CartProps {
 	form: any;
 }
 
-export function Cart({
-	cart,
-	updateQuantity,
-	removeFromCart,
-	form,
-}: CartProps) {
+export function Cart({ cart, updateQuantity, removeFromCart, form }: CartProps) {
 	return (
 		<div className="flex flex-col h-full">
 			<form className="space-y-4 flex flex-col h-full">
@@ -39,9 +34,7 @@ export function Cart({
 									id={field.name}
 									placeholder="Guest"
 									value={field.state.value}
-									onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-										field.handleChange(e.target.value)
-									}
+									onChange={(e) => field.handleChange(e.target.value)}
 									onBlur={field.handleBlur}
 									className="h-9"
 								/>
@@ -66,9 +59,7 @@ export function Cart({
 									step="0.01"
 									min="0"
 									value={field.state.value}
-									onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-										field.handleChange(e.target.value)
-									}
+									onChange={(e) => field.handleChange(e.target.value)}
 									onBlur={field.handleBlur}
 									className="h-9"
 								/>
@@ -82,9 +73,7 @@ export function Cart({
 						{cart.length === 0 ? (
 							<div className="h-full flex flex-col items-center justify-center text-muted-foreground p-8 text-center border-2 border-dashed rounded-lg">
 								<p className="text-sm">Cart is empty</p>
-								<p className="text-xs mt-1 opacity-70">
-									Add items to start an order
-								</p>
+								<p className="text-xs mt-1 opacity-70">Add items to start an order</p>
 							</div>
 						) : (
 							<div className="divide-y">

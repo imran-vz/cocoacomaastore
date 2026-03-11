@@ -153,23 +153,14 @@ function SidebarCartItem({
 
 			<div className="flex items-start justify-between gap-2 mb-2">
 				<div className="flex-1 min-w-0">
-					<h4 className="font-semibold text-sm leading-tight capitalize truncate">
-						{displayName}
-					</h4>
+					<h4 className="font-semibold text-sm leading-tight capitalize truncate">{displayName}</h4>
 					{hasModifiers && (
 						<p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-							+{" "}
-							{line.modifiers
-								.map((m) =>
-									m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name,
-								)
-								.join(", ")}
+							+ {line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")}
 						</p>
 					)}
 				</div>
-				<p className="font-bold text-sm text-primary shrink-0">
-					₹{(line.unitPrice * line.quantity).toFixed(0)}
-				</p>
+				<p className="font-bold text-sm text-primary shrink-0">₹{(line.unitPrice * line.quantity).toFixed(0)}</p>
 			</div>
 
 			<div className="flex items-center justify-between">
@@ -186,9 +177,7 @@ function SidebarCartItem({
 					>
 						<Minus className="size-3" />
 					</motion.button>
-					<span className="w-7 text-center text-xs font-semibold tabular-nums">
-						{line.quantity}
-					</span>
+					<span className="w-7 text-center text-xs font-semibold tabular-nums">{line.quantity}</span>
 					<motion.button
 						whileTap={{ scale: 0.85 }}
 						type="button"
@@ -226,23 +215,15 @@ export function TabletCartSidebar({
 
 	// Initialize with first available account
 	useEffect(() => {
-		const isValid = upiAccounts.some(
-			(account) => account.id.toString() === selectedUpiId,
-		);
+		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
 		if (!isValid && upiAccounts.length > 0) {
 			setSelectedUpiId(upiAccounts[0].id.toString());
 		}
 	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
 
-	const selectedAccount = upiAccounts.find(
-		(account) => account.id.toString() === selectedUpiId,
-	);
+	const selectedAccount = upiAccounts.find((account) => account.id.toString() === selectedUpiId);
 
-	const UPI_STRING = getUPIString(
-		total,
-		cart,
-		selectedAccount?.upiId || upiAccounts[0]?.upiId || "",
-	);
+	const UPI_STRING = getUPIString(total, cart, selectedAccount?.upiId || upiAccounts[0]?.upiId || "");
 
 	const handleSaveOrder = async () => {
 		if (cart.length === 0 || isSaving) return;
@@ -279,8 +260,7 @@ export function TabletCartSidebar({
 			})
 			.join("\n");
 
-		const deliveryLine =
-			deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
+		const deliveryLine = deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
 		const orderText = `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
 
 		await navigator.clipboard.writeText(orderText);
@@ -330,9 +310,7 @@ export function TabletCartSidebar({
 			const response = await fetch(dataUrl);
 			const blob = await response.blob();
 
-			await navigator.clipboard.write([
-				new ClipboardItem({ "image/png": blob }),
-			]);
+			await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
 
 			setCopiedQr(true);
 			toast.info("QR copied!", { duration: 1000 });
@@ -398,9 +376,7 @@ export function TabletCartSidebar({
 									id={field.name}
 									placeholder="Guest"
 									value={field.state.value}
-									onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-										field.handleChange(e.target.value)
-									}
+									onChange={(e) => field.handleChange(e.target.value)}
 									onBlur={field.handleBlur}
 									className="h-8 text-sm"
 								/>
@@ -425,9 +401,7 @@ export function TabletCartSidebar({
 									step="0.01"
 									min="0"
 									value={field.state.value}
-									onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-										field.handleChange(e.target.value)
-									}
+									onChange={(e) => field.handleChange(e.target.value)}
 									onBlur={field.handleBlur}
 									className="h-8 text-sm"
 								/>
@@ -449,9 +423,7 @@ export function TabletCartSidebar({
 							>
 								<ShoppingBag className="size-10 text-muted-foreground/20 mb-2" />
 								<p className="text-sm text-muted-foreground">Cart is empty</p>
-								<p className="text-[10px] text-muted-foreground/70 mt-1">
-									Tap items to add
-								</p>
+								<p className="text-[10px] text-muted-foreground/70 mt-1">Tap items to add</p>
 							</motion.div>
 						) : (
 							cart.map((line) => (
@@ -484,17 +456,11 @@ export function TabletCartSidebar({
 
 				{/* Online Order Section - Collapsed by default */}
 				{cart.length > 0 && (
-					<CollapsiblePrimitive.Root
-						open={isOnlineOrderOpen}
-						onOpenChange={setIsOnlineOrderOpen}
-					>
+					<CollapsiblePrimitive.Root open={isOnlineOrderOpen} onOpenChange={setIsOnlineOrderOpen}>
 						<CollapsiblePrimitive.Trigger className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors">
 							<span className="font-medium">Online Order (Instagram)</span>
 							<ChevronDown
-								className={cn(
-									"size-4 transition-transform duration-200",
-									isOnlineOrderOpen && "rotate-180",
-								)}
+								className={cn("size-4 transition-transform duration-200", isOnlineOrderOpen && "rotate-180")}
 							/>
 						</CollapsiblePrimitive.Trigger>
 						<CollapsiblePrimitive.Panel className="overflow-hidden h-(--collapsible-panel-height) data-ending-style:h-0 data-starting-style:h-0 transition-all duration-200 ease-out">
@@ -524,16 +490,10 @@ export function TabletCartSidebar({
 										onClick={copyOrderDetails}
 										className={cn(
 											"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-all",
-											copiedOrder
-												? "bg-green-50 border-green-200 text-green-600"
-												: "bg-muted/50 hover:bg-muted",
+											copiedOrder ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
 										)}
 									>
-										{copiedOrder ? (
-											<Check className="size-3.5" />
-										) : (
-											<Copy className="size-3.5" />
-										)}
+										{copiedOrder ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
 										<span>{copiedOrder ? "Copied!" : "Copy Order"}</span>
 									</motion.button>
 
@@ -543,27 +503,16 @@ export function TabletCartSidebar({
 										onClick={copyQrCode}
 										className={cn(
 											"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-all",
-											copiedQr
-												? "bg-green-50 border-green-200 text-green-600"
-												: "bg-muted/50 hover:bg-muted",
+											copiedQr ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
 										)}
 									>
-										{copiedQr ? (
-											<Check className="size-3.5" />
-										) : (
-											<ReceiptIndianRupee className="size-3.5" />
-										)}
+										{copiedQr ? <Check className="size-3.5" /> : <ReceiptIndianRupee className="size-3.5" />}
 										<span>{copiedQr ? "Copied!" : "Copy QR"}</span>
 									</motion.button>
 								</div>
 
 								{/* Hidden QR Code for copying */}
-								<QRCodeSVG
-									ref={qrCodeRef}
-									value={UPI_STRING}
-									size={400}
-									className="hidden"
-								/>
+								<QRCodeSVG ref={qrCodeRef} value={UPI_STRING} size={400} className="hidden" />
 							</div>
 						</CollapsiblePrimitive.Panel>
 					</CollapsiblePrimitive.Root>

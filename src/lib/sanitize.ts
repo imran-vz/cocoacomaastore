@@ -57,11 +57,7 @@ export function sanitizeEmail(email: string): string {
 /**
  * Validate and sanitize numeric input
  */
-export function sanitizeNumber(
-	value: number,
-	min: number,
-	max: number,
-): number {
+export function sanitizeNumber(value: number, min: number, max: number): number {
 	if (!Number.isFinite(value)) return min;
 	return Math.max(min, Math.min(max, Math.floor(value)));
 }

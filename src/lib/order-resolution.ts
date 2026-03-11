@@ -13,11 +13,7 @@
 
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import {
-	dailyDessertInventoryTable,
-	dessertCombosTable,
-	dessertsTable,
-} from "@/db/schema";
+import { dailyDessertInventoryTable, dessertCombosTable, dessertsTable } from "@/db/schema";
 import type { CartLine, CartLineModifier, ComboWithDetails } from "./types";
 
 // ============================================================================
@@ -53,8 +49,7 @@ export type ResolveResult = ResolutionResult | ResolutionError;
 
 function getStartOfDay(date: Date = new Date()): Date {
 	const d = new Date(date);
-	d.setHours(0, 0, 0, 0);
-	return d;
+	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
 }
 
 function generateCartLineId(): string {
@@ -68,9 +63,7 @@ function generateCartLineId(): string {
 /**
  * Resolves a combo selection into a cart line.
  */
-export async function resolveCombo(
-	request: ResolveComboRequest,
-): Promise<ResolveResult> {
+export async function resolveCombo(request: ResolveComboRequest): Promise<ResolveResult> {
 	const { comboId, quantity } = request;
 
 	// Load combo with base dessert and items
@@ -123,10 +116,7 @@ export async function resolveCombo(
 
 	// Check inventory for base dessert (only if not unlimited stock)
 	if (!baseDessert.hasUnlimitedStock) {
-		const inventoryResult = await validateBaseInventory(
-			baseDessert.id,
-			quantity,
-		);
+		const inventoryResult = await validateBaseInventory(baseDessert.id, quantity);
 		if (!inventoryResult.success) {
 			return inventoryResult;
 		}
@@ -141,11 +131,7 @@ export async function resolveCombo(
 	}));
 
 	// Compute unit price
-	const unitPrice = computeUnitPrice(
-		baseDessert.price,
-		modifiers,
-		combo.overridePrice,
-	);
+	const unitPrice = computeUnitPrice(baseDessert.price, modifiers, combo.overridePrice);
 
 	const cartLine: CartLine = {
 		cartLineId: generateCartLineId(),
@@ -166,9 +152,7 @@ export async function resolveCombo(
 /**
  * Resolves a variant selection (base + selected modifiers) into a cart line.
  */
-export async function resolveVariant(
-	request: ResolveVariantRequest,
-): Promise<ResolveResult> {
+export async function resolveVariant(request: ResolveVariantRequest): Promise<ResolveResult> {
 	const { baseDessertId, modifiers: requestedModifiers, quantity } = request;
 
 	// Load base dessert
@@ -197,10 +181,7 @@ export async function resolveVariant(
 
 	// Check inventory for base dessert (only if not unlimited stock)
 	if (!baseDessert.hasUnlimitedStock) {
-		const inventoryResult = await validateBaseInventory(
-			baseDessert.id,
-			quantity,
-		);
+		const inventoryResult = await validateBaseInventory(baseDessert.id, quantity);
 		if (!inventoryResult.success) {
 			return inventoryResult;
 		}
@@ -266,10 +247,7 @@ export async function resolveVariant(
  * Resolves a simple base dessert selection (no modifiers) into a cart line.
  * Convenience wrapper around resolveVariant.
  */
-export async function resolveBaseDessert(
-	baseDessertId: number,
-	quantity: number,
-): Promise<ResolveResult> {
+export async function resolveBaseDessert(baseDessertId: number, quantity: number): Promise<ResolveResult> {
 	return resolveVariant({
 		baseDessertId,
 		modifiers: [],
@@ -285,19 +263,12 @@ export async function resolveBaseDessert(
  * Computes unit price for a cart line.
  * If overridePrice is set, use it. Otherwise: base + sum(modifier price × quantity)
  */
-function computeUnitPrice(
-	basePrice: number,
-	modifiers: CartLineModifier[],
-	overridePrice: number | null,
-): number {
+function computeUnitPrice(basePrice: number, modifiers: CartLineModifier[], overridePrice: number | null): number {
 	if (overridePrice !== null) {
 		return overridePrice;
 	}
 
-	const modifierTotal = modifiers.reduce(
-		(sum, mod) => sum + mod.price * mod.quantity,
-		0,
-	);
+	const modifierTotal = modifiers.reduce((sum, mod) => sum + mod.price * mod.quantity, 0);
 
 	return basePrice + modifierTotal;
 }
@@ -319,12 +290,7 @@ async function validateBaseInventory(
 	const [inventory] = await db
 		.select({ quantity: dailyDessertInventoryTable.quantity })
 		.from(dailyDessertInventoryTable)
-		.where(
-			and(
-				eq(dailyDessertInventoryTable.dessertId, baseDessertId),
-				eq(dailyDessertInventoryTable.day, day),
-			),
-		);
+		.where(and(eq(dailyDessertInventoryTable.dessertId, baseDessertId), eq(dailyDessertInventoryTable.day, day)));
 
 	const available = inventory?.quantity ?? 0;
 
@@ -347,10 +313,7 @@ async function validateBaseInventory(
  */
 export async function getEnabledCombos(): Promise<ComboWithDetails[]> {
 	const combos = await db.query.dessertCombosTable.findMany({
-		where: and(
-			eq(dessertCombosTable.isDeleted, false),
-			eq(dessertCombosTable.enabled, true),
-		),
+		where: and(eq(dessertCombosTable.isDeleted, false), eq(dessertCombosTable.enabled, true)),
 		orderBy: (combos, { asc }) => [asc(combos.sequence)],
 		with: {
 			baseDessert: {
@@ -383,11 +346,7 @@ export async function getEnabledCombos(): Promise<ComboWithDetails[]> {
  */
 export async function getModifierDesserts() {
 	return db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-			eq(dessertsTable.kind, "modifier"),
-		),
+		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "modifier")),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
 		columns: {
 			id: true,
@@ -402,11 +361,7 @@ export async function getModifierDesserts() {
  */
 export async function getBaseDesserts() {
 	return db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-			eq(dessertsTable.kind, "base"),
-		),
+		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "base")),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
 	});
 }

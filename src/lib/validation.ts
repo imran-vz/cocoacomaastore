@@ -176,12 +176,7 @@ export const upiIdRegex = /^[\w.-]+@[\w.-]+$/;
 
 export const createUpiAccountSchema = z.object({
 	label: z.string().trim().min(1).max(255),
-	upiId: z
-		.string()
-		.trim()
-		.min(3)
-		.max(255)
-		.regex(upiIdRegex, "Invalid UPI ID format (e.g., user@bank)"),
+	upiId: z.string().trim().min(3).max(255).regex(upiIdRegex, "Invalid UPI ID format (e.g., user@bank)"),
 	enabled: z.boolean().optional().default(true),
 });
 
@@ -189,12 +184,7 @@ export const updateUpiAccountSchema = z.object({
 	id: z.uuid(),
 	data: z.object({
 		label: z.string().trim().min(1).max(255),
-		upiId: z
-			.string()
-			.trim()
-			.min(3)
-			.max(255)
-			.regex(upiIdRegex, "Invalid UPI ID format"),
+		upiId: z.string().trim().min(3).max(255).regex(upiIdRegex, "Invalid UPI ID format"),
 		enabled: z.boolean(),
 	}),
 });
@@ -243,9 +233,7 @@ export const updateComboItemsSchema = z.object({
 // ============================================================================
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
-export type CreateOrderWithLinesInput = z.infer<
-	typeof createOrderWithLinesSchema
->;
+export type CreateOrderWithLinesInput = z.infer<typeof createOrderWithLinesSchema>;
 export type CartLineInput = z.infer<typeof cartLineSchema>;
 export type CreateDessertInput = z.infer<typeof createDessertSchema>;
 export type UpdateDessertInput = z.infer<typeof updateDessertSchema>;

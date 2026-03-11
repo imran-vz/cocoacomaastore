@@ -49,9 +49,7 @@ export function isDatabaseUnavailableError(error: unknown): boolean {
 		return true;
 	}
 
-	const message = `${getErrorMessage(error)}\n${getNestedErrorMessage(error)}`
-		.toLowerCase()
-		.trim();
+	const message = `${getErrorMessage(error)}\n${getNestedErrorMessage(error)}`.toLowerCase().trim();
 
 	return [
 		"database_url is not set",

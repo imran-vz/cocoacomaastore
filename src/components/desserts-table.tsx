@@ -1,13 +1,6 @@
 "use client";
 
-import {
-	ChevronDown,
-	ChevronsDown,
-	ChevronsUp,
-	ChevronUp,
-	Infinity as InfinityIcon,
-	Pencil,
-} from "lucide-react";
+import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, Infinity as InfinityIcon, Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -22,22 +15,10 @@ import {
 } from "@/app/desserts/actions";
 import { DessertForm } from "@/components/dessert-form";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -79,18 +60,14 @@ export function DessertsTable({
 	maxWidth = "max-w-4xl",
 }: DessertsTableProps) {
 	const [isDisablingAll, setIsDisablingAll] = useState(false);
-	const [toggleLoadingIds, setToggleLoadingIds] = useState<Set<number>>(
-		new Set(),
-	);
+	const [toggleLoadingIds, setToggleLoadingIds] = useState<Set<number>>(new Set());
 	const [movingIds, setMovingIds] = useState<Set<number>>(new Set());
 	const [searchTerm, setSearchTerm] = useState("");
 	const [openModal, setOpenModal] = useState(false);
 	const [isFormLoading, setIsFormLoading] = useState(false);
 	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
 
-	const filteredDesserts = desserts.filter((dessert) =>
-		dessert.name.toLowerCase().includes(searchTerm.toLowerCase()),
-	);
+	const filteredDesserts = desserts.filter((dessert) => dessert.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	const enabledDesserts = filteredDesserts.filter((d) => d.enabled);
 	const disabledDesserts = filteredDesserts.filter((d) => !d.enabled);
@@ -98,25 +75,15 @@ export function DessertsTable({
 	const handleToggleDessert = async (dessert: Dessert) => {
 		const newEnabledState = !dessert.enabled;
 		setToggleLoadingIds((prev) => new Set(prev).add(dessert.id));
-		setDesserts((prev) =>
-			prev.map((d) =>
-				d.id === dessert.id ? { ...d, enabled: newEnabledState } : d,
-			),
-		);
+		setDesserts((prev) => prev.map((d) => (d.id === dessert.id ? { ...d, enabled: newEnabledState } : d)));
 
 		try {
 			await toggleDessert(dessert.id, newEnabledState);
-			toast.success(
-				`${dessert.name} ${newEnabledState ? "enabled" : "disabled"}`,
-			);
+			toast.success(`${dessert.name} ${newEnabledState ? "enabled" : "disabled"}`);
 		} catch (error) {
 			toast.error("Failed to toggle dessert");
 			console.error(error);
-			setDesserts((prev) =>
-				prev.map((d) =>
-					d.id === dessert.id ? { ...d, enabled: dessert.enabled } : d,
-				),
-			);
+			setDesserts((prev) => prev.map((d) => (d.id === dessert.id ? { ...d, enabled: dessert.enabled } : d)));
 		} finally {
 			setToggleLoadingIds((prev) => {
 				const newSet = new Set(prev);
@@ -154,10 +121,8 @@ export function DessertsTable({
 			await updateDessertSequence(targetDessert.id, dessert.sequence);
 			setDesserts((prev) =>
 				prev.map((d) => {
-					if (d.id === dessert.id)
-						return { ...d, sequence: targetDessert.sequence };
-					if (d.id === targetDessert.id)
-						return { ...d, sequence: dessert.sequence };
+					if (d.id === dessert.id) return { ...d, sequence: targetDessert.sequence };
+					if (d.id === targetDessert.id) return { ...d, sequence: dessert.sequence };
 					return d;
 				}),
 			);
@@ -185,10 +150,8 @@ export function DessertsTable({
 			await updateDessertSequence(targetDessert.id, dessert.sequence);
 			setDesserts((prev) =>
 				prev.map((d) => {
-					if (d.id === dessert.id)
-						return { ...d, sequence: targetDessert.sequence };
-					if (d.id === targetDessert.id)
-						return { ...d, sequence: dessert.sequence };
+					if (d.id === dessert.id) return { ...d, sequence: targetDessert.sequence };
+					if (d.id === targetDessert.id) return { ...d, sequence: dessert.sequence };
 					return d;
 				}),
 			);
@@ -241,9 +204,7 @@ export function DessertsTable({
 		}
 	};
 
-	const handleSubmit = async (
-		values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">,
-	) => {
+	const handleSubmit = async (values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">) => {
 		setIsFormLoading(true);
 		try {
 			const trimmedValues = {
@@ -259,9 +220,7 @@ export function DessertsTable({
 			await onRefetch();
 			setEditingDessert(null);
 			setOpenModal(false);
-			toast.success(
-				`Dessert ${editingDessert ? "updated" : "added"} successfully`,
-			);
+			toast.success(`Dessert ${editingDessert ? "updated" : "added"} successfully`);
 		} catch (error) {
 			toast.error(`Failed to ${editingDessert ? "update" : "add"} dessert`);
 			console.error("Failed to save dessert:", error);
@@ -288,12 +247,7 @@ export function DessertsTable({
 		}
 	};
 
-	const renderDessertRow = (
-		dessert: Dessert,
-		index: number,
-		totalCount: number,
-		showReorder: boolean,
-	) => {
+	const renderDessertRow = (dessert: Dessert, index: number, totalCount: number, showReorder: boolean) => {
 		const isMoving = movingIds.has(dessert.id);
 		const isToggling = toggleLoadingIds.has(dessert.id);
 		const isChanged = inventory?.changedDessertIds.has(dessert.id) ?? false;
@@ -319,11 +273,7 @@ export function DessertsTable({
 								className="h-7 w-7 p-0"
 								title="Move to top"
 							>
-								{isMoving ? (
-									<Spinner className="size-3" />
-								) : (
-									<ChevronsUp className="size-3" />
-								)}
+								{isMoving ? <Spinner className="size-3" /> : <ChevronsUp className="size-3" />}
 							</Button>
 							<Button
 								variant="ghost"
@@ -357,28 +307,17 @@ export function DessertsTable({
 							</Button>
 						</div>
 					)}
-					{!showReorder && dessert.enabled && (
-						<span className="text-xs text-muted-foreground">#{index + 1}</span>
-					)}
+					{!showReorder && dessert.enabled && <span className="text-xs text-muted-foreground">#{index + 1}</span>}
 				</TableCell>
 
 				{/* Dessert name */}
 				<TableCell>
 					<div className="flex flex-col">
-						<span
-							className={cn(
-								"font-medium",
-								!dessert.enabled && "line-through text-muted-foreground",
-							)}
-						>
+						<span className={cn("font-medium", !dessert.enabled && "line-through text-muted-foreground")}>
 							{dessert.name}
-							{dessert.hasUnlimitedStock && (
-								<InfinityIcon className="inline-block ml-1.5 size-4 text-blue-500" />
-							)}
+							{dessert.hasUnlimitedStock && <InfinityIcon className="inline-block ml-1.5 size-4 text-blue-500" />}
 						</span>
-						<span className="text-xs text-muted-foreground">
-							Rs {dessert.price}
-						</span>
+						<span className="text-xs text-muted-foreground">Rs {dessert.price}</span>
 					</div>
 				</TableCell>
 
@@ -395,14 +334,9 @@ export function DessertsTable({
 								min={0}
 								step={1}
 								value={inventory.quantities[dessert.id] ?? "0"}
-								onChange={(e) =>
-									inventory.onQuantityChange(dessert.id, e.target.value)
-								}
+								onChange={(e) => inventory.onQuantityChange(dessert.id, e.target.value)}
 								onFocus={(e) => e.target.select()}
-								className={cn(
-									"h-8 w-20",
-									isChanged && "border-yellow-400 ring-1 ring-yellow-400",
-								)}
+								className={cn("h-8 w-20", isChanged && "border-yellow-400 ring-1 ring-yellow-400")}
 								disabled={!dessert.enabled}
 							/>
 						)}
@@ -439,13 +373,7 @@ export function DessertsTable({
 								: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
 						)}
 					>
-						{isToggling ? (
-							<Spinner className="size-3" />
-						) : dessert.enabled ? (
-							"On"
-						) : (
-							"Off"
-						)}
+						{isToggling ? <Spinner className="size-3" /> : dessert.enabled ? "On" : "Off"}
 					</Button>
 				</TableCell>
 			</TableRow>
@@ -475,9 +403,7 @@ export function DessertsTable({
 			>
 				<DialogContent className="mx-2 max-w-[calc(100vw-1rem)] sm:mx-4 sm:max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 md:-mt-28">
 					<DialogHeader>
-						<DialogTitle>
-							{editingDessert ? "Edit Dessert" : "Add New Dessert"}
-						</DialogTitle>
+						<DialogTitle>{editingDessert ? "Edit Dessert" : "Add New Dessert"}</DialogTitle>
 					</DialogHeader>
 					<DessertForm
 						key={editingDessert?.id}
@@ -492,24 +418,14 @@ export function DessertsTable({
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
 					<h1 className="text-2xl font-bold">{title}</h1>
-					{subtitle && (
-						<p className="text-sm text-muted-foreground">{subtitle}</p>
-					)}
-					{inventory && (
-						<p className="text-sm text-muted-foreground">
-							Today: {inventory.todayLabel}
-						</p>
-					)}
+					{subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+					{inventory && <p className="text-sm text-muted-foreground">Today: {inventory.todayLabel}</p>}
 				</div>
 				<div className="flex flex-wrap gap-2">
 					<Button
 						variant="outline"
 						onClick={handleDisableAll}
-						disabled={
-							isDisablingAll ||
-							inventory?.isSaving ||
-							desserts.every((d) => !d.enabled)
-						}
+						disabled={isDisablingAll || inventory?.isSaving || desserts.every((d) => !d.enabled)}
 						size="sm"
 					>
 						{isDisablingAll ? <Spinner className="mr-2" /> : null}
@@ -560,20 +476,13 @@ export function DessertsTable({
 			{/* Enabled Desserts */}
 			{enabledDesserts.length > 0 && (
 				<div>
-					<h3 className="text-sm font-semibold mb-2 text-green-700">
-						Available ({enabledDesserts.length})
-					</h3>
+					<h3 className="text-sm font-semibold mb-2 text-green-700">Available ({enabledDesserts.length})</h3>
 					<div className="border rounded-lg overflow-hidden bg-white shadow-sm">
 						<Table>
 							{renderTableHeader()}
 							<TableBody>
 								{enabledDesserts.map((dessert, index) =>
-									renderDessertRow(
-										dessert,
-										index,
-										enabledDesserts.length,
-										true,
-									),
+									renderDessertRow(dessert, index, enabledDesserts.length, true),
 								)}
 							</TableBody>
 						</Table>
@@ -584,20 +493,13 @@ export function DessertsTable({
 			{/* Disabled Desserts */}
 			{disabledDesserts.length > 0 && (
 				<div>
-					<h3 className="text-sm font-semibold mb-2 text-red-700">
-						Disabled ({disabledDesserts.length})
-					</h3>
+					<h3 className="text-sm font-semibold mb-2 text-red-700">Disabled ({disabledDesserts.length})</h3>
 					<div className="border rounded-lg overflow-hidden bg-white shadow-sm opacity-80">
 						<Table>
 							{renderTableHeader()}
 							<TableBody>
 								{disabledDesserts.map((dessert, index) =>
-									renderDessertRow(
-										dessert,
-										index,
-										disabledDesserts.length,
-										false,
-									),
+									renderDessertRow(dessert, index, disabledDesserts.length, false),
 								)}
 							</TableBody>
 						</Table>
@@ -609,16 +511,10 @@ export function DessertsTable({
 			{filteredDesserts.length === 0 && (
 				<div className="text-center py-12 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
 					<p className="font-medium">
-						{searchTerm
-							? "No desserts found matching your search."
-							: "No desserts available."}
+						{searchTerm ? "No desserts found matching your search." : "No desserts available."}
 					</p>
 					{searchTerm && (
-						<Button
-							variant="link"
-							onClick={() => setSearchTerm("")}
-							className="mt-1 h-auto p-0 text-sm"
-						>
+						<Button variant="link" onClick={() => setSearchTerm("")} className="mt-1 h-auto p-0 text-sm">
 							Clear search
 						</Button>
 					)}

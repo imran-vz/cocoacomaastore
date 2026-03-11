@@ -11,11 +11,7 @@ interface CartLineControlsProps {
 	removeFromCart: (cartLineId: string) => void;
 }
 
-export function CartLineControls({
-	line,
-	updateQuantity,
-	removeFromCart,
-}: CartLineControlsProps) {
+export function CartLineControls({ line, updateQuantity, removeFromCart }: CartLineControlsProps) {
 	const intervalRef = useRef<NodeJS.Timeout | null>(null);
 	const quantityRef = useRef(line.quantity);
 
@@ -99,22 +95,14 @@ export function CartLineControls({
 		>
 			<div className="flex items-start justify-between gap-2 mb-2">
 				<div className="flex-1 text-sm flex flex-col items-start gap-0.5">
-					<h4 className="font-semibold leading-tight capitalize">
-						{displayName}
-					</h4>
+					<h4 className="font-semibold leading-tight capitalize">{displayName}</h4>
 					{hasModifiers && (
 						<p className="text-xs text-muted-foreground leading-snug">
-							+{" "}
-							{line.modifiers
-								.map((m) =>
-									m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name,
-								)
-								.join(", ")}
+							+ {line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")}
 						</p>
 					)}
 					<div className="text-xs font-mono text-muted-foreground mt-0.5">
-						₹{line.unitPrice} × {line.quantity} = ₹
-						{line.unitPrice * line.quantity}
+						₹{line.unitPrice} × {line.quantity} = ₹{line.unitPrice * line.quantity}
 					</div>
 				</div>
 				<motion.div whileTap={{ scale: 0.9 }}>

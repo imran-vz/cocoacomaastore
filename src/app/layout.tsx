@@ -63,13 +63,7 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en">
-			<body
-				className={cn(
-					nunitoSans.variable,
-					geistMono.variable,
-					"antialiased bg-[url(/bg-grid.svg)] select-none",
-				)}
-			>
+			<body className={cn(nunitoSans.variable, geistMono.variable, "antialiased bg-[url(/bg-grid.svg)] select-none")}>
 				<NuqsAdapter>
 					<Navbar />
 					{children}

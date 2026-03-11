@@ -16,30 +16,18 @@ function toInventoryMap(rows: TodayInventoryRow[]) {
 type UseInventoryOptions = {
 	desserts: Dessert[];
 	initialInventory: TodayInventoryRow[];
-	onSave: (
-		updates: Array<{ dessertId: number; quantity: number }>,
-	) => Promise<void>;
+	onSave: (updates: Array<{ dessertId: number; quantity: number }>) => Promise<void>;
 	onRefetch: () => Promise<{
 		desserts: Dessert[];
 		inventory: TodayInventoryRow[];
 	}>;
 };
 
-export function useInventory({
-	desserts,
-	initialInventory,
-	onSave,
-	onRefetch,
-}: UseInventoryOptions) {
-	const initialInventoryMap = useMemo(
-		() => toInventoryMap(initialInventory),
-		[initialInventory],
-	);
+export function useInventory({ desserts, initialInventory, onSave, onRefetch }: UseInventoryOptions) {
+	const initialInventoryMap = useMemo(() => toInventoryMap(initialInventory), [initialInventory]);
 
 	// Track the original quantities from the server
-	const [serverQuantities, setServerQuantities] = useState<Map<number, number>>(
-		() => new Map(initialInventoryMap),
-	);
+	const [serverQuantities, setServerQuantities] = useState<Map<number, number>>(() => new Map(initialInventoryMap));
 
 	const [quantities, setQuantities] = useState<Record<number, string>>(() => {
 		const initial: Record<number, string> = {};
@@ -84,20 +72,17 @@ export function useInventory({
 		}));
 	}, []);
 
-	const refreshInventoryState = useCallback(
-		(newDesserts: Dessert[], newInventory: TodayInventoryRow[]) => {
-			const newMap = toInventoryMap(newInventory);
-			setServerQuantities(new Map(newMap));
-			setQuantities((prev) => {
-				const next: Record<number, string> = { ...prev };
-				for (const dessert of newDesserts) {
-					next[dessert.id] = String(newMap.get(dessert.id) ?? 0);
-				}
-				return next;
-			});
-		},
-		[],
-	);
+	const refreshInventoryState = useCallback((newDesserts: Dessert[], newInventory: TodayInventoryRow[]) => {
+		const newMap = toInventoryMap(newInventory);
+		setServerQuantities(new Map(newMap));
+		setQuantities((prev) => {
+			const next: Record<number, string> = { ...prev };
+			for (const dessert of newDesserts) {
+				next[dessert.id] = String(newMap.get(dessert.id) ?? 0);
+			}
+			return next;
+		});
+	}, []);
 
 	const handleSaveInventory = useCallback(async () => {
 		if (!hasChanges) {
@@ -110,10 +95,7 @@ export function useInventory({
 
 			// Only send desserts that have changed quantities
 			const updates = desserts
-				.filter(
-					(d) =>
-						d.enabled && !d.hasUnlimitedStock && changedDessertIds.has(d.id),
-				)
+				.filter((d) => d.enabled && !d.hasUnlimitedStock && changedDessertIds.has(d.id))
 				.map((d) => ({
 					dessertId: d.id,
 					quantity: Number.parseInt(quantities[d.id] ?? "0", 10),
@@ -123,28 +105,17 @@ export function useInventory({
 				await onSave(updates);
 			}
 
-			const { desserts: newDesserts, inventory: newInventory } =
-				await onRefetch();
+			const { desserts: newDesserts, inventory: newInventory } = await onRefetch();
 			refreshInventoryState(newDesserts, newInventory);
 
-			toast.success(
-				`Inventory saved (${updates.length} item${updates.length !== 1 ? "s" : ""} updated)`,
-			);
+			toast.success(`Inventory saved (${updates.length} item${updates.length !== 1 ? "s" : ""} updated)`);
 		} catch (error) {
 			console.error(error);
 			toast.error("Failed to save inventory");
 		} finally {
 			setIsSaving(false);
 		}
-	}, [
-		hasChanges,
-		desserts,
-		changedDessertIds,
-		quantities,
-		onSave,
-		onRefetch,
-		refreshInventoryState,
-	]);
+	}, [hasChanges, desserts, changedDessertIds, quantities, onSave, onRefetch, refreshInventoryState]);
 
 	return {
 		quantities,

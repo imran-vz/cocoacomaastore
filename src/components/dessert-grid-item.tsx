@@ -13,17 +13,9 @@ interface DessertGridItemProps {
 	isStockToggleLoading: boolean;
 }
 
-export function DessertGridItem({
-	dessert,
-	onAddToCart,
-	onToggleStock,
-	isStockToggleLoading,
-}: DessertGridItemProps) {
+export function DessertGridItem({ dessert, onAddToCart, onToggleStock, isStockToggleLoading }: DessertGridItemProps) {
 	const inventoryQty = dessert.inventoryQuantity;
-	const isInventoryOutOfStock =
-		!dessert.hasUnlimitedStock &&
-		inventoryQty !== undefined &&
-		inventoryQty <= 0;
+	const isInventoryOutOfStock = !dessert.hasUnlimitedStock && inventoryQty !== undefined && inventoryQty <= 0;
 	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock;
 	const overlayControls = useAnimation();
 
@@ -71,8 +63,7 @@ export function DessertGridItem({
 						disabled={isUnavailable}
 						className={cn(
 							"flex-1 flex flex-col text-left p-4 gap-2 transition-colors hover:bg-muted/50 active:bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-							isUnavailable &&
-								"cursor-not-allowed opacity-60 hover:bg-transparent",
+							isUnavailable && "cursor-not-allowed opacity-60 hover:bg-transparent",
 						)}
 					>
 						{/* Green slide overlay */}
@@ -103,9 +94,7 @@ export function DessertGridItem({
 							</div>
 
 							{dessert.description && (
-								<p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-snug">
-									{dessert.description}
-								</p>
+								<p className="text-sm text-muted-foreground line-clamp-2 mb-3 leading-snug">{dessert.description}</p>
 							)}
 
 							<div className="mt-auto flex items-center gap-2">

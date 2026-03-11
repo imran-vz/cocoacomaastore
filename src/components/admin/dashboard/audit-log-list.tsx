@@ -3,20 +3,10 @@ import { Clock } from "lucide-react";
 import Link from "next/link";
 import type { AuditLogEntry } from "@/app/admin/dashboard/actions";
 import { Badge } from "@/components/ui/badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 function formatTime(date: Date | string) {
 	const d = typeof date === "string" ? new Date(date) : date;
@@ -28,17 +18,8 @@ function formatTime(date: Date | string) {
 	});
 }
 
-export default function AuditLogList({
-	logs,
-	isLoading,
-}: {
-	logs: AuditLogEntry[];
-	isLoading?: boolean;
-}) {
-	const getActionBadge = (
-		action: AuditLogEntry["action"],
-		note?: string | null,
-	) => {
+export default function AuditLogList({ logs, isLoading }: { logs: AuditLogEntry[]; isLoading?: boolean }) {
+	const getActionBadge = (action: AuditLogEntry["action"], note?: string | null) => {
 		switch (action) {
 			case "set_stock":
 				return (
@@ -105,9 +86,7 @@ export default function AuditLogList({
 								>
 									<div className="space-y-1">
 										<div className="flex items-center gap-2">
-											<span className="font-medium text-sm">
-												{log.dessertName}
-											</span>
+											<span className="font-medium text-sm">{log.dessertName}</span>
 											{getActionBadge(log.action, log.note)}
 										</div>
 										<div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -127,9 +106,7 @@ export default function AuditLogList({
 											)}
 										</div>
 									</div>
-									<span className="text-xs text-muted-foreground whitespace-nowrap">
-										{formatTime(log.createdAt)}
-									</span>
+									<span className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(log.createdAt)}</span>
 								</div>
 							))}
 						</div>

@@ -20,9 +20,7 @@ export enum LongPressEventReason {
 	// Triggered when released click / tap before long press detection threshold
 	CANCELED_BY_TIMEOUT = "canceled-by-timeout",
 }
-type LongPressEvent<Target = Element> =
-	| ReactMouseEvent<Target>
-	| ReactTouchEvent<Target>;
+type LongPressEvent<Target = Element> = ReactMouseEvent<Target> | ReactTouchEvent<Target>;
 type LongPressCallbackMeta<Context = unknown> = {
 	context?: Context;
 	reason?: LongPressEventReason;
@@ -80,24 +78,16 @@ interface LongPressOptions<Target = Element, Context = unknown> {
 	onCancel?: LongPressCallback<Target, Context>;
 }
 
-export function isTouchEvent<Target>(
-	event: LongPressEvent<Target>,
-): event is ReactTouchEvent<Target> {
+export function isTouchEvent<Target>(event: LongPressEvent<Target>): event is ReactTouchEvent<Target> {
 	const { nativeEvent } = event;
-	return window.TouchEvent
-		? nativeEvent instanceof TouchEvent
-		: "touches" in nativeEvent;
+	return window.TouchEvent ? nativeEvent instanceof TouchEvent : "touches" in nativeEvent;
 }
 
-export function isMouseEvent<Target>(
-	event: LongPressEvent<Target>,
-): event is ReactMouseEvent<Target> {
+export function isMouseEvent<Target>(event: LongPressEvent<Target>): event is ReactMouseEvent<Target> {
 	return event.nativeEvent instanceof MouseEvent;
 }
 
-export function getCurrentPosition<Target>(
-	event: LongPressEvent<Target>,
-): Coordinates {
+export function getCurrentPosition<Target>(event: LongPressEvent<Target>): Coordinates {
 	if (isTouchEvent(event)) {
 		return {
 			x: event.touches[0].pageX,
@@ -123,21 +113,12 @@ export function useLongPress<Target = Element, Context = unknown>(
 ): CallableContextResult<EmptyObject, Context>;
 export function useLongPress<
 	Target = Element,
-	Callback extends LongPressCallback<
-		Target,
-		Context
-	> = LongPressCallback<Target>,
+	Callback extends LongPressCallback<Target, Context> = LongPressCallback<Target>,
 	Context = unknown,
->(
-	callback: Callback,
-	options?: LongPressOptions<Target>,
-): CallableContextResult<LongPressResult<Target>, Context>;
+>(callback: Callback, options?: LongPressOptions<Target>): CallableContextResult<LongPressResult<Target>, Context>;
 export function useLongPress<
 	Target = Element,
-	Callback extends LongPressCallback<
-		Target,
-		Context
-	> = LongPressCallback<Target>,
+	Callback extends LongPressCallback<Target, Context> = LongPressCallback<Target>,
 	Context = unknown,
 >(
 	callback: Callback | null,
@@ -176,10 +157,7 @@ export function useLongPress<
  */
 export function useLongPress<
 	Target extends Element = Element,
-	Callback extends LongPressCallback<
-		Target,
-		Context
-	> = LongPressCallback<Target>,
+	Callback extends LongPressCallback<Target, Context> = LongPressCallback<Target>,
 	Context = undefined,
 >(
 	callback: Callback | null,
@@ -194,10 +172,7 @@ export function useLongPress<
 		onFinish,
 		onCancel,
 	}: LongPressOptions<Target, Context> = {},
-): CallableContextResult<
-	LongPressResult<Target, typeof detect> | Record<string, never>,
-	Context
-> {
+): CallableContextResult<LongPressResult<Target, typeof detect> | Record<string, never>, Context> {
 	const isLongPressActive = useRef(false);
 	const isPressed = useRef(false);
 	const timer = useRef<NodeJS.Timeout>(null);
@@ -238,8 +213,7 @@ export function useLongPress<
 				event.persist();
 			}
 
-			const meta: LongPressCallbackMeta<Context> =
-				context === undefined ? {} : { context };
+			const meta: LongPressCallbackMeta<Context> = context === undefined ? {} : { context };
 
 			// When touched trigger onStart and start timer
 			onStart?.(event, meta);
@@ -255,46 +229,44 @@ export function useLongPress<
 	);
 
 	const cancel = useCallback(
-		(context?: Context, reason?: LongPressEventReason) =>
-			(event: LongPressEvent<Target>) => {
-				// Ignore events other than mouse and touch
-				if (!isMouseEvent(event) && !isTouchEvent(event)) {
+		(context?: Context, reason?: LongPressEventReason) => (event: LongPressEvent<Target>) => {
+			// Ignore events other than mouse and touch
+			if (!isMouseEvent(event) && !isTouchEvent(event)) {
+				return;
+			}
+
+			// Deduplicate touch and mouse events on mobile
+			if (isTouchEvent(event)) {
+				lastTouchTime.current = Date.now();
+			} else if (isMouseEvent(event)) {
+				// Ignore mouse events within 500ms of touch event
+				if (Date.now() - lastTouchTime.current < 500) {
 					return;
 				}
+			}
 
-				// Deduplicate touch and mouse events on mobile
-				if (isTouchEvent(event)) {
-					lastTouchTime.current = Date.now();
-				} else if (isMouseEvent(event)) {
-					// Ignore mouse events within 500ms of touch event
-					if (Date.now() - lastTouchTime.current < 500) {
-						return;
-					}
-				}
+			startPosition.current = null;
 
-				startPosition.current = null;
+			if (captureEvent) {
+				event.persist();
+			}
 
-				if (captureEvent) {
-					event.persist();
-				}
+			const meta: LongPressCallbackMeta<Context> = context === undefined ? {} : { context };
 
-				const meta: LongPressCallbackMeta<Context> =
-					context === undefined ? {} : { context };
-
-				// Trigger onFinish callback only if timer was active
-				if (isLongPressActive.current) {
-					onFinish?.(event, meta);
-				} else if (isPressed.current) {
-					// Otherwise, if not active trigger onCancel
-					onCancel?.(event, {
-						...meta,
-						reason: reason ?? LongPressEventReason.CANCELED_BY_TIMEOUT,
-					});
-				}
-				isLongPressActive.current = false;
-				isPressed.current = false;
-				timer.current !== undefined && clearTimeout(timer.current || undefined);
-			},
+			// Trigger onFinish callback only if timer was active
+			if (isLongPressActive.current) {
+				onFinish?.(event, meta);
+			} else if (isPressed.current) {
+				// Otherwise, if not active trigger onCancel
+				onCancel?.(event, {
+					...meta,
+					reason: reason ?? LongPressEventReason.CANCELED_BY_TIMEOUT,
+				});
+			}
+			isLongPressActive.current = false;
+			isPressed.current = false;
+			timer.current !== undefined && clearTimeout(timer.current || undefined);
+		},
 		[captureEvent, onFinish, onCancel],
 	);
 
@@ -305,18 +277,14 @@ export function useLongPress<
 				const currentPosition = getCurrentPosition(event);
 				/* istanbul ignore else */
 				if (currentPosition) {
-					const moveThreshold =
-						cancelOnMovement === true ? 25 : cancelOnMovement;
+					const moveThreshold = cancelOnMovement === true ? 25 : cancelOnMovement;
 					const movedDistance = {
 						x: Math.abs(currentPosition.x - startPosition.current.x),
 						y: Math.abs(currentPosition.y - startPosition.current.y),
 					};
 
 					// If moved outside move tolerance box then cancel long press
-					if (
-						movedDistance.x > moveThreshold ||
-						movedDistance.y > moveThreshold
-					) {
+					if (movedDistance.x > moveThreshold || movedDistance.y > moveThreshold) {
 						cancel(context, LongPressEventReason.CANCELED_BY_MOVEMENT)(event);
 					}
 				}

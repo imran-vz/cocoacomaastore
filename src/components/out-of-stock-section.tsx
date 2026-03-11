@@ -1,12 +1,7 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import type { Dessert } from "@/lib/types";
 import { DessertGridItem } from "./dessert-grid-item";
 

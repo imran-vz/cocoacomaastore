@@ -44,12 +44,7 @@ function formatSegment(segment: string): string {
 	}
 
 	// Check if it's an ID (UUID or numeric)
-	if (
-		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-			segment,
-		) ||
-		/^\d+$/.test(segment)
-	) {
+	if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) || /^\d+$/.test(segment)) {
 		return "Details";
 	}
 
@@ -97,13 +92,7 @@ export function BreadcrumbNavigation() {
 								{isLast ? (
 									<BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
 								) : (
-									<BreadcrumbLink
-										render={
-											<Link href={breadcrumb.href || "/"}>
-												{breadcrumb.label}
-											</Link>
-										}
-									/>
+									<BreadcrumbLink render={<Link href={breadcrumb.href || "/"}>{breadcrumb.label}</Link>} />
 								)}
 							</BreadcrumbItem>
 							{!isLast && <BreadcrumbSeparator />}

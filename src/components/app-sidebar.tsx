@@ -56,13 +56,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							render={
 								<a href="/admin">
 									<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-										<Image
-											src="/logo.png"
-											alt="Cocoacomaa Store"
-											width={32}
-											height={32}
-											className="rounded-lg"
-										/>
+										<Image src="/logo.png" alt="Cocoacomaa Store" width={32} height={32} className="rounded-lg" />
 									</div>
 									<div className="grid flex-1 text-left text-sm leading-tight">
 										<span className="truncate font-semibold">Cocoa Comaa</span>

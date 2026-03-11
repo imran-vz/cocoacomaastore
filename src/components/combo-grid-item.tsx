@@ -38,12 +38,8 @@ export function ComboGridItem({ combo, onAddComboToCart }: ComboGridItemProps) {
 	};
 
 	// Compute display price
-	const modifierTotal = combo.items.reduce(
-		(sum, item) => sum + item.dessert.price * item.quantity,
-		0,
-	);
-	const displayPrice =
-		combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
+	const modifierTotal = combo.items.reduce((sum, item) => sum + item.dessert.price * item.quantity, 0);
+	const displayPrice = combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
 
 	return (
 		<motion.div
@@ -78,11 +74,7 @@ export function ComboGridItem({ combo, onAddComboToCart }: ComboGridItemProps) {
 									{" "}
 									+{" "}
 									{combo.items
-										.map((item) =>
-											item.quantity > 1
-												? `${item.quantity}× ${item.dessert.name}`
-												: item.dessert.name,
-										)
+										.map((item) => (item.quantity > 1 ? `${item.quantity}× ${item.dessert.name}` : item.dessert.name))
 										.join(", ")}
 								</>
 							)}

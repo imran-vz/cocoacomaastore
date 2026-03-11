@@ -16,9 +16,7 @@ export enum LongPressEventReason {
 	// Triggered when released click / tap before long press detection threshold
 	CANCELED_BY_TIMEOUT = "canceled-by-timeout",
 }
-export type LongPressEvent<Target = Element> =
-	| ReactMouseEvent<Target>
-	| ReactTouchEvent<Target>;
+export type LongPressEvent<Target = Element> = ReactMouseEvent<Target> | ReactTouchEvent<Target>;
 export type LongPressCallbackMeta<Context = unknown> = {
 	context?: Context;
 	reason?: LongPressEventReason;

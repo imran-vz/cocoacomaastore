@@ -4,10 +4,7 @@ import { IconCake } from "@tabler/icons-react";
 import { useCallback, useEffect, useTransition } from "react";
 import { toast } from "sonner";
 import type { ModifierDessert } from "@/app/combos/actions";
-import {
-	batchUpdateDessertSequences,
-	toggleOutOfStock,
-} from "@/app/desserts/actions";
+import { batchUpdateDessertSequences, toggleOutOfStock } from "@/app/desserts/actions";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { useDessertStore } from "@/store/dessert-store";
 import { ComboGrid } from "./combo-grid";
@@ -15,13 +12,7 @@ import { DessertCard } from "./dessert-card";
 import { DessertGrid } from "./dessert-grid";
 import { DessertListHeader } from "./dessert-list-header";
 import { OutOfStockSection } from "./out-of-stock-section";
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from "./ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "./ui/empty";
 
 interface DessertListProps {
 	desserts: Dessert[];
@@ -71,9 +62,7 @@ export function DessertList({
 
 			try {
 				await toggleOutOfStock(dessert.id, newOutOfStockState);
-				toast.success(
-					`Marked as ${newOutOfStockState ? "out of stock" : "back in stock"}`,
-				);
+				toast.success(`Marked as ${newOutOfStockState ? "out of stock" : "back in stock"}`);
 			} catch (error) {
 				toast.error("Failed to update stock status");
 				console.error("Failed to toggle stock status:", error);
@@ -111,10 +100,7 @@ export function DessertList({
 		const currentIndex = localDesserts.findIndex((d) => d.id === dessert.id);
 		if (currentIndex > 0) {
 			const newOrder = [...localDesserts];
-			[newOrder[currentIndex], newOrder[currentIndex - 1]] = [
-				newOrder[currentIndex - 1],
-				newOrder[currentIndex],
-			];
+			[newOrder[currentIndex], newOrder[currentIndex - 1]] = [newOrder[currentIndex - 1], newOrder[currentIndex]];
 			reorderDesserts(newOrder);
 		}
 	};
@@ -123,10 +109,7 @@ export function DessertList({
 		const currentIndex = localDesserts.findIndex((d) => d.id === dessert.id);
 		if (currentIndex < localDesserts.length - 1) {
 			const newOrder = [...localDesserts];
-			[newOrder[currentIndex], newOrder[currentIndex + 1]] = [
-				newOrder[currentIndex + 1],
-				newOrder[currentIndex],
-			];
+			[newOrder[currentIndex], newOrder[currentIndex + 1]] = [newOrder[currentIndex + 1], newOrder[currentIndex]];
 			reorderDesserts(newOrder);
 		}
 	};
@@ -185,8 +168,7 @@ export function DessertList({
 	);
 
 	const isUnavailable = (dessert: Dessert) =>
-		!dessert.hasUnlimitedStock &&
-		(dessert.inventoryQuantity === undefined || dessert.inventoryQuantity <= 0);
+		!dessert.hasUnlimitedStock && (dessert.inventoryQuantity === undefined || dessert.inventoryQuantity <= 0);
 
 	// Separate in-stock and out-of-stock desserts
 	const inStockDesserts = filteredDesserts.filter((d) => !isUnavailable(d));
@@ -223,9 +205,7 @@ export function DessertList({
 					{/* Combos section */}
 					{combos.length > 0 && addComboToCart && (
 						<div className="mb-6">
-							<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-								Combos
-							</h2>
+							<h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Combos</h2>
 							<ComboGrid combos={combos} onAddComboToCart={addComboToCart} />
 						</div>
 					)}

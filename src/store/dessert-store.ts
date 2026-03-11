@@ -28,17 +28,13 @@ export const useDessertStore = create<DessertStore>((set) => ({
 	setSearchQuery: (query) => set({ searchQuery: query }),
 	setIsEditMode: (mode) => set({ isEditMode: mode }),
 	clearSearch: () => set({ searchQuery: "" }),
-	setLocalDesserts: (desserts) =>
-		set({ localDesserts: desserts, hasUnsavedChanges: false }),
+	setLocalDesserts: (desserts) => set({ localDesserts: desserts, hasUnsavedChanges: false }),
 	setHasUnsavedChanges: (hasChanges) => set({ hasUnsavedChanges: hasChanges }),
 	updateDessert: (id, updates) =>
 		set((state) => ({
-			localDesserts: state.localDesserts.map((d) =>
-				d.id === id ? { ...d, ...updates } : d,
-			),
+			localDesserts: state.localDesserts.map((d) => (d.id === id ? { ...d, ...updates } : d)),
 		})),
-	reorderDesserts: (desserts) =>
-		set({ localDesserts: desserts, hasUnsavedChanges: true }),
+	reorderDesserts: (desserts) => set({ localDesserts: desserts, hasUnsavedChanges: true }),
 	addStockToggleLoadingId: (id) =>
 		set((state) => ({
 			stockToggleLoadingIds: new Set(state.stockToggleLoadingIds).add(id),

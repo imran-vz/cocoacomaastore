@@ -55,8 +55,7 @@ export function DessertCard({
 					<h3
 						className={cn(
 							"font-semibold text-base @sm/card:text-lg leading-tight wrap-break-word",
-							(!dessert.enabled || dessert.isOutOfStock) &&
-								"line-through text-muted-foreground",
+							(!dessert.enabled || dessert.isOutOfStock) && "line-through text-muted-foreground",
 						)}
 						title={dessert.name}
 					>
@@ -69,8 +68,7 @@ export function DessertCard({
 					<div
 						className={cn(
 							"text-xl @sm/card:text-2xl font-bold",
-							(!dessert.enabled || dessert.isOutOfStock) &&
-								"text-muted-foreground",
+							(!dessert.enabled || dessert.isOutOfStock) && "text-muted-foreground",
 						)}
 					>
 						₹{dessert.price.toFixed(2)}
@@ -85,9 +83,7 @@ export function DessertCard({
 						<div
 							className={cn(
 								"px-2 py-1 rounded-full text-xs font-medium w-fit",
-								dessert.enabled
-									? "bg-green-100 text-green-700"
-									: "bg-red-100 text-red-700",
+								dessert.enabled ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700",
 							)}
 						>
 							{dessert.enabled ? "Available" : "Disabled"}
@@ -97,9 +93,7 @@ export function DessertCard({
 
 				{/* Description */}
 				{dessert.description && (
-					<p className="text-xs @sm/card:text-sm text-muted-foreground mb-3 line-clamp-2">
-						{dessert.description}
-					</p>
+					<p className="text-xs @sm/card:text-sm text-muted-foreground mb-3 line-clamp-2">{dessert.description}</p>
 				)}
 
 				{/* Status and position - now stacked on small screens */}
@@ -119,11 +113,7 @@ export function DessertCard({
 							className="h-7 w-7 @sm/card:h-8 @sm/card:w-8 p-0"
 							title="Move to top"
 						>
-							{isMoving ? (
-								<Spinner className="size-3" />
-							) : (
-								<ChevronsUp className="size-3" />
-							)}
+							{isMoving ? <Spinner className="size-3" /> : <ChevronsUp className="size-3" />}
 						</Button>
 						<Button
 							variant="ghost"
@@ -133,11 +123,7 @@ export function DessertCard({
 							className="h-7 w-7 @sm/card:h-8 @sm/card:w-8 p-0"
 							title="Move up"
 						>
-							{isMoving ? (
-								<Spinner className="size-3" />
-							) : (
-								<ChevronUp className="size-3" />
-							)}
+							{isMoving ? <Spinner className="size-3" /> : <ChevronUp className="size-3" />}
 						</Button>
 						<Button
 							variant="ghost"
@@ -147,11 +133,7 @@ export function DessertCard({
 							className="h-7 w-7 @sm/card:h-8 @sm/card:w-8 p-0"
 							title="Move down"
 						>
-							{isMoving ? (
-								<Spinner className="size-3" />
-							) : (
-								<ChevronDown className="size-3" />
-							)}
+							{isMoving ? <Spinner className="size-3" /> : <ChevronDown className="size-3" />}
 						</Button>
 						<Button
 							variant="ghost"
@@ -161,11 +143,7 @@ export function DessertCard({
 							className="h-7 w-7 @sm/card:h-8 @sm/card:w-8 p-0"
 							title="Move to bottom"
 						>
-							{isMoving ? (
-								<Spinner className="size-3" />
-							) : (
-								<ChevronsDown className="size-3" />
-							)}
+							{isMoving ? <Spinner className="size-3" /> : <ChevronsDown className="size-3" />}
 						</Button>
 					</div>
 
@@ -192,11 +170,7 @@ export function DessertCard({
 											? "bg-orange-100 text-orange-700 hover:bg-orange-200 border-orange-200"
 											: "border-gray-200 text-gray-700 hover:bg-gray-50",
 									)}
-									title={
-										dessert.isOutOfStock
-											? "Mark as back in stock"
-											: "Mark as out of stock"
-									}
+									title={dessert.isOutOfStock ? "Mark as back in stock" : "Mark as out of stock"}
 								>
 									{isStockToggleLoading ? (
 										<>
@@ -227,9 +201,7 @@ export function DessertCard({
 								{isToggleLoading ? (
 									<>
 										<Spinner className="size-3 mr-1" />
-										<span className="hidden @sm/card:inline">
-											{dessert.enabled ? "Disabling" : "Enabling"}
-										</span>
+										<span className="hidden @sm/card:inline">{dessert.enabled ? "Disabling" : "Enabling"}</span>
 									</>
 								) : dessert.enabled ? (
 									"Enabled"
