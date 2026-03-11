@@ -14,7 +14,8 @@
 		"format": "biome format --write src/**/*.{ts,tsx}",
 		"typecheck": "tsc --noEmit",
 		"analytics": "bun run src/scripts/compile-analytics.ts",
-		"analytics:backfill": "bun run src/scripts/compile-analytics.ts --backfill"
+		"analytics:backfill": "bun run src/scripts/compile-analytics.ts --backfill",
+		"analytics:backfill:force": "bun run src/scripts/compile-analytics.ts --backfill --force"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.2.0",

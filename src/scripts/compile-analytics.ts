@@ -1,6 +1,7 @@
 import postgres from "postgres";
 
 const backfill = process.argv.includes("--backfill");
+const force = process.argv.includes("--force");
 
 if (!process.env.DATABASE_URL) {
 	console.error("DATABASE_URL is not set");
@@ -278,11 +279,36 @@ async function compileDailyEodStock(start: Date, end: Date) {
 	`;
 }
 
+const ANALYTICS_TABLES = [
+	"analytics_daily_revenue",
+	"analytics_daily_dessert_revenue",
+	"analytics_weekly_revenue",
+	"analytics_monthly_revenue",
+	"analytics_monthly_dessert_revenue",
+	"analytics_daily_eod_stock",
+] as const;
+
+async function truncateAnalyticsTables() {
+	for (const table of ANALYTICS_TABLES) {
+		await client`TRUNCATE ${client(table)} RESTART IDENTITY`;
+		console.log(`  truncated ${table}`);
+	}
+}
+
 async function main() {
 	const current = getISTNow();
 	let months: Array<{ year: number; month: number }>;
 
+	if (force && !backfill) {
+		console.error("--force can only be used with --backfill");
+		process.exit(1);
+	}
+
 	if (backfill) {
+		if (force) {
+			console.log("Force mode: truncating all analytics tables...");
+			await truncateAnalyticsTables();
+		}
 		const first = await getFirstOrderMonth();
 		months = generateMonths(first, current);
 		console.log(
