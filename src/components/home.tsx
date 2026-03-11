@@ -48,26 +48,17 @@ export default function Home({
 		return next;
 	});
 
-	const dessertById = useMemo(() => {
-		const map = new Map<number, Dessert>();
-		for (const dessert of items) {
-			map.set(dessert.id, dessert);
-		}
-		return map;
-	}, [items]);
-
 	const availableCombos = useMemo(() => {
 		return combosList.filter((combo) => {
-			const base = dessertById.get(combo.baseDessertId);
-			if (!base) return false;
-			if (base.isOutOfStock) return false;
-			if (!base.hasUnlimitedStock) {
-				const stock = inventoryByDessertId[base.id] ?? 0;
+			const baseDessert = items.find((d) => d.id === combo.baseDessertId);
+			if (baseDessert?.isOutOfStock) return false;
+			if (!combo.baseDessert.hasUnlimitedStock) {
+				const stock = inventoryByDessertId[combo.baseDessertId] ?? 0;
 				if (stock <= 0) return false;
 			}
 			return true;
 		});
-	}, [combosList, dessertById, inventoryByDessertId]);
+	}, [combosList, inventoryByDessertId, items]);
 
 	const form = useForm({
 		defaultValues: { name: "", deliveryCost: "" },
@@ -159,16 +150,10 @@ export default function Home({
 
 	// Add a combo to cart
 	const addComboToCart = (combo: ComboWithDetails) => {
-		const baseDessert = dessertById.get(combo.baseDessertId);
-		if (!baseDessert) {
-			toast.error("Base dessert not found");
-			return;
-		}
-
-		const available = baseDessert.hasUnlimitedStock
+		const available = combo.baseDessert.hasUnlimitedStock
 			? Number.POSITIVE_INFINITY
-			: (inventoryByDessertId[baseDessert.id] ?? 0);
-		const usedInCart = cartInventoryUsage.get(baseDessert.id) ?? 0;
+			: (inventoryByDessertId[combo.baseDessertId] ?? 0);
+		const usedInCart = cartInventoryUsage.get(combo.baseDessertId) ?? 0;
 		const remaining = available - usedInCart;
 
 		if (remaining <= 0) {
@@ -240,10 +225,7 @@ export default function Home({
 		const line = cart.find((l) => l.cartLineId === cartLineId);
 		if (!line) return;
 
-		const dessert = dessertById.get(line.baseDessertId);
-		if (!dessert) return;
-
-		const available = dessert.hasUnlimitedStock
+		const available = line.hasUnlimitedStock
 			? Number.POSITIVE_INFINITY
 			: (inventoryByDessertId[line.baseDessertId] ?? 0);
 
