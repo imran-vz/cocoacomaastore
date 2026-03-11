@@ -742,19 +742,12 @@ export async function cancelOrder(orderId: number, reason?: string) {
 		throw error;
 	}
 
-	// Trigger analytics recomputation for today
-	const today = new Date();
-	const dateStr = today.toISOString().split("T")[0]; // YYYY-MM-DD
-
+	// Recompute today's analytics inline (replaces old Go worker HTTP call)
 	try {
-		await fetch("http://localhost:8081/api/recompute-day", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ date: dateStr }),
-		});
+		const { recomputeDayAnalytics } = await import("@/lib/recompute-day-analytics");
+		await recomputeDayAnalytics(new Date());
 	} catch (error) {
-		console.error("Failed to trigger analytics recomputation:", error);
-		// Non-fatal: analytics will correct on next scheduled run
+		console.error("Failed to recompute day analytics:", error);
 	}
 
 	const duration = performance.now() - start;
