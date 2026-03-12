@@ -51,14 +51,11 @@ export default function Home({
 	const availableCombos = useMemo(() => {
 		return combosList.filter((combo) => {
 			const baseDessert = items.find((d) => d.id === combo.baseDessertId);
-			if (baseDessert?.isOutOfStock) return false;
-			if (!combo.baseDessert.hasUnlimitedStock) {
-				const stock = inventoryByDessertId[combo.baseDessertId] ?? 0;
-				if (stock <= 0) return false;
-			}
+			if (!baseDessert) return false;
+			if (baseDessert.isOutOfStock) return false;
 			return true;
 		});
-	}, [combosList, inventoryByDessertId, items]);
+	}, [combosList, items]);
 
 	const form = useForm({
 		defaultValues: { name: "", deliveryCost: "" },

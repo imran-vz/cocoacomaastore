@@ -6,12 +6,16 @@ import {
 	IconFileDescription,
 	IconLogout,
 	IconMenu2,
+	IconRefresh,
 	IconSettings,
 } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTransition } from "react";
+import { toast } from "sonner";
 
+import { revalidateAllCaches } from "@/app/cache/actions";
 import { authClient, signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "./ui/avatar";
@@ -26,6 +30,7 @@ import {
 export default function Navbar() {
 	const { data: session } = authClient.useSession();
 	const pathname = usePathname();
+	const [isRefreshing, startRefreshTransition] = useTransition();
 
 	// Hide navbar on admin routes (admin has its own sidebar)
 	if (pathname.startsWith("/admin")) {
@@ -122,6 +127,24 @@ export default function Navbar() {
 							/>
 
 							<DropdownMenuSeparator />
+
+							<DropdownMenuItem
+								onClick={() => {
+									startRefreshTransition(async () => {
+										try {
+											await revalidateAllCaches();
+											toast.success("Cache refreshed");
+										} catch {
+											toast.error("Failed to refresh cache");
+										}
+									});
+								}}
+								disabled={isRefreshing}
+								className="cursor-pointer"
+							>
+								<IconRefresh className={cn("size-4", isRefreshing && "animate-spin")} />
+								{isRefreshing ? "Refreshing..." : "Refresh Data"}
+							</DropdownMenuItem>
 
 							<DropdownMenuItem
 								render={

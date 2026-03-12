@@ -1,9 +1,10 @@
 "use client";
 
-import { IconDotsVertical, IconLogout, IconSettings } from "@tabler/icons-react";
+import { IconDotsVertical, IconLogout, IconRefresh, IconSettings } from "@tabler/icons-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { revalidateAllCaches } from "@/app/cache/actions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -27,6 +28,7 @@ export function NavUser({
 	};
 }) {
 	const [isLoading, setIsLoading] = useState(false);
+	const [isRefreshing, startRefreshTransition] = useTransition();
 	const { isMobile } = useSidebar();
 
 	return (
@@ -71,6 +73,23 @@ export function NavUser({
 							</DropdownMenuLabel>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							onClick={() => {
+								startRefreshTransition(async () => {
+									try {
+										await revalidateAllCaches();
+										toast.success("Cache refreshed");
+									} catch {
+										toast.error("Failed to refresh cache");
+									}
+								});
+							}}
+							disabled={isRefreshing}
+						>
+							<IconRefresh className={isRefreshing ? "animate-spin" : undefined} />
+							{isRefreshing ? "Refreshing..." : "Refresh Data"}
+						</DropdownMenuItem>
+
 						<DropdownMenuItem
 							render={
 								<Link href="/admin/settings" className="cursor-pointer">
