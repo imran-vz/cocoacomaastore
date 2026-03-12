@@ -1,27 +1,16 @@
 "use client";
 
 import { Package, Pencil, Plus, Trash2 } from "lucide-react";
-import { use, useCallback, useState } from "react";
+import { use, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type { ComboWithDetails } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -62,20 +51,26 @@ export default function ManageCombos({
 	modifierDesserts: Promise<ModifierDessert[]>;
 }) {
 	const initial = use(initialCombos);
-	const bases = use(baseDesserts);
+	const basesRaw = use(baseDesserts);
 	const modifiers = use(modifierDesserts);
+
+	const bases = useMemo(() => {
+		const byId = new Map(basesRaw.map((b) => [b.id, b]));
+		for (const combo of initial) {
+			if (!byId.has(combo.baseDessertId)) {
+				byId.set(combo.baseDessertId, combo.baseDessert);
+			}
+		}
+		return Array.from(byId.values());
+	}, [basesRaw, initial]);
 
 	const [combos, setCombos] = useState<ComboWithDetails[]>(initial);
 	const [openModal, setOpenModal] = useState(false);
-	const [editingCombo, setEditingCombo] = useState<ComboWithDetails | null>(
-		null,
-	);
+	const [editingCombo, setEditingCombo] = useState<ComboWithDetails | null>(null);
 	const [formData, setFormData] = useState<ComboFormData>(initialFormData);
 	const [isLoading, setIsLoading] = useState(false);
 	const [searchTerm, setSearchTerm] = useState("");
-	const [toggleLoadingIds, setToggleLoadingIds] = useState<Set<number>>(
-		new Set(),
-	);
+	const [toggleLoadingIds, setToggleLoadingIds] = useState<Set<number>>(new Set());
 
 	const refetch = useCallback(() => {
 		getCachedAllCombos().then(setCombos);
@@ -122,9 +117,7 @@ export default function ManageCombos({
 
 		setIsLoading(true);
 		try {
-			const overridePrice = formData.overridePrice
-				? Number.parseInt(formData.overridePrice, 10)
-				: null;
+			const overridePrice = formData.overridePrice ? Number.parseInt(formData.overridePrice, 10) : null;
 
 			if (editingCombo) {
 				await updateCombo(editingCombo.id, {
@@ -179,9 +172,7 @@ export default function ManageCombos({
 		setToggleLoadingIds((prev) => new Set(prev).add(combo.id));
 
 		// Optimistic update
-		setCombos((prev) =>
-			prev.map((c) => (c.id === combo.id ? { ...c, enabled: newEnabled } : c)),
-		);
+		setCombos((prev) => prev.map((c) => (c.id === combo.id ? { ...c, enabled: newEnabled } : c)));
 
 		try {
 			await toggleCombo(combo.id, newEnabled);
@@ -191,11 +182,7 @@ export default function ManageCombos({
 			console.error("Failed to toggle combo:", error);
 			toast.error("Failed to toggle combo");
 			// Revert optimistic update
-			setCombos((prev) =>
-				prev.map((c) =>
-					c.id === combo.id ? { ...c, enabled: !newEnabled } : c,
-				),
-			);
+			setCombos((prev) => prev.map((c) => (c.id === combo.id ? { ...c, enabled: !newEnabled } : c)));
 		} finally {
 			setToggleLoadingIds((prev) => {
 				const next = new Set(prev);
@@ -205,10 +192,7 @@ export default function ManageCombos({
 		}
 	};
 
-	const handleItemCheck = (
-		modifierId: number,
-		checked: boolean | "indeterminate",
-	) => {
+	const handleItemCheck = (modifierId: number, checked: boolean | "indeterminate") => {
 		setFormData((prev) => {
 			if (checked) {
 				// Add item with quantity 1 if not exists
@@ -235,15 +219,16 @@ export default function ManageCombos({
 
 		setFormData((prev) => ({
 			...prev,
-			items: prev.items.map((i) =>
-				i.dessertId === modifierId ? { ...i, quantity: qty } : i,
-			),
+			items: prev.items.map((i) => (i.dessertId === modifierId ? { ...i, quantity: qty } : i)),
 		}));
 	};
 
-	const filteredCombos = combos.filter((combo) =>
-		combo.name.toLowerCase().includes(searchTerm.toLowerCase()),
-	);
+	const filteredCombos = combos.filter((combo) => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+	const baseDessertLabel = useMemo(() => {
+		const match = bases.find((b) => b.id === formData.baseDessertId);
+		return match ? `${match.name} (₹${match.price})` : null;
+	}, [bases, formData.baseDessertId]);
 
 	return (
 		<div className="space-y-6">
@@ -264,14 +249,9 @@ export default function ManageCombos({
 
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{filteredCombos.map((combo) => (
-					<Card
-						key={combo.id}
-						className={cn("gap-0", !combo.enabled ? "opacity-60 bg-muted" : "")}
-					>
+					<Card key={combo.id} className={cn("gap-0", !combo.enabled ? "opacity-60 bg-muted" : "")}>
 						<CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-							<CardTitle className="text-base font-semibold">
-								{combo.name}
-							</CardTitle>
+							<CardTitle className="text-base font-semibold">{combo.name}</CardTitle>
 							<div className="flex items-center gap-2">
 								<Switch
 									checked={combo.enabled}
@@ -279,12 +259,7 @@ export default function ManageCombos({
 									disabled={toggleLoadingIds.has(combo.id)}
 									aria-label="Toggle combo"
 								/>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-8"
-									onClick={() => handleOpenModal(combo)}
-								>
+								<Button variant="ghost" size="icon" className="size-8" onClick={() => handleOpenModal(combo)}>
 									<Pencil className="size-4" />
 									<span className="sr-only">Edit combo</span>
 								</Button>
@@ -293,16 +268,9 @@ export default function ManageCombos({
 						<CardContent>
 							<div className="text-sm text-muted-foreground space-y-1">
 								<p>Base: {combo.baseDessert.name}</p>
-								<p>
-									Price:{" "}
-									{combo.overridePrice
-										? `₹${combo.overridePrice} (Override)`
-										: "Auto-calculated"}
-								</p>
+								<p>Price: {combo.overridePrice ? `₹${combo.overridePrice} (Override)` : "Auto-calculated"}</p>
 								<div className="mt-2">
-									<p className="font-medium text-foreground text-xs mb-1">
-										Items:
-									</p>
+									<p className="font-medium text-foreground text-xs mb-1">Items:</p>
 									<div className="flex flex-wrap gap-1">
 										{combo.items.length > 0 ? (
 											combo.items.map((item) => (
@@ -333,9 +301,7 @@ export default function ManageCombos({
 			<Dialog open={openModal} onOpenChange={setOpenModal}>
 				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>
-							{editingCombo ? "Edit Combo" : "Create New Combo"}
-						</DialogTitle>
+						<DialogTitle>{editingCombo ? "Edit Combo" : "Create New Combo"}</DialogTitle>
 					</DialogHeader>
 
 					<form onSubmit={handleSubmit} className="space-y-6">
@@ -345,9 +311,7 @@ export default function ManageCombos({
 								<Input
 									id="name"
 									value={formData.name}
-									onChange={(e) =>
-										setFormData((prev) => ({ ...prev, name: e.target.value }))
-									}
+									onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
 									placeholder="e.g. Chocolate Explosion"
 									required
 								/>
@@ -364,10 +328,10 @@ export default function ManageCombos({
 										}))
 									}
 								>
-									<SelectTrigger>
-										<SelectValue placeholder="Select base dessert" />
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder="Select base dessert">{baseDessertLabel}</SelectValue>
 									</SelectTrigger>
-									<SelectContent>
+									<SelectContent className="min-w-64">
 										{bases.map((base) => (
 											<SelectItem key={base.id} value={base.id.toString()}>
 												{base.name} (₹{base.price})
@@ -378,9 +342,7 @@ export default function ManageCombos({
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor="overridePrice">
-									Override Price (Optional) (₹)
-								</Label>
+								<Label htmlFor="overridePrice">Override Price (Optional) (₹)</Label>
 								<Input
 									id="overridePrice"
 									type="number"
@@ -402,9 +364,7 @@ export default function ManageCombos({
 									<Switch
 										id="enabled"
 										checked={formData.enabled}
-										onCheckedChange={(checked) =>
-											setFormData((prev) => ({ ...prev, enabled: checked }))
-										}
+										onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, enabled: checked }))}
 									/>
 									<Label htmlFor="enabled">Enabled</Label>
 								</div>
@@ -415,9 +375,7 @@ export default function ManageCombos({
 							<Label>Combo Items (Modifiers)</Label>
 							<div className="border rounded-md divide-y max-h-75 overflow-y-auto">
 								{modifiers.map((modifier) => {
-									const selectedItem = formData.items.find(
-										(i) => i.dessertId === modifier.id,
-									);
+									const selectedItem = formData.items.find((i) => i.dessertId === modifier.id);
 									const isSelected = !!selectedItem;
 
 									return (
@@ -429,29 +387,19 @@ export default function ManageCombos({
 												<Checkbox
 													id={`mod-${modifier.id}`}
 													checked={isSelected}
-													onCheckedChange={(checked) =>
-														handleItemCheck(modifier.id, checked)
-													}
+													onCheckedChange={(checked) => handleItemCheck(modifier.id, checked)}
 												/>
 												<div className="grid gap-0.5">
-													<Label
-														htmlFor={`mod-${modifier.id}`}
-														className="font-medium cursor-pointer"
-													>
+													<Label htmlFor={`mod-${modifier.id}`} className="font-medium cursor-pointer">
 														{modifier.name}
 													</Label>
-													<span className="text-xs text-muted-foreground">
-														+₹{modifier.price}
-													</span>
+													<span className="text-xs text-muted-foreground">+₹{modifier.price}</span>
 												</div>
 											</div>
 
 											{isSelected && (
 												<div className="flex items-center gap-2">
-													<Label
-														htmlFor={`qty-${modifier.id}`}
-														className="text-xs"
-													>
+													<Label htmlFor={`qty-${modifier.id}`} className="text-xs">
 														Qty:
 													</Label>
 													<Input
@@ -460,12 +408,7 @@ export default function ManageCombos({
 														min="1"
 														className="h-8 w-16"
 														value={selectedItem.quantity}
-														onChange={(e) =>
-															handleItemQuantityChange(
-																modifier.id,
-																e.target.value,
-															)
-														}
+														onChange={(e) => handleItemQuantityChange(modifier.id, e.target.value)}
 													/>
 												</div>
 											)}
@@ -477,12 +420,7 @@ export default function ManageCombos({
 
 						<div className="flex justify-between gap-4 pt-4 border-t">
 							{editingCombo ? (
-								<Button
-									type="button"
-									variant="destructive"
-									onClick={handleDelete}
-									disabled={isLoading}
-								>
+								<Button type="button" variant="destructive" onClick={handleDelete} disabled={isLoading}>
 									<Trash2 className="size-4 mr-2" />
 									Delete
 								</Button>
@@ -490,12 +428,7 @@ export default function ManageCombos({
 								<div />
 							)}
 							<div className="flex gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									onClick={handleCloseModal}
-									disabled={isLoading}
-								>
+								<Button type="button" variant="outline" onClick={handleCloseModal} disabled={isLoading}>
 									Cancel
 								</Button>
 								<Button type="submit" disabled={isLoading}>
