@@ -81,6 +81,7 @@ async function getBaseDesserts() {
 	const desserts = await db.query.dessertsTable.findMany({
 		where: and(
 			eq(dessertsTable.isDeleted, false),
+			eq(dessertsTable.enabled, true),
 			eq(dessertsTable.kind, "base"),
 		),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],

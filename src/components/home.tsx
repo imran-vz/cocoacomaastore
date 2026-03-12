@@ -66,10 +66,12 @@ export default function Home({
 
 	const dessertsWithInventory = useMemo(
 		() =>
-			items.map((dessert) => ({
-				...dessert,
-				inventoryQuantity: dessert.hasUnlimitedStock ? undefined : (inventoryByDessertId[dessert.id] ?? 0),
-			})),
+			items
+				.filter((dessert) => dessert.kind === "base")
+				.map((dessert) => ({
+					...dessert,
+					inventoryQuantity: dessert.hasUnlimitedStock ? undefined : (inventoryByDessertId[dessert.id] ?? 0),
+				})),
 		[items, inventoryByDessertId],
 	);
 

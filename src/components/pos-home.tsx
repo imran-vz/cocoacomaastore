@@ -84,10 +84,12 @@ export default function POSHome({
 
 	const dessertsWithInventory = useMemo(
 		() =>
-			localDesserts.map((dessert) => ({
-				...dessert,
-				inventoryQuantity: dessert.hasUnlimitedStock ? undefined : (inventoryByDessertId[dessert.id] ?? 0),
-			})),
+			localDesserts
+				.filter((dessert) => dessert.kind === "base")
+				.map((dessert) => ({
+					...dessert,
+					inventoryQuantity: dessert.hasUnlimitedStock ? undefined : (inventoryByDessertId[dessert.id] ?? 0),
+				})),
 		[localDesserts, inventoryByDessertId],
 	);
 
