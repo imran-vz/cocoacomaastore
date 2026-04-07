@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, Infinity as InfinityIcon, Pencil } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
 	createDessert,
@@ -66,6 +66,8 @@ export function DessertsTable({
 	const [openModal, setOpenModal] = useState(false);
 	const [isFormLoading, setIsFormLoading] = useState(false);
 	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
+
+	const allDessertNames = useMemo(() => desserts.map((d) => d.name), [desserts]);
 
 	const filteredDesserts = desserts.filter((dessert) => dessert.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -411,6 +413,7 @@ export function DessertsTable({
 						onSubmit={handleSubmit}
 						onDelete={handleDelete}
 						isLoading={isFormLoading}
+						existingNames={editingDessert ? allDessertNames.filter((n) => n !== editingDessert.name) : allDessertNames}
 					/>
 				</DialogContent>
 			</Dialog>

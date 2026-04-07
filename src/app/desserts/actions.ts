@@ -107,21 +107,32 @@ export async function createDessert(
 
 	const start = performance.now();
 
-	// Create dessert in database
-	const [newDessert] = await db
-		.insert(dessertsTable)
-		.values({
-			...validated,
-			description: sanitizedDescription,
-		})
-		.returning({ id: dessertsTable.id });
+	try {
+		// Create dessert in database
+		const [newDessert] = await db
+			.insert(dessertsTable)
+			.values({
+				...validated,
+				description: sanitizedDescription,
+			})
+			.returning({ id: dessertsTable.id });
 
-	// Initialize sequence in Redis
-	await initializeSequence(newDessert.id);
+		// Initialize sequence in Redis
+		await initializeSequence(newDessert.id);
 
-	const duration = performance.now() - start;
-	console.log(`createDessert: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts", "max");
+		const duration = performance.now() - start;
+		console.log(`createDessert: ${duration.toFixed(2)}ms`);
+		revalidateTag("desserts", "max");
+	} catch (error: unknown) {
+		if (
+			error instanceof Error &&
+			"code" in error &&
+			(error as { code: string }).code === "23505"
+		) {
+			throw new Error("A dessert with this name already exists");
+		}
+		throw error;
+	}
 }
 
 export async function updateDessert(
@@ -137,20 +148,31 @@ export async function updateDessert(
 		: null;
 
 	const start = performance.now();
-	await db
-		.update(dessertsTable)
-		.set({
-			name: validated.data.name,
-			description: sanitizedDescription,
-			price: validated.data.price,
-			kind: validated.data.kind,
-			isOutOfStock: validated.data.isOutOfStock,
-			hasUnlimitedStock: validated.data.hasUnlimitedStock,
-		})
-		.where(eq(dessertsTable.id, validated.id));
-	const duration = performance.now() - start;
-	console.log(`updateDessert: ${duration.toFixed(2)}ms`);
-	revalidateTag("desserts", "max");
+	try {
+		await db
+			.update(dessertsTable)
+			.set({
+				name: validated.data.name,
+				description: sanitizedDescription,
+				price: validated.data.price,
+				kind: validated.data.kind,
+				isOutOfStock: validated.data.isOutOfStock,
+				hasUnlimitedStock: validated.data.hasUnlimitedStock,
+			})
+			.where(eq(dessertsTable.id, validated.id));
+		const duration = performance.now() - start;
+		console.log(`updateDessert: ${duration.toFixed(2)}ms`);
+		revalidateTag("desserts", "max");
+	} catch (error: unknown) {
+		if (
+			error instanceof Error &&
+			"code" in error &&
+			(error as { code: string }).code === "23505"
+		) {
+			throw new Error("A dessert with this name already exists");
+		}
+		throw error;
+	}
 }
 
 export async function deleteDessert(id: number) {
@@ -161,9 +183,21 @@ export async function deleteDessert(id: number) {
 
 	const start = performance.now();
 
+	// Fetch current name first, then rename on delete to free up the unique constraint
+	const [current] = await db
+		.select({ name: dessertsTable.name })
+		.from(dessertsTable)
+		.where(eq(dessertsTable.id, validatedId));
+
+	const suffix = `_deleted_${Date.now()}`;
+	const baseName = current?.name ?? "deleted";
+	const deletedName = baseName.length + suffix.length > 255
+		? `${baseName.slice(0, 255 - suffix.length)}${suffix}`
+		: `${baseName}${suffix}`;
+
 	await db
 		.update(dessertsTable)
-		.set({ isDeleted: true })
+		.set({ isDeleted: true, name: deletedName })
 		.where(eq(dessertsTable.id, validatedId));
 
 	const duration = performance.now() - start;

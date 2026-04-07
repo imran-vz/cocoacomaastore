@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { boolean, index, integer, numeric, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 
 export const dessertsTable = pgTable(
@@ -24,6 +24,7 @@ export const dessertsTable = pgTable(
 		index("desserts_sequence_idx").on(table.sequence),
 		index("desserts_kind_idx").on(table.kind),
 		index("desserts_active_idx").on(table.isDeleted, table.enabled, table.sequence),
+		uniqueIndex("desserts_name_unique_active").on(sql`LOWER(${table.name})`).where(sql`"isDeleted" = false`),
 	],
 );
 

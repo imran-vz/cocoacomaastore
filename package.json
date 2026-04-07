@@ -22,6 +22,7 @@
 		"@tabler/icons-react": "^3.36.1",
 		"@tanstack/react-form": "^1.28.3",
 		"@tanstack/react-store": "^0.8.1",
+		"@types/bun": "^1.3.11",
 		"bcryptjs": "^3.0.3",
 		"better-auth": "^1.4.18",
 		"blob-stream": "^0.1.3",
