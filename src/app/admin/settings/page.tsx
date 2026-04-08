@@ -20,7 +20,7 @@ export default async function AdminSettingsPage() {
 	}
 
 	return (
-		<div className="flex-1 p-4 md:p-8 pt-6">
+		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-4xl mx-auto">
 			<div className="mb-6">
 				<h2 className="text-2xl md:text-3xl font-bold tracking-tight">
 					Settings
@@ -39,6 +39,6 @@ export default async function AdminSettingsPage() {
 					}}
 				/>
 			</div>
-		</div>
+		</main>
 	);
 }

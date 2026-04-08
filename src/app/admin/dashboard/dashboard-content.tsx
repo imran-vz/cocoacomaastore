@@ -80,7 +80,7 @@ export function DashboardContent({
 		stats.dayOrdersCount > 0 ? stats.dayRevenue / stats.dayOrdersCount : 0;
 
 	return (
-		<div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+		<div className="space-y-4">
 			{/* Header */}
 			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 				<div>
