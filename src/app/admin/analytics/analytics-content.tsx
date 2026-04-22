@@ -90,7 +90,9 @@ export function AnalyticsContent({
 		initialMonthlyRevenue.find((r) => r.month === selectedMonth)?.grossRevenue ?? monthlyDessertTotal;
 
 	// Prepare chart data for monthly revenue — show every month of the current
-	// year on the x-axis, populating real data where available and zeros otherwise.
+	// year on the x-axis. Months without real data get `null` so Recharts skips
+	// them, making the line cut off at the last known value instead of
+	// collapsing to zero for future months.
 	const revenueByMonth = new Map(initialMonthlyRevenue.map((r) => [r.month, r]));
 	const currentYear = new Date().getFullYear();
 	const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
@@ -98,8 +100,8 @@ export function AnalyticsContent({
 		const data = revenueByMonth.get(monthKey);
 		return {
 			month: formatMonth(monthKey),
-			revenue: data?.grossRevenue ?? 0,
-			orders: data?.orderCount ?? 0,
+			revenue: data?.grossRevenue ?? null,
+			orders: data?.orderCount ?? null,
 		};
 	});
 
