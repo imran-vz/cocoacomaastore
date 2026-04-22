@@ -89,12 +89,19 @@ export function AnalyticsContent({
 	const selectedMonthRevenue =
 		initialMonthlyRevenue.find((r) => r.month === selectedMonth)?.grossRevenue ?? monthlyDessertTotal;
 
-	// Prepare chart data for monthly revenue
-	const monthlyChartData = initialMonthlyRevenue.map((r) => ({
-		month: formatMonth(r.month),
-		revenue: r.grossRevenue,
-		orders: r.orderCount,
-	}));
+	// Prepare chart data for monthly revenue — show every month of the current
+	// year on the x-axis, populating real data where available and zeros otherwise.
+	const revenueByMonth = new Map(initialMonthlyRevenue.map((r) => [r.month, r]));
+	const currentYear = new Date().getFullYear();
+	const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
+		const monthKey = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+		const data = revenueByMonth.get(monthKey);
+		return {
+			month: formatMonth(monthKey),
+			revenue: data?.grossRevenue ?? 0,
+			orders: data?.orderCount ?? 0,
+		};
+	});
 
 	// Prepare pie chart data for dessert revenue
 	const pieChartData = dessertRevenue.slice(0, 8).map((d) => ({
@@ -156,7 +163,7 @@ export function AnalyticsContent({
 					<CardDescription>Revenue and order count by month</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{monthlyChartData.length === 0 ? (
+					{initialMonthlyRevenue.length === 0 ? (
 						<div className="h-80 flex items-center justify-center text-muted-foreground">
 							No monthly revenue data available yet. Data will appear after the analytics worker processes completed
 							months.
