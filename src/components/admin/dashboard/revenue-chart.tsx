@@ -37,6 +37,8 @@ export default function RevenueChart({ data, isLoading }: { data: DailyRevenue[]
 
 	const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
 	const totalOrders = data.reduce((sum, d) => sum + d.orders, 0);
+	const formatChartMetric = (value: string | number | Array<string | number>, name: string | number) =>
+		name === "revenue" ? formatCurrency(value as number) : value;
 
 	return (
 		<Card className="col-span-4">
@@ -79,11 +81,9 @@ export default function RevenueChart({ data, isLoading }: { data: DailyRevenue[]
 							content={
 								<ChartTooltipContent
 									formatter={(value, name) => (
-										<div className="flex items-center justify-between gap-8">
-											<span className="text-muted-foreground">{name === "revenue" ? "Revenue" : name}</span>
-											<span className="font-mono font-medium">
-												{name === "revenue" ? formatCurrency(value as number) : value}
-											</span>
+										<div className="flex w-full items-center justify-between gap-8">
+											<span className="text-muted-foreground">{name === "revenue" ? "Revenue" : "Orders"}</span>
+											<span className="font-mono font-medium tabular-nums">{formatChartMetric(value, name)}</span>
 										</div>
 									)}
 								/>

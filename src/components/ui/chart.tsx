@@ -179,12 +179,12 @@ function ChartTooltipContent({
 	return (
 		<div
 			className={cn(
-				"border-border/50 bg-background gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs shadow-xl grid min-w-32 items-start",
+				"bg-popover text-popover-foreground ring-foreground/10 grid min-w-38 gap-2 rounded-xl border px-3 py-2.5 text-xs shadow-lg ring-1",
 				className,
 			)}
 		>
 			{!nestLabel ? tooltipLabel : null}
-			<div className="grid gap-1.5">
+			<div className="grid gap-2">
 				{payload
 					.filter((item) => item.type !== "none")
 					.map((item, index) => {
@@ -227,7 +227,7 @@ function ChartTooltipContent({
 										)}
 										<div
 											className={cn(
-												"flex flex-1 justify-between leading-none",
+												"flex flex-1 justify-between gap-6 leading-none",
 												nestLabel ? "items-end" : "items-center",
 											)}
 										>
@@ -235,7 +235,7 @@ function ChartTooltipContent({
 												{nestLabel ? tooltipLabel : null}
 												<span className="text-muted-foreground">{itemConfig?.label || item.name}</span>
 											</div>
-											{item.value && (
+											{item.value !== undefined && item.value !== null && (
 												<span className="text-foreground font-mono font-medium tabular-nums">
 													{item.value.toLocaleString()}
 												</span>

@@ -3,22 +3,17 @@
 import { IconCalendar, IconChartBar, IconCookie, IconTrendingUp } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-import {
-	Bar,
-	CartesianGrid,
-	Cell,
-	ComposedChart,
-	Legend,
-	Line,
-	Pie,
-	PieChart,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-	YAxis,
-} from "recharts";
+import { Bar, CartesianGrid, Cell, ComposedChart, Line, Pie, PieChart, XAxis, YAxis } from "recharts";
 import type { MonthlyDessertRevenue, MonthlyRevenue } from "@/app/admin/dashboard/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	type ChartConfig,
+	ChartContainer,
+	ChartLegend,
+	ChartLegendContent,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -49,6 +44,24 @@ const COLORS = [
 	"#be185d", // rose-700
 ];
 
+const monthlyRevenueChartConfig = {
+	revenue: {
+		label: "Revenue",
+		color: "#f2b38d",
+	},
+	orders: {
+		label: "Orders",
+		color: "#12877f",
+	},
+} satisfies ChartConfig;
+
+const dessertRevenueChartConfig = {
+	value: {
+		label: "Revenue",
+		color: "var(--chart-1)",
+	},
+} satisfies ChartConfig;
+
 function formatMonth(month: string): string {
 	const [year, monthNum] = month.split("-");
 	const date = new Date(Number(year), Number(monthNum) - 1);
@@ -57,6 +70,11 @@ function formatMonth(month: string): string {
 
 function toNumber(value: unknown): number {
 	return typeof value === "number" ? value : Number(value ?? 0);
+}
+
+function formatChartValue(value: unknown, name: unknown) {
+	const metricName = String(name);
+	return metricName === "Revenue" || metricName === "revenue" ? formatCurrency(toNumber(value)) : toNumber(value);
 }
 
 async function fetchMonthlyDessertRevenue(month: string, signal?: AbortSignal): Promise<MonthlyDessertRevenue[]> {
@@ -209,7 +227,7 @@ export function AnalyticsContent({
 							months.
 						</div>
 					) : (
-						<ResponsiveContainer width="100%" height={320}>
+						<ChartContainer config={monthlyRevenueChartConfig} className="h-80 w-full">
 							<ComposedChart data={monthlyChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
 								<CartesianGrid strokeDasharray="3 8" vertical={false} stroke="var(--border)" strokeOpacity={0.75} />
 								<XAxis dataKey="month" axisLine={false} tickLine={false} tickMargin={12} />
@@ -229,17 +247,23 @@ export function AnalyticsContent({
 									tickMargin={12}
 									width={34}
 								/>
-								<Tooltip
-									formatter={(value, name) => [
-										name === "Revenue" ? formatCurrency(toNumber(value)) : toNumber(value),
-										name,
-									]}
+								<ChartTooltip
+									content={
+										<ChartTooltipContent
+											formatter={(value, name) => (
+												<div className="flex w-full items-center justify-between gap-8">
+													<span className="text-muted-foreground">{String(name)}</span>
+													<span className="font-mono font-medium tabular-nums">{formatChartValue(value, name)}</span>
+												</div>
+											)}
+										/>
+									}
 								/>
-								<Legend />
+								<ChartLegend content={<ChartLegendContent />} />
 								<Bar
 									yAxisId="revenue"
 									dataKey="revenue"
-									fill="#f2b38d"
+									fill="var(--color-revenue)"
 									name="Revenue"
 									radius={[4, 4, 0, 0]}
 									barSize={26}
@@ -248,7 +272,7 @@ export function AnalyticsContent({
 									yAxisId="orders"
 									type="monotone"
 									dataKey="orders"
-									stroke="#12877f"
+									stroke="var(--color-orders)"
 									strokeWidth={3}
 									name="Orders"
 									dot={false}
@@ -256,11 +280,11 @@ export function AnalyticsContent({
 										r: 4,
 										strokeWidth: 2,
 										stroke: "var(--background)",
-										fill: "#12877f",
+										fill: "var(--color-orders)",
 									}}
 								/>
 							</ComposedChart>
-						</ResponsiveContainer>
+						</ChartContainer>
 					)}
 				</CardContent>
 			</Card>
@@ -350,7 +374,7 @@ export function AnalyticsContent({
 						{pieChartData.length === 0 ? (
 							<div className="h-80 flex items-center justify-center text-muted-foreground">No data available</div>
 						) : (
-							<ResponsiveContainer width="100%" height={320}>
+							<ChartContainer config={dessertRevenueChartConfig} className="h-80 w-full">
 								<PieChart>
 									<Pie
 										data={pieChartData}
@@ -371,9 +395,25 @@ export function AnalyticsContent({
 											<Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
 										))}
 									</Pie>
-									<Tooltip formatter={(value) => formatCurrency(toNumber(value))} />
+									<ChartTooltip
+										shared={false}
+										content={
+											<ChartTooltipContent
+												hideLabel
+												nameKey="name"
+												formatter={(value, name) => (
+													<div className="flex w-full items-center justify-between gap-8">
+														<span className="text-muted-foreground">{String(name)}</span>
+														<span className="font-mono font-medium tabular-nums">
+															{formatCurrency(toNumber(value))}
+														</span>
+													</div>
+												)}
+											/>
+										}
+									/>
 								</PieChart>
-							</ResponsiveContainer>
+							</ChartContainer>
 						)}
 					</CardContent>
 				</Card>
