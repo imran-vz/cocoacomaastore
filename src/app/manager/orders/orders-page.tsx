@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, Package, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -24,7 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { cancelOrder, type GetOrdersReturnType, getCachedOrders } from "./actions";
+import { cancelOrder, type GetOrdersReturnType } from "./actions";
 
 function formatTime(date: Date | string) {
 	const d = typeof date === "string" ? new Date(date) : date;
@@ -43,7 +44,13 @@ const CANCELLATION_REASONS = [
 	"Wrong order placed",
 	"Payment issue",
 ];
-function OrderCard({ order, onOrderCancelled }: { order: GetOrdersReturnType[number]; onOrderCancelled: () => void }) {
+function OrderCard({
+	order,
+	onCancelOrder,
+}: {
+	order: GetOrdersReturnType[number];
+	onCancelOrder: (orderId: number, reason?: string) => Promise<void>;
+}) {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 	const [cancelReason, setCancelReason] = useState("");
@@ -52,11 +59,10 @@ function OrderCard({ order, onOrderCancelled }: { order: GetOrdersReturnType[num
 	const handleCancelOrder = async () => {
 		setIsCancelling(true);
 		try {
-			await cancelOrder(order.id, cancelReason.trim() || undefined);
+			await onCancelOrder(order.id, cancelReason.trim() || undefined);
 			toast.success(`Order #${order.id} has been cancelled`);
 			setIsCancelDialogOpen(false);
 			setCancelReason("");
-			onOrderCancelled();
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : "Failed to cancel order");
 		} finally {
@@ -260,16 +266,56 @@ function OrderCard({ order, onOrderCancelled }: { order: GetOrdersReturnType[num
 	);
 }
 
-export default function OrdersPage({ initialOrders }: { initialOrders: GetOrdersReturnType }) {
-	const [orders, setOrders] = useState(initialOrders);
-	const [isLoading, setIsLoading] = useState(false);
+async function fetchManagerOrders(signal?: AbortSignal): Promise<GetOrdersReturnType> {
+	const response = await fetch("/api/manager/orders", {
+		cache: "no-store",
+		signal,
+	});
 
-	const refetch = useCallback(() => {
-		setIsLoading(true);
-		getCachedOrders()
-			.then(setOrders)
-			.finally(() => setIsLoading(false));
-	}, []);
+	if (!response.ok) {
+		throw new Error(`Failed to fetch manager orders (${response.status})`);
+	}
+
+	return response.json();
+}
+
+export default function OrdersPage({ initialOrders }: { initialOrders: GetOrdersReturnType }) {
+	const queryClient = useQueryClient();
+	const {
+		data: orders,
+		error,
+		isFetching,
+		refetch,
+	} = useQuery({
+		queryKey: ["manager-orders", "today"],
+		queryFn: ({ signal }) => fetchManagerOrders(signal),
+		initialData: initialOrders,
+		staleTime: 30_000,
+		gcTime: 5 * 60_000,
+	});
+	const cancelOrderMutation = useMutation({
+		mutationFn: ({ orderId, reason }: { orderId: number; reason?: string }) => cancelOrder(orderId, reason),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["manager-orders", "today"] });
+		},
+	});
+
+	const refreshOrders = useCallback(() => {
+		refetch();
+	}, [refetch]);
+
+	const cancelOrderWithInvalidation = useCallback(
+		async (orderId: number, reason?: string) => {
+			await cancelOrderMutation.mutateAsync({ orderId, reason });
+		},
+		[cancelOrderMutation],
+	);
+
+	if (error) {
+		console.error("Failed to fetch manager orders:", error);
+	}
+
+	const isLoading = isFetching || cancelOrderMutation.isPending;
 
 	const [todayLabel, setTodayLabel] = useState("");
 
@@ -299,7 +345,7 @@ export default function OrdersPage({ initialOrders }: { initialOrders: GetOrders
 				<Button
 					variant="outline"
 					size="sm"
-					onClick={refetch}
+					onClick={refreshOrders}
 					disabled={isLoading}
 					className={isLoading ? "animate-pulse" : ""}
 				>
@@ -330,7 +376,7 @@ export default function OrdersPage({ initialOrders }: { initialOrders: GetOrders
 			{/* Orders List */}
 			<div className="space-y-4">
 				{orders.length > 0 ? (
-					orders.map((order) => <OrderCard key={order.id} order={order} onOrderCancelled={refetch} />)
+					orders.map((order) => <OrderCard key={order.id} order={order} onCancelOrder={cancelOrderWithInvalidation} />)
 				) : (
 					<Card className="py-12 border-dashed">
 						<div className="flex flex-col items-center justify-center text-center text-muted-foreground">

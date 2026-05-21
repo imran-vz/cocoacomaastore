@@ -1,5 +1,5 @@
 import { TrendingUp } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
 import type { DailyRevenue } from "@/app/admin/dashboard/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
@@ -63,22 +63,18 @@ export default function RevenueChart({ data, isLoading }: { data: DailyRevenue[]
 			</CardHeader>
 			<CardContent>
 				<ChartContainer config={chartConfig} className="h-75 w-full">
-					<AreaChart accessibilityLayer data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-						<defs>
-							<linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-								<stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={0.3} />
-								<stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0} />
-							</linearGradient>
-						</defs>
-						<CartesianGrid strokeDasharray="3 3" vertical={false} />
+					<ComposedChart accessibilityLayer data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+						<CartesianGrid strokeDasharray="3 8" vertical={false} />
 						<XAxis dataKey="date" axisLine={false} tickLine={false} tickMargin={10} />
 						<YAxis
+							yAxisId="revenue"
 							axisLine={false}
 							tickLine={false}
 							tickMargin={10}
 							tickFormatter={(value) => (value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`)}
 							width={50}
 						/>
+						<YAxis yAxisId="orders" orientation="right" axisLine={false} tickLine={false} tickMargin={10} width={34} />
 						<ChartTooltip
 							content={
 								<ChartTooltipContent
@@ -93,14 +89,22 @@ export default function RevenueChart({ data, isLoading }: { data: DailyRevenue[]
 								/>
 							}
 						/>
-						<Area
+						<Bar yAxisId="revenue" dataKey="revenue" fill="#f2b38d" radius={[4, 4, 0, 0]} barSize={28} />
+						<Line
+							yAxisId="orders"
 							type="monotone"
-							dataKey="revenue"
-							stroke="var(--color-revenue)"
-							strokeWidth={2}
-							fill="url(#revenueGradient)"
+							dataKey="orders"
+							stroke="#12877f"
+							strokeWidth={3}
+							dot={false}
+							activeDot={{
+								r: 4,
+								strokeWidth: 2,
+								stroke: "var(--background)",
+								fill: "#12877f",
+							}}
 						/>
-					</AreaChart>
+					</ComposedChart>
 				</ChartContainer>
 			</CardContent>
 		</Card>

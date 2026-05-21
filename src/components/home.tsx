@@ -1,11 +1,11 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
+import { useQuery } from "@tanstack/react-query";
 import { use, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import type { ModifierDessert } from "@/app/combos/actions";
-import { getCachedTodayInventory } from "@/app/manager/inventory/actions";
 import { Cart } from "@/components/cart";
 import { DessertList } from "@/components/dessert-list";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -17,6 +17,24 @@ import { Receipt } from "./receipt";
 
 function generateCartLineId(): string {
 	return `cl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+type InventoryRow = {
+	dessertId: number;
+	quantity: number;
+};
+
+async function fetchTodayInventory(signal?: AbortSignal): Promise<InventoryRow[]> {
+	const response = await fetch("/api/manager/inventory/today", {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch inventory (${response.status})`);
+	}
+
+	return response.json();
 }
 
 export default function Home({
@@ -37,15 +55,30 @@ export default function Home({
 	const initialInventory = use(inventory);
 	const combosList = use(combos);
 	const modifiersList = use(modifierDesserts);
+	const {
+		data: inventoryRows,
+		error: inventoryError,
+		refetch: refetchInventory,
+	} = useQuery({
+		queryKey: ["inventory", "today"],
+		queryFn: ({ signal }) => fetchTodayInventory(signal),
+		initialData: initialInventory,
+		staleTime: 30_000,
+		gcTime: 5 * 60_000,
+	});
 
 	const [cart, setCart] = useState<CartLine[]>([]);
-	const [inventoryByDessertId, setInventoryByDessertId] = useState<Record<number, number>>(() => {
+	const inventoryByDessertId = useMemo(() => {
 		const next: Record<number, number> = {};
-		for (const row of initialInventory) {
+		for (const row of inventoryRows) {
 			next[row.dessertId] = row.quantity;
 		}
 		return next;
-	});
+	}, [inventoryRows]);
+
+	if (inventoryError) {
+		console.error("Failed to fetch inventory:", inventoryError);
+	}
 
 	const availableCombos = useMemo(() => {
 		return combosList.filter((combo) => {
@@ -75,18 +108,7 @@ export default function Home({
 	);
 
 	const refreshInventory = async () => {
-		try {
-			const latest = await getCachedTodayInventory();
-			setInventoryByDessertId(() => {
-				const next: Record<number, number> = {};
-				for (const row of latest) {
-					next[row.dessertId] = row.quantity;
-				}
-				return next;
-			});
-		} catch (error) {
-			console.error(error);
-		}
+		await refetchInventory();
 	};
 
 	// Calculate used inventory in cart per base dessert

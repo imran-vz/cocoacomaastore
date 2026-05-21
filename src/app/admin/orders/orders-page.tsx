@@ -1,14 +1,14 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Package, User } from "lucide-react";
 import { parseAsInteger, useQueryState } from "nuqs";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DateSwitcher } from "@/components/date-switcher";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { GetOrdersReturnType } from "./actions";
-import { getCachedOrders } from "./actions";
 import { OrderCard } from "./order-card";
 
 function formatDateString(date: Date): string {
@@ -28,13 +28,38 @@ function OrdersSkeleton() {
 	);
 }
 
+async function fetchAdminOrders(dateString: string, signal?: AbortSignal): Promise<GetOrdersReturnType> {
+	const response = await fetch(`/api/admin/orders?date=${encodeURIComponent(dateString)}`, {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch admin orders (${response.status})`);
+	}
+
+	return response.json();
+}
+
 export default function AdminOrdersPage({ initialOrders }: { initialOrders: GetOrdersReturnType }) {
-	const [orders, setOrders] = useState(initialOrders);
-	const [isLoading, setIsLoading] = useState(false);
+	const [initialDateString] = useState(() => formatDateString(new Date()));
 	const [selectedDate, setSelectedDate] = useState<Date>(() => {
 		const d = new Date();
 		d.setHours(0, 0, 0, 0);
 		return d;
+	});
+	const selectedDateString = useMemo(() => formatDateString(selectedDate), [selectedDate]);
+	const {
+		data: queriedOrders,
+		error,
+		isFetching: isLoading,
+	} = useQuery({
+		queryKey: ["admin-orders", selectedDateString],
+		queryFn: ({ signal }) => fetchAdminOrders(selectedDateString, signal),
+		initialData: selectedDateString === initialDateString ? initialOrders : undefined,
+		placeholderData: (previousData) => previousData,
+		staleTime: 60_000,
+		gcTime: 10 * 60_000,
 	});
 
 	// Use nuqs to manage the orderId query parameter
@@ -42,20 +67,15 @@ export default function AdminOrdersPage({ initialOrders }: { initialOrders: GetO
 
 	const orderRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-	const handleDateChange = useCallback(async (date: Date) => {
+	const handleDateChange = useCallback((date: Date) => {
 		setSelectedDate(date);
-		setIsLoading(true);
-
-		try {
-			const dateString = formatDateString(date);
-			const newOrders = await getCachedOrders(dateString);
-			setOrders(newOrders);
-		} catch (error) {
-			console.error("Failed to fetch orders:", error);
-		} finally {
-			setIsLoading(false);
-		}
 	}, []);
+
+	if (error) {
+		console.error("Failed to fetch orders:", error);
+	}
+
+	const orders = queriedOrders ?? [];
 
 	// Scroll to order if query param exists
 	useEffect(() => {

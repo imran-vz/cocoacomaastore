@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Package, Pencil, Plus } from "lucide-react";
 import { use, useEffect } from "react";
 
@@ -14,12 +15,32 @@ import {
 	type BaseDessert,
 	createCombo,
 	deleteCombo,
-	getCachedAllCombos,
 	type ModifierDessert,
 	toggleCombo,
 	updateCombo,
 	updateComboItems,
 } from "./actions";
+
+const combosQueryKey = ["admin-combos"] as const;
+
+type CombosPayload = {
+	combos: ComboWithDetails[];
+	baseDesserts: BaseDessert[];
+	modifierDesserts: ModifierDessert[];
+};
+
+async function fetchCombosPayload(signal?: AbortSignal): Promise<CombosPayload> {
+	const response = await fetch("/api/admin/combos", {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch admin combos (${response.status})`);
+	}
+
+	return response.json();
+}
 
 function getDisplayPrice(combo: ComboWithDetails) {
 	if (combo.overridePrice !== null) return combo.overridePrice;
@@ -36,23 +57,44 @@ export default function ManageCombos({
 	baseDesserts: Promise<BaseDessert[]>;
 	modifierDesserts: Promise<ModifierDessert[]>;
 }) {
-	const initial = use(initialCombos);
-	const bases = use(baseDesserts);
-	const modifiers = use(modifierDesserts);
+	const initialPayload = {
+		combos: use(initialCombos),
+		baseDesserts: use(baseDesserts),
+		modifierDesserts: use(modifierDesserts),
+	};
+	const queryClient = useQueryClient();
+	const { data, error } = useQuery({
+		queryKey: combosQueryKey,
+		queryFn: ({ signal }) => fetchCombosPayload(signal),
+		initialData: initialPayload,
+		staleTime: 60_000,
+		gcTime: 10 * 60_000,
+	});
 
 	const { combos, searchTerm, toggleLoadingIds, init, setSearchTerm, openCreateModal, openEditModal, handleToggle } =
 		useComboStore();
 
 	useEffect(() => {
-		init(initial, bases, modifiers, {
+		init(data.combos, data.baseDesserts, data.modifierDesserts, {
 			createCombo,
 			updateCombo,
 			deleteCombo,
 			toggleCombo,
 			updateComboItems,
-			refetchCombos: getCachedAllCombos,
+			refetchCombos: async () => {
+				const latest = await queryClient.fetchQuery({
+					queryKey: combosQueryKey,
+					queryFn: ({ signal }) => fetchCombosPayload(signal),
+					staleTime: 0,
+				});
+				return latest.combos;
+			},
 		});
-	}, [initial, bases, modifiers, init]);
+	}, [data, init, queryClient]);
+
+	if (error) {
+		console.error("Failed to fetch admin combos:", error);
+	}
 
 	const filteredCombos = combos.filter((combo) => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
 	const enabledCombos = filteredCombos.filter((c) => c.enabled);

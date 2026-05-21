@@ -13,15 +13,19 @@
 		"lint:fix": "biome check --write src",
 		"format": "biome format --write src",
 		"typecheck": "tsc --noEmit",
-		"analytics": "bun run src/scripts/compile-analytics.ts",
-		"analytics:backfill": "bun run src/scripts/compile-analytics.ts --backfill",
-		"analytics:backfill:force": "bun run src/scripts/compile-analytics.ts --backfill --force"
+		"trigger:dev": "trigger dev",
+		"trigger:deploy": "trigger deploy",
+		"analytics:trigger": "bun run scripts/trigger-analytics.ts",
+		"analytics:trigger:daily": "bun run scripts/trigger-analytics.ts daily",
+		"analytics:trigger:monthly": "bun run scripts/trigger-analytics.ts monthly"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.5.0",
 		"@tabler/icons-react": "^3.44.0",
 		"@tanstack/react-form": "^1.32.0",
+		"@tanstack/react-query": "5.100.11",
 		"@tanstack/react-store": "^0.8.1",
+		"@trigger.dev/sdk": "4.4.6",
 		"bcryptjs": "^3.0.3",
 		"better-auth": "^1.6.11",
 		"blob-stream": "^0.1.3",
@@ -50,6 +54,7 @@
 	"devDependencies": {
 		"@biomejs/biome": "2.4.0",
 		"@tailwindcss/postcss": "^4.3.0",
+		"@trigger.dev/build": "4.4.6",
 		"@types/bun": "^1.3.14",
 		"@types/react": "^19.2.15",
 		"@types/react-dom": "^19.2.3",
@@ -58,6 +63,7 @@
 		"knip": "^5.88.1",
 		"shadcn": "^3.8.5",
 		"tailwindcss": "^4.3.0",
+		"trigger.dev": "4.4.6",
 		"tsx": "^4.22.3",
 		"typescript": "^5.9.3"
 	},

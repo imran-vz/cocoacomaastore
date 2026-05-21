@@ -1,5 +1,6 @@
 "use client";
 
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { use, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -8,10 +9,23 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Dessert } from "@/lib/types";
-import { getCachedTodayInventory, type TodayInventoryRow, upsertTodayInventory } from "./actions";
+import { type TodayInventoryRow, upsertTodayInventory } from "./actions";
 
 function toInventoryMap(rows: TodayInventoryRow[]) {
 	return new Map(rows.map((r) => [r.dessertId, r.quantity] as const));
+}
+
+async function fetchTodayInventory(signal?: AbortSignal): Promise<TodayInventoryRow[]> {
+	const response = await fetch("/api/manager/inventory/today", {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch today's inventory (${response.status})`);
+	}
+
+	return response.json();
 }
 
 export default function InventoryPage({
@@ -21,11 +35,28 @@ export default function InventoryPage({
 	initialDesserts: Promise<Dessert[]>;
 	initialInventory: Promise<TodayInventoryRow[]>;
 }) {
+	const queryClient = useQueryClient();
 	const desserts = use(initialDesserts);
-	const inventoryRows = use(initialInventory);
+	const serverInventoryRows = use(initialInventory);
+	const {
+		data: inventoryRows,
+		error: inventoryError,
+		refetch: refetchInventory,
+	} = useQuery({
+		queryKey: ["inventory", "today"],
+		queryFn: ({ signal }) => fetchTodayInventory(signal),
+		initialData: serverInventoryRows,
+		staleTime: 30_000,
+		gcTime: 5 * 60_000,
+	});
 	const inventoryMap = useMemo(() => toInventoryMap(inventoryRows), [inventoryRows]);
+	const saveInventoryMutation = useMutation({
+		mutationFn: upsertTodayInventory,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["inventory", "today"] });
+		},
+	});
 
-	const [isSaving, setIsSaving] = useState(false);
 	const [quantities, setQuantities] = useState<Record<number, string>>(() => {
 		const initial: Record<number, string> = {};
 		for (const dessert of desserts) {
@@ -46,15 +77,14 @@ export default function InventoryPage({
 
 	const handleSave = async () => {
 		try {
-			setIsSaving(true);
-			await upsertTodayInventory(
+			await saveInventoryMutation.mutateAsync(
 				desserts.map((d) => ({
 					dessertId: d.id,
 					quantity: Number.parseInt(quantities[d.id] ?? "0", 10),
 				})),
 			);
 
-			const latest = await getCachedTodayInventory();
+			const { data: latest = [] } = await refetchInventory();
 			const latestMap = toInventoryMap(latest);
 			setQuantities((prev) => {
 				const next: Record<number, string> = { ...prev };
@@ -68,10 +98,14 @@ export default function InventoryPage({
 		} catch (error) {
 			console.error(error);
 			toast.error("Failed to save inventory");
-		} finally {
-			setIsSaving(false);
 		}
 	};
+
+	if (inventoryError) {
+		console.error("Failed to fetch today's inventory:", inventoryError);
+	}
+
+	const isSaving = saveInventoryMutation.isPending;
 
 	return (
 		<div className="space-y-4">

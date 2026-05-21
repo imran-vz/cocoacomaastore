@@ -47,3 +47,5 @@ certificates
 
 postgres-data
 redis-data
+
+.trigger

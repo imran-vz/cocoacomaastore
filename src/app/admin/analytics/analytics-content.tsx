@@ -1,7 +1,8 @@
 "use client";
 
 import { IconCalendar, IconChartBar, IconCookie, IconTrendingUp } from "@tabler/icons-react";
-import { useCallback, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
 import {
 	Bar,
 	CartesianGrid,
@@ -16,11 +17,7 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
-import {
-	getCachedMonthlyDessertRevenue,
-	type MonthlyDessertRevenue,
-	type MonthlyRevenue,
-} from "@/app/admin/dashboard/actions";
+import type { MonthlyDessertRevenue, MonthlyRevenue } from "@/app/admin/dashboard/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,6 +59,19 @@ function toNumber(value: unknown): number {
 	return typeof value === "number" ? value : Number(value ?? 0);
 }
 
+async function fetchMonthlyDessertRevenue(month: string, signal?: AbortSignal): Promise<MonthlyDessertRevenue[]> {
+	const response = await fetch(`/api/admin/analytics/monthly-dessert-revenue?month=${encodeURIComponent(month)}`, {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch monthly dessert revenue (${response.status})`);
+	}
+
+	return response.json();
+}
+
 export function AnalyticsContent({
 	monthlyRevenue: initialMonthlyRevenue,
 	monthlyDessertRevenue: initialDessertRevenue,
@@ -69,26 +79,39 @@ export function AnalyticsContent({
 	initialMonth,
 }: AnalyticsContentProps) {
 	const [selectedMonth, setSelectedMonth] = useState(initialMonth);
-	const [dessertRevenue, setDessertRevenue] = useState(initialDessertRevenue);
-	const [isLoadingDesserts, setIsLoadingDesserts] = useState(false);
-	const handleMonthChange = useCallback(async (month: string) => {
+	const {
+		data: dessertRevenue = [],
+		error: dessertRevenueError,
+		isFetching: isLoadingDesserts,
+	} = useQuery({
+		queryKey: ["admin-analytics", "monthly-dessert-revenue", selectedMonth],
+		queryFn: ({ signal }) => fetchMonthlyDessertRevenue(selectedMonth, signal),
+		initialData: selectedMonth === initialMonth ? initialDessertRevenue : undefined,
+		placeholderData: (previousData) => previousData,
+		staleTime: 60 * 60 * 1000,
+		gcTime: 2 * 60 * 60 * 1000,
+	});
+	const handleMonthChange = useCallback((month: string) => {
 		setSelectedMonth(month);
-		setIsLoadingDesserts(true);
-
-		try {
-			const data = await getCachedMonthlyDessertRevenue(month);
-			setDessertRevenue(data);
-		} catch (error) {
-			console.error("Failed to fetch dessert revenue:", error);
-		} finally {
-			setIsLoadingDesserts(false);
-		}
 	}, []);
 
+	if (dessertRevenueError) {
+		console.error("Failed to fetch dessert revenue:", dessertRevenueError);
+	}
+
 	// Calculate totals
-	const totalRevenue = initialMonthlyRevenue.reduce((sum, r) => sum + r.grossRevenue, 0);
-	const totalOrders = initialMonthlyRevenue.reduce((sum, r) => sum + r.orderCount, 0);
-	const monthlyDessertTotal = dessertRevenue.reduce((sum, d) => sum + d.grossRevenue, 0);
+	const totalRevenue = useMemo(
+		() => initialMonthlyRevenue.reduce((sum, r) => sum + r.grossRevenue, 0),
+		[initialMonthlyRevenue],
+	);
+	const totalOrders = useMemo(
+		() => initialMonthlyRevenue.reduce((sum, r) => sum + r.orderCount, 0),
+		[initialMonthlyRevenue],
+	);
+	const monthlyDessertTotal = useMemo(
+		() => dessertRevenue.reduce((sum, d) => sum + d.grossRevenue, 0),
+		[dessertRevenue],
+	);
 
 	const selectedMonthRevenue =
 		initialMonthlyRevenue.find((r) => r.month === selectedMonth)?.grossRevenue ?? monthlyDessertTotal;
@@ -97,23 +120,34 @@ export function AnalyticsContent({
 	// year on the x-axis. Months without real data get `null` so Recharts skips
 	// them, making the line cut off at the last known value instead of
 	// collapsing to zero for future months.
-	const revenueByMonth = new Map(initialMonthlyRevenue.map((r) => [r.month, r]));
+	const revenueByMonth = useMemo(
+		() => new Map(initialMonthlyRevenue.map((r) => [r.month, r])),
+		[initialMonthlyRevenue],
+	);
 	const currentYear = new Date().getFullYear();
-	const monthlyChartData = Array.from({ length: 12 }, (_, i) => {
-		const monthKey = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
-		const data = revenueByMonth.get(monthKey);
-		return {
-			month: formatMonth(monthKey),
-			revenue: data?.grossRevenue ?? null,
-			orders: data?.orderCount ?? null,
-		};
-	});
+	const monthlyChartData = useMemo(
+		() =>
+			Array.from({ length: 12 }, (_, i) => {
+				const monthKey = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
+				const data = revenueByMonth.get(monthKey);
+				return {
+					month: formatMonth(monthKey),
+					revenue: data?.grossRevenue ?? null,
+					orders: data?.orderCount ?? null,
+				};
+			}),
+		[currentYear, revenueByMonth],
+	);
 
 	// Prepare pie chart data for dessert revenue
-	const pieChartData = dessertRevenue.slice(0, 8).map((d) => ({
-		name: d.dessertName,
-		value: d.grossRevenue,
-	}));
+	const pieChartData = useMemo(
+		() =>
+			dessertRevenue.slice(0, 8).map((d) => ({
+				name: d.dessertName,
+				value: d.grossRevenue,
+			})),
+		[dessertRevenue],
+	);
 
 	return (
 		<div className="flex-1 space-y-6">

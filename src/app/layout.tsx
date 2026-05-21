@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Nunito_Sans } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Navbar from "@/components/navbar";
+import { QueryProvider } from "@/components/query-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
@@ -65,20 +66,22 @@ export default function RootLayout({
 		<html lang="en">
 			<body className={cn(nunitoSans.variable, geistMono.variable, "antialiased bg-[url(/bg-grid.svg)] select-none")}>
 				<NuqsAdapter>
-					<Navbar />
-					{children}
-					<Toaster
-						position="top-center"
-						richColors
-						icons={{
-							success: "👍",
-							error: "🚫",
-							info: "💡",
-							warning: "⚠️",
-							loading: "🔄",
-						}}
-						mobileOffset={50}
-					/>
+					<QueryProvider>
+						<Navbar />
+						{children}
+						<Toaster
+							position="top-center"
+							richColors
+							icons={{
+								success: "👍",
+								error: "🚫",
+								info: "💡",
+								warning: "⚠️",
+								loading: "🔄",
+							}}
+							mobileOffset={50}
+						/>
+					</QueryProvider>
 				</NuqsAdapter>
 			</body>
 		</html>

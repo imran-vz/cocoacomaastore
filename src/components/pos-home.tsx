@@ -1,6 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, X } from "lucide-react";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
@@ -8,7 +9,6 @@ import { toast } from "sonner";
 
 import type { ModifierDessert } from "@/app/combos/actions";
 import { toggleOutOfStock } from "@/app/desserts/actions";
-import { getCachedTodayInventory } from "@/app/manager/inventory/actions";
 import type { UpiAccount } from "@/db/schema";
 import type { CartLine, ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,24 @@ import { TabletCartSidebar } from "./tablet-cart-sidebar";
 
 function generateCartLineId(): string {
 	return `cl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+type InventoryRow = {
+	dessertId: number;
+	quantity: number;
+};
+
+async function fetchTodayInventory(signal?: AbortSignal): Promise<InventoryRow[]> {
+	const response = await fetch("/api/manager/inventory/today", {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch inventory (${response.status})`);
+	}
+
+	return response.json();
 }
 
 interface POSHomeProps {
@@ -41,15 +59,30 @@ export default function POSHome({
 	const upiAccountsList = use(upiAccounts);
 	const initialInventory = use(inventory);
 	const combosList = use(combos);
+	const {
+		data: inventoryRows,
+		error: inventoryError,
+		refetch: refetchInventory,
+	} = useQuery({
+		queryKey: ["inventory", "today"],
+		queryFn: ({ signal }) => fetchTodayInventory(signal),
+		initialData: initialInventory,
+		staleTime: 30_000,
+		gcTime: 5 * 60_000,
+	});
 
 	const [cart, setCart] = useState<CartLine[]>([]);
-	const [inventoryByDessertId, setInventoryByDessertId] = useState<Record<number, number>>(() => {
+	const inventoryByDessertId = useMemo(() => {
 		const next: Record<number, number> = {};
-		for (const row of initialInventory) {
+		for (const row of inventoryRows) {
 			next[row.dessertId] = row.quantity;
 		}
 		return next;
-	});
+	}, [inventoryRows]);
+
+	if (inventoryError) {
+		console.error("Failed to fetch inventory:", inventoryError);
+	}
 
 	const {
 		searchQuery,
@@ -93,18 +126,7 @@ export default function POSHome({
 	);
 
 	const refreshInventory = async () => {
-		try {
-			const latest = await getCachedTodayInventory();
-			setInventoryByDessertId(() => {
-				const next: Record<number, number> = {};
-				for (const row of latest) {
-					next[row.dessertId] = row.quantity;
-				}
-				return next;
-			});
-		} catch (error) {
-			console.error(error);
-		}
+		await refetchInventory();
 	};
 
 	const cartInventoryUsage = useMemo(() => {

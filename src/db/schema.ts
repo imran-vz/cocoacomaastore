@@ -422,27 +422,6 @@ export const analyticsDailyDessertRevenueRelations = relations(analyticsDailyDes
 	}),
 }));
 
-export const analyticsWeeklyRevenueTable = pgTable(
-	"analytics_weekly_revenue",
-	{
-		id: integer().primaryKey().generatedAlwaysAsIdentity(),
-		weekStart: timestamp("week_start").notNull(),
-		weekEnd: timestamp("week_end").notNull(),
-		grossRevenue: numeric("gross_revenue", {
-			precision: 10,
-			scale: 2,
-		}).notNull(),
-		orderCount: integer("order_count").notNull(),
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-	},
-	(table) => [
-		uniqueIndex("analytics_weekly_revenue_week_unique").on(table.weekStart),
-		index("analytics_weekly_revenue_week_idx").on(table.weekStart),
-	],
-);
-
-export type AnalyticsWeeklyRevenue = typeof analyticsWeeklyRevenueTable.$inferSelect;
-
 export const analyticsMonthlyRevenueTable = pgTable(
 	"analytics_monthly_revenue",
 	{

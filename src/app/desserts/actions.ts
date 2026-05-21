@@ -102,7 +102,6 @@ export async function createDessert(data: Omit<Dessert, "id" | "sequence" | "isD
 			})
 			.returning({ id: dessertsTable.id });
 
-		// Initialize sequence in Redis
 		await initializeSequence(newDessert.id);
 
 		const duration = performance.now() - start;
@@ -183,7 +182,6 @@ export async function updateDessertSequence(id: number, newScore: number) {
 
 	const start = performance.now();
 
-	// Update sequence in Redis
 	await updateSequence(validated.id, validated.newScore);
 
 	const duration = performance.now() - start;

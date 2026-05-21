@@ -1,23 +1,15 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { IndianRupee, Package, ShoppingCart, TrendingUp } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import AuditLogList from "@/components/admin/dashboard/audit-log-list";
 import RevenueChart from "@/components/admin/dashboard/revenue-chart";
 import StatCard from "@/components/admin/dashboard/stats-card";
 import StockList from "@/components/admin/dashboard/stock-list";
 import { DateSwitcher } from "@/components/date-switcher";
 import { formatCurrency } from "@/lib/utils";
-import {
-	type AuditLogEntry,
-	type DailyRevenue,
-	type DashboardStats,
-	type DessertStock,
-	getCachedAuditLogs,
-	getCachedDailyRevenue,
-	getCachedDashboardStats,
-	getCachedStockPerDessert,
-} from "./actions";
+import type { AuditLogEntry, DailyRevenue, DashboardStats, DessertStock } from "./actions";
 
 type DashboardContentProps = {
 	stats: DashboardStats;
@@ -33,48 +25,73 @@ function formatDateString(date: Date): string {
 	return `${y}-${m}-${d}`;
 }
 
+type DashboardData = {
+	stats: DashboardStats;
+	stock: DessertStock[];
+	auditLogs: AuditLogEntry[];
+	dailyRevenue: DailyRevenue[];
+};
+
+async function fetchDashboardData(dateString: string, signal?: AbortSignal): Promise<DashboardData> {
+	const response = await fetch(`/api/admin/dashboard?date=${encodeURIComponent(dateString)}`, {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch dashboard data (${response.status})`);
+	}
+
+	return response.json();
+}
+
 export function DashboardContent({
 	stats: initialStats,
 	stock: initialStock,
 	auditLogs: initialAuditLogs,
 	dailyRevenue: initialDailyRevenue,
 }: DashboardContentProps) {
+	const [initialDateString] = useState(() => formatDateString(new Date()));
 	const [selectedDate, setSelectedDate] = useState<Date>(() => {
 		const d = new Date();
 		d.setHours(0, 0, 0, 0);
 		return d;
 	});
-	const [isLoading, setIsLoading] = useState(false);
+	const selectedDateString = useMemo(() => formatDateString(selectedDate), [selectedDate]);
+	const initialDashboardData = useMemo(
+		() => ({
+			stats: initialStats,
+			stock: initialStock,
+			auditLogs: initialAuditLogs,
+			dailyRevenue: initialDailyRevenue,
+		}),
+		[initialStats, initialStock, initialAuditLogs, initialDailyRevenue],
+	);
+	const {
+		data: queriedDashboardData,
+		error,
+		isFetching,
+	} = useQuery({
+		queryKey: ["admin-dashboard", selectedDateString],
+		queryFn: ({ signal }) => fetchDashboardData(selectedDateString, signal),
+		initialData: selectedDateString === initialDateString ? initialDashboardData : undefined,
+		placeholderData: (previousData) => previousData,
+	});
 
-	const [stats, setStats] = useState(initialStats);
-	const [stock, setStock] = useState(initialStock);
-	const [auditLogs, setAuditLogs] = useState(initialAuditLogs);
-	const [dailyRevenue, setDailyRevenue] = useState(initialDailyRevenue);
-
-	const handleDateChange = useCallback(async (date: Date) => {
+	const handleDateChange = useCallback((date: Date) => {
 		setSelectedDate(date);
-		setIsLoading(true);
-
-		try {
-			const dateString = formatDateString(date);
-			const [newStats, newStock, newAuditLogs, newDailyRevenue] = await Promise.all([
-				getCachedDashboardStats(dateString),
-				getCachedStockPerDessert(dateString),
-				getCachedAuditLogs(dateString),
-				getCachedDailyRevenue(dateString),
-			]);
-
-			setStats(newStats);
-			setStock(newStock);
-			setAuditLogs(newAuditLogs);
-			setDailyRevenue(newDailyRevenue);
-		} catch (error) {
-			console.error("Failed to fetch dashboard data:", error);
-		} finally {
-			setIsLoading(false);
-		}
 	}, []);
 
+	if (error) {
+		console.error("Failed to fetch dashboard data:", error);
+	}
+
+	const dashboardData = queriedDashboardData ?? initialDashboardData;
+	const stats = dashboardData.stats;
+	const stock = dashboardData.stock;
+	const auditLogs = dashboardData.auditLogs;
+	const dailyRevenue = dashboardData.dailyRevenue;
+	const isLoading = isFetching;
 	const avgOrderValue = stats.dayOrdersCount > 0 ? stats.dayRevenue / stats.dayOrdersCount : 0;
 
 	return (
