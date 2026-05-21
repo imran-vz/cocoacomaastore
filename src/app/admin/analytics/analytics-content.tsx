@@ -58,6 +58,10 @@ function formatMonth(month: string): string {
 	return date.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
 }
 
+function toNumber(value: unknown): number {
+	return typeof value === "number" ? value : Number(value ?? 0);
+}
+
 export function AnalyticsContent({
 	monthlyRevenue: initialMonthlyRevenue,
 	monthlyDessertRevenue: initialDessertRevenue,
@@ -198,8 +202,8 @@ export function AnalyticsContent({
 									width={40}
 								/>
 								<Tooltip
-									formatter={(value: number, name: string) => [
-										name === "Revenue" ? formatCurrency(value) : value,
+									formatter={(value, name) => [
+										name === "Revenue" ? formatCurrency(toNumber(value)) : toNumber(value),
 										name,
 									]}
 								/>
@@ -321,18 +325,20 @@ export function AnalyticsContent({
 										cy="50%"
 										innerRadius={60}
 										outerRadius={100}
-										paddingAngle={2}
-										dataKey="value"
-										label={({ name, percent }) =>
-											`${name.length > 10 ? `${name.slice(0, 10)}...` : name} (${(percent * 100).toFixed(0)}%)`
-										}
-										labelLine={false}
-									>
+											paddingAngle={2}
+											dataKey="value"
+											label={({ name, percent }: { name?: string; percent?: number }) => {
+												const label = name ?? "";
+												const displayName = label.length > 10 ? `${label.slice(0, 10)}...` : label;
+												return `${displayName} (${((percent ?? 0) * 100).toFixed(0)}%)`;
+											}}
+											labelLine={false}
+										>
 										{pieChartData.map((entry, index) => (
 											<Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
 										))}
 									</Pie>
-									<Tooltip formatter={(value: number) => formatCurrency(value)} />
+										<Tooltip formatter={(value) => formatCurrency(toNumber(value))} />
 								</PieChart>
 							</ResponsiveContainer>
 						)}

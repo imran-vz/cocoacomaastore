@@ -1,11 +1,14 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
+import { fmtMonth, getAnalyticsDay, getStartOfDayIST, istMidnightToUTC, nextMonth, pgTimestamp } from "@/lib/ist-date";
 
 export async function recomputeDayAnalytics(date: Date) {
-	const dayStart = new Date(date);
-	dayStart.setUTCHours(0, 0, 0, 0);
-	const dayEnd = new Date(dayStart);
-	dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+	const dayStart = getStartOfDayIST(date);
+	const dayEnd = new Date(dayStart.getTime() + 86_400_000);
+	const analyticsDay = getAnalyticsDay(date);
+	const dayStartValue = pgTimestamp(dayStart);
+	const dayEndValue = pgTimestamp(dayEnd);
+	const analyticsDayValue = pgTimestamp(analyticsDay);
 
 	await db.execute(sql`
 		WITH day_data AS (
@@ -16,101 +19,180 @@ export async function recomputeDayAnalytics(date: Date) {
 			FROM orders
 			WHERE status = 'completed'
 				AND "isDeleted" = false
-				AND "createdAt" >= ${dayStart}
-				AND "createdAt" < ${dayEnd}
-		)
-		INSERT INTO analytics_daily_revenue (day, gross_revenue, order_count)
-		SELECT
-			date_trunc('day', ${dayStart} AT TIME ZONE 'Asia/Kolkata') AS day,
-			COALESCE(SUM(total), 0),
-			COUNT(id)
-		FROM day_data
+				AND "createdAt" >= ${dayStartValue}::timestamp
+				AND "createdAt" < ${dayEndValue}::timestamp
+			)
+			INSERT INTO analytics_daily_revenue (day, gross_revenue, order_count)
+			SELECT
+				${analyticsDayValue}::timestamp AS day,
+				COALESCE(SUM(total), 0),
+				COUNT(id)
+			FROM day_data
 		ON CONFLICT (day) DO UPDATE SET
 			gross_revenue = EXCLUDED.gross_revenue,
 			order_count = EXCLUDED.order_count
 	`);
 
+	await db.transaction(async (tx) => {
+		await tx.execute(sql`DELETE FROM analytics_daily_dessert_revenue WHERE day = ${analyticsDayValue}::timestamp`);
+
+		await tx.execute(sql`
+			WITH base_items AS (
+				SELECT
+					oi."dessertId" AS dessert_id,
+					oi."orderId" AS order_id,
+					SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
+					SUM(oi.quantity) AS quantity
+				FROM order_items oi
+				INNER JOIN orders o ON o.id = oi."orderId"
+				WHERE o.status = 'completed'
+					AND o."isDeleted" = false
+					AND o."createdAt" >= ${dayStartValue}::timestamp
+					AND o."createdAt" < ${dayEndValue}::timestamp
+				GROUP BY oi."dessertId", oi."orderId"
+			),
+			modifier_items AS (
+				SELECT
+					oim."dessertId" AS dessert_id,
+					oi."orderId" AS order_id,
+					0::numeric AS revenue,
+					SUM(oim.quantity * oi.quantity) AS quantity
+				FROM order_item_modifiers oim
+				INNER JOIN order_items oi ON oi.id = oim."orderItemId"
+				INNER JOIN orders o ON o.id = oi."orderId"
+				WHERE o.status = 'completed'
+					AND o."isDeleted" = false
+					AND o."createdAt" >= ${dayStartValue}::timestamp
+					AND o."createdAt" < ${dayEndValue}::timestamp
+				GROUP BY oim."dessertId", oi."orderId"
+			),
+			combined AS (
+				SELECT dessert_id, order_id, revenue, quantity FROM base_items
+				UNION ALL
+				SELECT dessert_id, order_id, revenue, quantity FROM modifier_items
+			)
+			INSERT INTO analytics_daily_dessert_revenue (day, dessert_id, gross_revenue, quantity_sold, order_count)
+			SELECT
+				${analyticsDayValue}::timestamp,
+				dessert_id, SUM(revenue), SUM(quantity), COUNT(DISTINCT order_id)
+			FROM combined
+			GROUP BY dessert_id
+		`);
+	});
+
+	await db.transaction(async (tx) => {
+		await tx.execute(sql`DELETE FROM analytics_daily_eod_stock WHERE day = ${analyticsDayValue}::timestamp`);
+
+		await tx.execute(sql`
+			WITH ranked AS (
+				SELECT
+					${analyticsDayValue}::timestamp AS day,
+					"dessertId" AS dessert_id,
+					"previousQuantity",
+					"newQuantity",
+					ROW_NUMBER() OVER (
+						PARTITION BY "dessertId"
+						ORDER BY "createdAt" ASC, id ASC
+					) AS rn_asc,
+					ROW_NUMBER() OVER (
+						PARTITION BY "dessertId"
+						ORDER BY "createdAt" DESC, id DESC
+					) AS rn_desc
+				FROM inventory_audit_log
+				WHERE "createdAt" >= ${dayStartValue}::timestamp
+					AND "createdAt" < ${dayEndValue}::timestamp
+					AND "dessertId" IS NOT NULL
+			),
+			first_entries AS (
+				SELECT day, dessert_id, "previousQuantity" AS initial_stock
+				FROM ranked WHERE rn_asc = 1
+			),
+			last_entries AS (
+				SELECT day, dessert_id, "newQuantity" AS remaining_stock
+				FROM ranked WHERE rn_desc = 1
+			)
+			INSERT INTO analytics_daily_eod_stock (day, dessert_id, initial_stock, remaining_stock)
+			SELECT f.day, f.dessert_id, f.initial_stock, l.remaining_stock
+			FROM first_entries f
+			INNER JOIN last_entries l ON f.day = l.day AND f.dessert_id = l.dessert_id
+		`);
+	});
+}
+
+export async function recomputeMonthAnalytics(date: Date) {
+	const analyticsDay = getAnalyticsDay(date);
+	const year = analyticsDay.getUTCFullYear();
+	const month = analyticsDay.getUTCMonth() + 1;
+	const label = fmtMonth(year, month);
+	const next = nextMonth(year, month);
+	const monthStart = istMidnightToUTC(year, month);
+	const monthEnd = istMidnightToUTC(next.year, next.month);
+	const monthStartValue = pgTimestamp(monthStart);
+	const monthEndValue = pgTimestamp(monthEnd);
+
 	await db.execute(sql`
-		WITH base_items AS (
-			SELECT
-				oi."dessertId" AS dessert_id,
-				SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
-				SUM(oi.quantity) AS quantity,
-				COUNT(DISTINCT oi."orderId") AS order_count
-			FROM order_items oi
-			INNER JOIN orders o ON o.id = oi."orderId"
-			WHERE o.status = 'completed'
-				AND o."isDeleted" = false
-				AND o."createdAt" >= ${dayStart}
-				AND o."createdAt" < ${dayEnd}
-			GROUP BY oi."dessertId"
-		),
-		modifier_items AS (
-			SELECT
-				oim."dessertId" AS dessert_id,
-				0::numeric AS revenue,
-				SUM(oim.quantity * oi.quantity) AS quantity,
-				COUNT(DISTINCT oi."orderId") AS order_count
-			FROM order_item_modifiers oim
-			INNER JOIN order_items oi ON oi.id = oim."orderItemId"
-			INNER JOIN orders o ON o.id = oi."orderId"
-			WHERE o.status = 'completed'
-				AND o."isDeleted" = false
-				AND o."createdAt" >= ${dayStart}
-				AND o."createdAt" < ${dayEnd}
-			GROUP BY oim."dessertId"
-		),
-		combined AS (
-			SELECT dessert_id, revenue, quantity, order_count FROM base_items
-			UNION ALL
-			SELECT dessert_id, revenue, quantity, order_count FROM modifier_items
-		)
-		INSERT INTO analytics_daily_dessert_revenue (day, dessert_id, gross_revenue, quantity_sold, order_count)
+		INSERT INTO analytics_monthly_revenue (month, gross_revenue, order_count)
 		SELECT
-			date_trunc('day', ${dayStart} AT TIME ZONE 'Asia/Kolkata'),
-			dessert_id, SUM(revenue), SUM(quantity), SUM(order_count)
-		FROM combined
-		GROUP BY dessert_id
-		ON CONFLICT (day, dessert_id) DO UPDATE SET
+			${label} AS month,
+			COALESCE(SUM(total::numeric), 0),
+			COUNT(*)
+		FROM orders
+		WHERE status = 'completed'
+			AND "isDeleted" = false
+			AND "createdAt" >= ${monthStartValue}::timestamp
+			AND "createdAt" < ${monthEndValue}::timestamp
+		ON CONFLICT (month) DO UPDATE SET
 			gross_revenue = EXCLUDED.gross_revenue,
-			quantity_sold = EXCLUDED.quantity_sold,
 			order_count = EXCLUDED.order_count
 	`);
 
-	await db.execute(sql`
-		WITH ranked AS (
-			SELECT
-				date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') AS day,
-				"dessertId" AS dessert_id,
-				"previousQuantity",
-				"newQuantity",
-				ROW_NUMBER() OVER (
-					PARTITION BY date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'), "dessertId"
-					ORDER BY "createdAt" ASC, id ASC
-				) AS rn_asc,
-				ROW_NUMBER() OVER (
-					PARTITION BY date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'), "dessertId"
-					ORDER BY "createdAt" DESC, id DESC
-				) AS rn_desc
-			FROM inventory_audit_log
-			WHERE "createdAt" >= ${dayStart}
-				AND "createdAt" < ${dayEnd}
-				AND "dessertId" IS NOT NULL
-		),
-		first_entries AS (
-			SELECT day, dessert_id, "previousQuantity" AS initial_stock
-			FROM ranked WHERE rn_asc = 1
-		),
-		last_entries AS (
-			SELECT day, dessert_id, "newQuantity" AS remaining_stock
-			FROM ranked WHERE rn_desc = 1
-		)
-		INSERT INTO analytics_daily_eod_stock (day, dessert_id, initial_stock, remaining_stock)
-		SELECT f.day, f.dessert_id, f.initial_stock, l.remaining_stock
-		FROM first_entries f
-		INNER JOIN last_entries l ON f.day = l.day AND f.dessert_id = l.dessert_id
-		ON CONFLICT (day, dessert_id) DO UPDATE SET
-			initial_stock = EXCLUDED.initial_stock,
-			remaining_stock = EXCLUDED.remaining_stock
-	`);
+	await db.transaction(async (tx) => {
+		await tx.execute(sql`DELETE FROM analytics_monthly_dessert_revenue WHERE month = ${label}`);
+
+		await tx.execute(sql`
+			WITH base_items AS (
+				SELECT
+					oi."dessertId" AS dessert_id,
+					oi."orderId" AS order_id,
+					SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
+					SUM(oi.quantity) AS quantity
+				FROM order_items oi
+				INNER JOIN orders o ON o.id = oi."orderId"
+				WHERE o.status = 'completed'
+					AND o."isDeleted" = false
+					AND o."createdAt" >= ${monthStartValue}::timestamp
+					AND o."createdAt" < ${monthEndValue}::timestamp
+				GROUP BY oi."dessertId", oi."orderId"
+			),
+			modifier_items AS (
+				SELECT
+					oim."dessertId" AS dessert_id,
+					oi."orderId" AS order_id,
+					0::numeric AS revenue,
+					SUM(oim.quantity * oi.quantity) AS quantity
+				FROM order_item_modifiers oim
+				INNER JOIN order_items oi ON oi.id = oim."orderItemId"
+				INNER JOIN orders o ON o.id = oi."orderId"
+				WHERE o.status = 'completed'
+					AND o."isDeleted" = false
+					AND o."createdAt" >= ${monthStartValue}::timestamp
+					AND o."createdAt" < ${monthEndValue}::timestamp
+				GROUP BY oim."dessertId", oi."orderId"
+			),
+			combined AS (
+				SELECT dessert_id, order_id, revenue, quantity FROM base_items
+				UNION ALL
+				SELECT dessert_id, order_id, revenue, quantity FROM modifier_items
+			)
+			INSERT INTO analytics_monthly_dessert_revenue (month, dessert_id, gross_revenue, quantity_sold, order_count)
+			SELECT ${label}, dessert_id, SUM(revenue), SUM(quantity), COUNT(DISTINCT order_id)
+			FROM combined
+			GROUP BY dessert_id
+		`);
+	});
+}
+
+export async function recomputeAnalyticsForDate(date: Date) {
+	await recomputeDayAnalytics(date);
+	await recomputeMonthAnalytics(date);
 }

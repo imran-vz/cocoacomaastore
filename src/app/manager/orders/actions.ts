@@ -18,6 +18,8 @@ import {
 } from "@/db/schema";
 import { getServerSession } from "@/lib/auth";
 import { isDatabaseUnavailableError } from "@/lib/errors";
+import { getAnalyticsDay, getDayKey } from "@/lib/ist-date";
+import { recomputeAnalyticsForDate } from "@/lib/recompute-day-analytics";
 import { sanitizeCustomerName } from "@/lib/sanitize";
 import type { CartItem, CartLine } from "@/lib/types";
 import {
@@ -46,18 +48,6 @@ async function requireAuth(): Promise<User> {
 		throw new Error("Unauthorized");
 	}
 	return session.user;
-}
-
-function getStartOfDay(date: Date = new Date()) {
-	const d = new Date(date);
-	return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0));
-}
-
-function getDayKey(day: Date) {
-	const y = day.getFullYear();
-	const m = String(day.getMonth() + 1).padStart(2, "0");
-	const d = String(day.getDate()).padStart(2, "0");
-	return `${y}-${m}-${d}`;
 }
 
 type OrderItemModifierWithDessert = {
@@ -124,7 +114,7 @@ async function getOrders(day: Date): Promise<GetOrdersReturnType> {
 }
 
 export async function getCachedOrders() {
-	const day = getStartOfDay();
+	const day = getAnalyticsDay();
 	const dayKey = getDayKey(day);
 
 	return unstable_cache(() => getOrders(day), ["orders", dayKey], {
@@ -141,8 +131,7 @@ export async function createOrder(data: CreateOrderData) {
 	const sanitizedCustomerName = sanitizeCustomerName(validated.customerName);
 
 	const start = performance.now();
-	const day = new Date();
-	day.setHours(0, 0, 0, 0);
+	const day = getAnalyticsDay();
 	const now = new Date();
 
 	// Filter out items with unlimited stock - they don't need inventory deduction
@@ -150,7 +139,7 @@ export async function createOrder(data: CreateOrderData) {
 		(item) => !item.hasUnlimitedStock,
 	);
 
-	await db.transaction(async (tx) => {
+	const order = await db.transaction(async (tx) => {
 		const dessertIds = itemsNeedingInventory.map((item) => item.id);
 		const quantityByDessertId = new Map(
 			itemsNeedingInventory.map((item) => [item.id, item.quantity]),
@@ -293,8 +282,11 @@ export async function createOrder(data: CreateOrderData) {
 	});
 	const duration = performance.now() - start;
 	console.log(`createOrder: ${duration}ms`);
+	await recomputeAnalyticsForDate(order.createdAt);
 	revalidateTag("orders", "max");
 	revalidateTag("inventory", "max");
+	revalidateTag("dashboard", "max");
+	revalidateTag("analytics", "max");
 }
 
 /**
@@ -321,8 +313,7 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 	const sanitizedCustomerName = sanitizeCustomerName(validated.customerName);
 
 	const start = performance.now();
-	const day = new Date();
-	day.setHours(0, 0, 0, 0);
+	const day = getAnalyticsDay();
 	const now = new Date();
 
 	// Aggregate quantities by base dessert for inventory deduction
@@ -360,8 +351,9 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 		]),
 	);
 
+	let order: Order;
 	try {
-		await db.transaction(async (tx) => {
+		order = await db.transaction(async (tx) => {
 			let inventoryUpdates: {
 				dessertId: number;
 				previousQuantity: number;
@@ -542,8 +534,11 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 
 	const duration = performance.now() - start;
 	console.log(`createOrderWithLines: ${duration}ms`);
+	await recomputeAnalyticsForDate(order.createdAt);
 	revalidateTag("orders", "max");
 	revalidateTag("inventory", "max");
+	revalidateTag("dashboard", "max");
+	revalidateTag("analytics", "max");
 }
 
 export async function deleteOrder(orderId: number) {
@@ -553,13 +548,19 @@ export async function deleteOrder(orderId: number) {
 	const { orderId: validatedOrderId } = deleteOrderSchema.parse({ orderId });
 
 	const start = performance.now();
-	await db
+	const [order] = await db
 		.update(ordersTable)
 		.set({ isDeleted: true })
-		.where(eq(ordersTable.id, validatedOrderId));
+		.where(eq(ordersTable.id, validatedOrderId))
+		.returning({ createdAt: ordersTable.createdAt });
 	const duration = performance.now() - start;
 	console.log(`deleteOrder: ${duration}ms`);
+	if (order) {
+		await recomputeAnalyticsForDate(order.createdAt);
+	}
 	revalidateTag("orders", "max");
+	revalidateTag("dashboard", "max");
+	revalidateTag("analytics", "max");
 }
 
 export async function cancelOrder(orderId: number, reason?: string) {
@@ -569,12 +570,12 @@ export async function cancelOrder(orderId: number, reason?: string) {
 	const validated = cancelOrderSchema.parse({ orderId, reason });
 
 	const start = performance.now();
-	const day = new Date();
-	day.setHours(0, 0, 0, 0);
+	const day = getAnalyticsDay();
 	const now = new Date();
+	let order: Pick<Order, "id" | "status" | "isDeleted" | "createdAt">;
 
 	try {
-		await db.transaction(async (tx) => {
+		order = await db.transaction(async (tx) => {
 			// STEP 1: Lock the order and verify it can be cancelled
 			const [order] = await tx
 				.select({
@@ -637,8 +638,7 @@ export async function cancelOrder(orderId: number, reason?: string) {
 			}
 
 			// Check if the order was created today (only restore inventory for today's orders)
-			const orderDay = new Date(order.createdAt);
-			orderDay.setHours(0, 0, 0, 0);
+			const orderDay = getAnalyticsDay(order.createdAt);
 			const isToday = orderDay.getTime() === day.getTime();
 
 			let inventoryUpdates: {
@@ -732,6 +732,8 @@ export async function cancelOrder(orderId: number, reason?: string) {
 					})),
 				);
 			}
+
+			return order;
 		});
 	} catch (error) {
 		if (isDatabaseUnavailableError(error)) {
@@ -742,16 +744,12 @@ export async function cancelOrder(orderId: number, reason?: string) {
 		throw error;
 	}
 
-	// Recompute today's analytics inline (replaces old Go worker HTTP call)
-	try {
-		const { recomputeDayAnalytics } = await import("@/lib/recompute-day-analytics");
-		await recomputeDayAnalytics(new Date());
-	} catch (error) {
-		console.error("Failed to recompute day analytics:", error);
-	}
+	await recomputeAnalyticsForDate(order.createdAt);
 
 	const duration = performance.now() - start;
 	console.log(`cancelOrder: ${duration}ms`);
 	revalidateTag("orders", "max");
 	revalidateTag("inventory", "max");
+	revalidateTag("dashboard", "max");
+	revalidateTag("analytics", "max");
 }

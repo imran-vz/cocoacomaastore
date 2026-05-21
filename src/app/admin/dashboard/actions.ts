@@ -16,6 +16,13 @@ import {
 	orderItemsTable,
 	ordersTable,
 } from "@/db/schema";
+import {
+	getAnalyticsDay,
+	getDayKey,
+	getEndOfDayIST,
+	getISTMonthKey,
+	getStartOfDayIST,
+} from "@/lib/ist-date";
 
 // biome-ignore lint/suspicious/noExplicitAny: for next unstable_cache
 type Callback = (...args: any[]) => Promise<any>;
@@ -33,49 +40,6 @@ function unstable_cache<T extends Callback>(
 
 	return next_unstable_cache(cb, keyParts, options);
 }
-// IST is UTC+5:30
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-
-// Get the IST date components for a given Date object
-function getISTDateParts(date: Date = new Date()) {
-	const istTime = new Date(date.getTime() + IST_OFFSET_MS);
-	return {
-		year: istTime.getUTCFullYear(),
-		month: istTime.getUTCMonth(),
-		day: istTime.getUTCDate(),
-	};
-}
-
-// Get IST midnight as a UTC timestamp (for querying orders by IST business day)
-function getStartOfDayIST(date: Date = new Date()) {
-	const ist = getISTDateParts(date);
-	// Create IST midnight, then subtract IST offset to get UTC
-	const istMidnight = Date.UTC(ist.year, ist.month, ist.day, 0, 0, 0, 0);
-	return new Date(istMidnight - IST_OFFSET_MS);
-}
-
-// Get IST end of day as a UTC timestamp (for querying orders by IST business day)
-function getEndOfDayIST(date: Date = new Date()) {
-	const ist = getISTDateParts(date);
-	// Create IST 23:59:59.999, then subtract IST offset to get UTC
-	const istEndOfDay = Date.UTC(ist.year, ist.month, ist.day, 23, 59, 59, 999);
-	return new Date(istEndOfDay - IST_OFFSET_MS);
-}
-
-// Get UTC midnight for the IST date (for analytics day column which stores UTC midnight)
-function getStartOfDayUTC(date: Date = new Date()) {
-	const ist = getISTDateParts(date);
-	return new Date(Date.UTC(ist.year, ist.month, ist.day, 0, 0, 0, 0));
-}
-
-function getDayKey(date: Date = new Date()) {
-	const ist = getISTDateParts(date);
-	const y = ist.year;
-	const m = String(ist.month + 1).padStart(2, "0");
-	const d = String(ist.day).padStart(2, "0");
-	return `${y}-${m}-${d}`;
-}
-
 // Types
 export type DashboardStats = {
 	dayOrdersCount: number;
@@ -137,7 +101,7 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 	const dayEndIST = getEndOfDayIST(date);
 
 	// For analytics (past 6 days + today = 7 days total), use UTC midnight
-	const dayStartUTC = getStartOfDayUTC(date);
+	const dayStartUTC = getAnalyticsDay(date);
 	const weekAgoUTC = new Date(dayStartUTC);
 	weekAgoUTC.setDate(weekAgoUTC.getDate() - 6);
 
@@ -155,7 +119,7 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 					eq(ordersTable.status, "completed"),
 					eq(ordersTable.isDeleted, false),
 					gte(ordersTable.createdAt, dayStartIST),
-					lte(ordersTable.createdAt, dayEndIST),
+					lt(ordersTable.createdAt, dayEndIST),
 				),
 			),
 
@@ -171,7 +135,7 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 					eq(ordersTable.status, "completed"),
 					eq(ordersTable.isDeleted, false),
 					gte(ordersTable.createdAt, dayStartIST),
-					lte(ordersTable.createdAt, dayEndIST),
+					lt(ordersTable.createdAt, dayEndIST),
 				),
 			),
 
@@ -214,7 +178,7 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
 	const start = performance.now();
 
-	const dayStart = getStartOfDayUTC(day);
+	const dayStart = getAnalyticsDay(day);
 
 	const desserts = await db
 		.select({
@@ -298,12 +262,12 @@ async function getDailyRevenue(
 ): Promise<DailyRevenue[]> {
 	const start = performance.now();
 
-	const endDay = getStartOfDayUTC(endDate);
+	const endDay = getAnalyticsDay(endDate);
 	const startDay = new Date(endDay);
 	startDay.setDate(startDay.getDate() - (days - 1));
 
 	// Check if endDate is today in IST
-	const todayUTC = getStartOfDayUTC(new Date());
+	const todayUTC = getAnalyticsDay(new Date());
 	const isEndDateToday = endDay.getTime() === todayUTC.getTime();
 
 	// Query analytics for historical days (exclude today if it's in range)
@@ -352,7 +316,7 @@ async function getDailyRevenue(
 					eq(ordersTable.status, "completed"),
 					eq(ordersTable.isDeleted, false),
 					gte(ordersTable.createdAt, dayStartIST),
-					lte(ordersTable.createdAt, dayEndIST),
+					lt(ordersTable.createdAt, dayEndIST),
 				),
 			);
 
@@ -391,7 +355,7 @@ export async function getCachedDashboardStats(dateString?: string) {
 
 export async function getCachedStockPerDessert(dateString?: string) {
 	const date = dateString ? new Date(dateString) : new Date();
-	const day = getStartOfDayUTC(date);
+	const day = getAnalyticsDay(date);
 	const dayKey = getDayKey(date);
 
 	return unstable_cache(
@@ -439,13 +403,13 @@ async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
 			orderCount: analyticsMonthlyRevenueTable.orderCount,
 		})
 		.from(analyticsMonthlyRevenueTable)
-		.orderBy(analyticsMonthlyRevenueTable.month)
+		.orderBy(desc(analyticsMonthlyRevenueTable.month))
 		.limit(months);
 
 	const duration = performance.now() - start;
 	console.log(`getMonthlyRevenue: ${duration.toFixed(2)}ms`);
 
-	return results.map((r) => ({
+	return results.reverse().map((r) => ({
 		month: r.month,
 		grossRevenue: Number(r.grossRevenue),
 		orderCount: r.orderCount,
@@ -473,10 +437,7 @@ async function getMonthlyDessertRevenue(
 	const targetMonth =
 		month ||
 		(() => {
-			const now = new Date();
-			const y = now.getFullYear();
-			const m = String(now.getMonth() + 1).padStart(2, "0");
-			return `${y}-${m}`;
+			return getISTMonthKey();
 		})();
 
 	const results = await db
@@ -513,10 +474,7 @@ export async function getCachedMonthlyDessertRevenue(month?: string) {
 	const targetMonth =
 		month ||
 		(() => {
-			const now = new Date();
-			const y = now.getFullYear();
-			const m = String(now.getMonth() + 1).padStart(2, "0");
-			return `${y}-${m}`;
+			return getISTMonthKey();
 		})();
 
 	return unstable_cache(
@@ -533,7 +491,7 @@ export async function getCachedMonthlyDessertRevenue(month?: string) {
 async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
 	const start = performance.now();
 
-	const endDay = getStartOfDayUTC(new Date());
+	const endDay = getAnalyticsDay(new Date());
 	const startDay = new Date(endDay);
 	startDay.setDate(startDay.getDate() - (days - 1));
 

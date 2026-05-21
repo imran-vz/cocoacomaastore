@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { fmtMonth, getISTYearMonth, istMidnightToUTC, nextMonth } from "../lib/ist-date";
 
 const backfill = process.argv.includes("--backfill");
 const force = process.argv.includes("--force");
@@ -10,25 +11,8 @@ if (!process.env.DATABASE_URL) {
 
 const client = postgres(process.env.DATABASE_URL, { prepare: false });
 
-const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
 const DAY_MS = 86_400_000;
-
-function getISTNow(): { year: number; month: number } {
-	const ist = new Date(Date.now() + IST_OFFSET_MS);
-	return { year: ist.getUTCFullYear(), month: ist.getUTCMonth() + 1 };
-}
-
-function istMidnightToUTC(year: number, month: number, day = 1): Date {
-	return new Date(Date.UTC(year, month - 1, day) - IST_OFFSET_MS);
-}
-
-function fmtMonth(year: number, month: number): string {
-	return `${year}-${String(month).padStart(2, "0")}`;
-}
-
-function nextMonth(year: number, month: number): { year: number; month: number } {
-	return month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
-}
+const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
 
 function expandToFullISOWeeks(start: Date, end: Date): { start: Date; end: Date } {
 	const startIST = new Date(start.getTime() + IST_OFFSET_MS);
@@ -57,8 +41,7 @@ async function getFirstOrderMonth(): Promise<{ year: number; month: number }> {
 		WHERE status = 'completed' AND "isDeleted" = false
 	`;
 	if (!row?.min_date) throw new Error("No completed orders found");
-	const ist = new Date(new Date(row.min_date).getTime() + IST_OFFSET_MS);
-	return { year: ist.getUTCFullYear(), month: ist.getUTCMonth() + 1 };
+	return getISTYearMonth(new Date(row.min_date));
 }
 
 function generateMonths(
@@ -100,52 +83,56 @@ async function compileDailyRevenue(start: Date, end: Date) {
 }
 
 async function compileDailyDessertRevenue(start: Date, end: Date) {
-	await client`
-		WITH base_items AS (
-			SELECT
-				oi."dessertId" AS dessert_id,
-				date_trunc('day', o."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') AS day,
-				SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
-				SUM(oi.quantity) AS quantity,
-				COUNT(DISTINCT oi."orderId") AS order_count
-			FROM order_items oi
-			INNER JOIN orders o ON o.id = oi."orderId"
-			WHERE o.status = 'completed'
-				AND o."isDeleted" = false
-				AND o."createdAt" >= ${start}
-				AND o."createdAt" < ${end}
-			GROUP BY oi."dessertId", 2
-		),
-		modifier_items AS (
-			SELECT
-				oim."dessertId" AS dessert_id,
-				date_trunc('day', o."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') AS day,
-				0::numeric AS revenue,
-				SUM(oim.quantity * oi.quantity) AS quantity,
-				COUNT(DISTINCT oi."orderId") AS order_count
-			FROM order_item_modifiers oim
-			INNER JOIN order_items oi ON oi.id = oim."orderItemId"
-			INNER JOIN orders o ON o.id = oi."orderId"
-			WHERE o.status = 'completed'
-				AND o."isDeleted" = false
-				AND o."createdAt" >= ${start}
-				AND o."createdAt" < ${end}
-			GROUP BY oim."dessertId", 2
-		),
-		combined AS (
-			SELECT dessert_id, day, revenue, quantity, order_count FROM base_items
-			UNION ALL
-			SELECT dessert_id, day, revenue, quantity, order_count FROM modifier_items
-		)
-		INSERT INTO analytics_daily_dessert_revenue (day, dessert_id, gross_revenue, quantity_sold, order_count)
-		SELECT day, dessert_id, SUM(revenue), SUM(quantity), SUM(order_count)
-		FROM combined
-		GROUP BY day, dessert_id
-		ON CONFLICT (day, dessert_id) DO UPDATE SET
-			gross_revenue = EXCLUDED.gross_revenue,
-			quantity_sold = EXCLUDED.quantity_sold,
-			order_count = EXCLUDED.order_count
-	`;
+	await client.begin(async (tx) => {
+		await tx`
+			DELETE FROM analytics_daily_dessert_revenue
+			WHERE day >= ${start} AT TIME ZONE 'Asia/Kolkata'
+				AND day < ${end} AT TIME ZONE 'Asia/Kolkata'
+		`;
+
+		await tx`
+			WITH base_items AS (
+				SELECT
+					oi."dessertId" AS dessert_id,
+					oi."orderId" AS order_id,
+					date_trunc('day', o."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') AS day,
+					SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
+					SUM(oi.quantity) AS quantity
+				FROM order_items oi
+				INNER JOIN orders o ON o.id = oi."orderId"
+				WHERE o.status = 'completed'
+					AND o."isDeleted" = false
+					AND o."createdAt" >= ${start}
+					AND o."createdAt" < ${end}
+				GROUP BY oi."dessertId", oi."orderId", 3
+			),
+			modifier_items AS (
+				SELECT
+					oim."dessertId" AS dessert_id,
+					oi."orderId" AS order_id,
+					date_trunc('day', o."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') AS day,
+					0::numeric AS revenue,
+					SUM(oim.quantity * oi.quantity) AS quantity
+				FROM order_item_modifiers oim
+				INNER JOIN order_items oi ON oi.id = oim."orderItemId"
+				INNER JOIN orders o ON o.id = oi."orderId"
+				WHERE o.status = 'completed'
+					AND o."isDeleted" = false
+					AND o."createdAt" >= ${start}
+					AND o."createdAt" < ${end}
+				GROUP BY oim."dessertId", oi."orderId", 3
+			),
+			combined AS (
+				SELECT dessert_id, order_id, day, revenue, quantity FROM base_items
+				UNION ALL
+				SELECT dessert_id, order_id, day, revenue, quantity FROM modifier_items
+			)
+			INSERT INTO analytics_daily_dessert_revenue (day, dessert_id, gross_revenue, quantity_sold, order_count)
+			SELECT day, dessert_id, SUM(revenue), SUM(quantity), COUNT(DISTINCT order_id)
+			FROM combined
+			GROUP BY day, dessert_id
+		`;
+	});
 }
 
 async function compileWeeklyRevenue(start: Date, end: Date) {
@@ -194,89 +181,94 @@ async function compileMonthlyRevenue(label: string, start: Date, end: Date) {
 }
 
 async function compileMonthlyDessertRevenue(label: string, start: Date, end: Date) {
-	await client`
-		WITH base_items AS (
-			SELECT
-				oi."dessertId" AS dessert_id,
-				SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
-				SUM(oi.quantity) AS quantity,
-				COUNT(DISTINCT oi."orderId") AS order_count
-			FROM order_items oi
-			INNER JOIN orders o ON o.id = oi."orderId"
-			WHERE o.status = 'completed'
-				AND o."isDeleted" = false
-				AND o."createdAt" >= ${start}
-				AND o."createdAt" < ${end}
-			GROUP BY oi."dessertId"
-		),
-		modifier_items AS (
-			SELECT
-				oim."dessertId" AS dessert_id,
-				0::numeric AS revenue,
-				SUM(oim.quantity * oi.quantity) AS quantity,
-				COUNT(DISTINCT oi."orderId") AS order_count
-			FROM order_item_modifiers oim
-			INNER JOIN order_items oi ON oi.id = oim."orderItemId"
-			INNER JOIN orders o ON o.id = oi."orderId"
-			WHERE o.status = 'completed'
-				AND o."isDeleted" = false
-				AND o."createdAt" >= ${start}
-				AND o."createdAt" < ${end}
-			GROUP BY oim."dessertId"
-		),
-		combined AS (
-			SELECT dessert_id, revenue, quantity, order_count FROM base_items
-			UNION ALL
-			SELECT dessert_id, revenue, quantity, order_count FROM modifier_items
-		)
-		INSERT INTO analytics_monthly_dessert_revenue (month, dessert_id, gross_revenue, quantity_sold, order_count)
-		SELECT ${label}, dessert_id, SUM(revenue), SUM(quantity), SUM(order_count)
-		FROM combined
-		GROUP BY dessert_id
-		ON CONFLICT (month, dessert_id) DO UPDATE SET
-			gross_revenue = EXCLUDED.gross_revenue,
-			quantity_sold = EXCLUDED.quantity_sold,
-			order_count = EXCLUDED.order_count
-	`;
+	await client.begin(async (tx) => {
+		await tx`DELETE FROM analytics_monthly_dessert_revenue WHERE month = ${label}`;
+
+		await tx`
+			WITH base_items AS (
+				SELECT
+					oi."dessertId" AS dessert_id,
+					oi."orderId" AS order_id,
+					SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
+					SUM(oi.quantity) AS quantity
+				FROM order_items oi
+				INNER JOIN orders o ON o.id = oi."orderId"
+				WHERE o.status = 'completed'
+					AND o."isDeleted" = false
+					AND o."createdAt" >= ${start}
+					AND o."createdAt" < ${end}
+				GROUP BY oi."dessertId", oi."orderId"
+			),
+			modifier_items AS (
+				SELECT
+					oim."dessertId" AS dessert_id,
+					oi."orderId" AS order_id,
+					0::numeric AS revenue,
+					SUM(oim.quantity * oi.quantity) AS quantity
+				FROM order_item_modifiers oim
+				INNER JOIN order_items oi ON oi.id = oim."orderItemId"
+				INNER JOIN orders o ON o.id = oi."orderId"
+				WHERE o.status = 'completed'
+					AND o."isDeleted" = false
+					AND o."createdAt" >= ${start}
+					AND o."createdAt" < ${end}
+				GROUP BY oim."dessertId", oi."orderId"
+			),
+			combined AS (
+				SELECT dessert_id, order_id, revenue, quantity FROM base_items
+				UNION ALL
+				SELECT dessert_id, order_id, revenue, quantity FROM modifier_items
+			)
+			INSERT INTO analytics_monthly_dessert_revenue (month, dessert_id, gross_revenue, quantity_sold, order_count)
+			SELECT ${label}, dessert_id, SUM(revenue), SUM(quantity), COUNT(DISTINCT order_id)
+			FROM combined
+			GROUP BY dessert_id
+		`;
+	});
 }
 
 async function compileDailyEodStock(start: Date, end: Date) {
-	await client`
-		WITH ranked AS (
-			SELECT
-				date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') AS day,
-				"dessertId" AS dessert_id,
-				"previousQuantity",
-				"newQuantity",
-				ROW_NUMBER() OVER (
-					PARTITION BY date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'), "dessertId"
-					ORDER BY "createdAt" ASC, id ASC
-				) AS rn_asc,
-				ROW_NUMBER() OVER (
-					PARTITION BY date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'), "dessertId"
-					ORDER BY "createdAt" DESC, id DESC
-				) AS rn_desc
-			FROM inventory_audit_log
-			WHERE "createdAt" >= ${start}
-				AND "createdAt" < ${end}
-				AND "dessertId" IS NOT NULL
-		),
-		first_entries AS (
-			SELECT day, dessert_id, "previousQuantity" AS initial_stock
-			FROM ranked WHERE rn_asc = 1
-		),
-		last_entries AS (
-			SELECT day, dessert_id, "newQuantity" AS remaining_stock
-			FROM ranked WHERE rn_desc = 1
-		)
-		INSERT INTO analytics_daily_eod_stock (day, dessert_id, initial_stock, remaining_stock)
-		SELECT f.day, f.dessert_id, f.initial_stock, l.remaining_stock
-		FROM first_entries f
-		INNER JOIN last_entries l ON f.day = l.day AND f.dessert_id = l.dessert_id
-		ON CONFLICT (day, dessert_id) DO UPDATE SET
-			initial_stock = EXCLUDED.initial_stock,
-			remaining_stock = EXCLUDED.remaining_stock
-	`;
+	await client.begin(async (tx) => {
+		await tx`
+			DELETE FROM analytics_daily_eod_stock
+			WHERE day >= ${start} AT TIME ZONE 'Asia/Kolkata'
+				AND day < ${end} AT TIME ZONE 'Asia/Kolkata'
+		`;
+
+		await tx`
+			WITH ranked AS (
+				SELECT
+					date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata') AS day,
+					"dessertId" AS dessert_id,
+					"previousQuantity",
+					"newQuantity",
+					ROW_NUMBER() OVER (
+						PARTITION BY date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'), "dessertId"
+						ORDER BY "createdAt" ASC, id ASC
+					) AS rn_asc,
+					ROW_NUMBER() OVER (
+						PARTITION BY date_trunc('day', "createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Kolkata'), "dessertId"
+						ORDER BY "createdAt" DESC, id DESC
+					) AS rn_desc
+				FROM inventory_audit_log
+				WHERE "createdAt" >= ${start}
+					AND "createdAt" < ${end}
+					AND "dessertId" IS NOT NULL
+			),
+			first_entries AS (
+				SELECT day, dessert_id, "previousQuantity" AS initial_stock
+				FROM ranked WHERE rn_asc = 1
+			),
+			last_entries AS (
+				SELECT day, dessert_id, "newQuantity" AS remaining_stock
+				FROM ranked WHERE rn_desc = 1
+			)
+			INSERT INTO analytics_daily_eod_stock (day, dessert_id, initial_stock, remaining_stock)
+			SELECT f.day, f.dessert_id, f.initial_stock, l.remaining_stock
+			FROM first_entries f
+			INNER JOIN last_entries l ON f.day = l.day AND f.dessert_id = l.dessert_id
+		`;
+	});
 }
 
 const ANALYTICS_TABLES = [
@@ -296,7 +288,7 @@ async function truncateAnalyticsTables() {
 }
 
 async function main() {
-	const current = getISTNow();
+	const current = getISTYearMonth();
 	let months: Array<{ year: number; month: number }>;
 
 	if (force && !backfill) {
