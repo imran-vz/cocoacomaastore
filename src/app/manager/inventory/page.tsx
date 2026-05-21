@@ -29,10 +29,7 @@ export default async function Inventory() {
 					</div>
 				}
 			>
-				<InventoryPage
-					initialDesserts={desserts}
-					initialInventory={inventory}
-				/>
+				<InventoryPage initialDesserts={desserts} initialInventory={inventory} />
 			</Suspense>
 		</main>
 	);

@@ -7,11 +7,7 @@ import { db } from "@/db";
 import { userTable } from "@/db/schema";
 import { auth, getServerSession } from "@/lib/auth";
 import { sanitizeEmail } from "@/lib/sanitize";
-import {
-	type CreateManagerSchema,
-	createManagerSchema,
-	deleteManagerSchema,
-} from "@/lib/validation";
+import { type CreateManagerSchema, createManagerSchema, deleteManagerSchema } from "@/lib/validation";
 
 async function requireAdmin() {
 	const session = await getServerSession();

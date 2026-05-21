@@ -325,20 +325,20 @@ export function AnalyticsContent({
 										cy="50%"
 										innerRadius={60}
 										outerRadius={100}
-											paddingAngle={2}
-											dataKey="value"
-											label={({ name, percent }: { name?: string; percent?: number }) => {
-												const label = name ?? "";
-												const displayName = label.length > 10 ? `${label.slice(0, 10)}...` : label;
-												return `${displayName} (${((percent ?? 0) * 100).toFixed(0)}%)`;
-											}}
-											labelLine={false}
-										>
+										paddingAngle={2}
+										dataKey="value"
+										label={({ name, percent }: { name?: string; percent?: number }) => {
+											const label = name ?? "";
+											const displayName = label.length > 10 ? `${label.slice(0, 10)}...` : label;
+											return `${displayName} (${((percent ?? 0) * 100).toFixed(0)}%)`;
+										}}
+										labelLine={false}
+									>
 										{pieChartData.map((entry, index) => (
 											<Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
 										))}
 									</Pie>
-										<Tooltip formatter={(value) => formatCurrency(toNumber(value))} />
+									<Tooltip formatter={(value) => formatCurrency(toNumber(value))} />
 								</PieChart>
 							</ResponsiveContainer>
 						)}

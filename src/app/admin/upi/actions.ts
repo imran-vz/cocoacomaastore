@@ -6,11 +6,7 @@ import { db } from "@/db";
 import { type UpiAccount, upiAccountsTable } from "@/db/schema";
 import { getServerSession } from "@/lib/auth";
 import { sanitizeUpiId } from "@/lib/sanitize";
-import {
-	createUpiAccountSchema,
-	deleteUpiAccountSchema,
-	updateUpiAccountSchema,
-} from "@/lib/validation";
+import { createUpiAccountSchema, deleteUpiAccountSchema, updateUpiAccountSchema } from "@/lib/validation";
 
 async function requireAdmin() {
 	const session = await getServerSession();
@@ -23,11 +19,7 @@ async function requireAdmin() {
 	return session.user;
 }
 
-export async function createUpiAccount(data: {
-	label: string;
-	upiId: string;
-	enabled?: boolean;
-}) {
+export async function createUpiAccount(data: { label: string; upiId: string; enabled?: boolean }) {
 	await requireAdmin();
 
 	// Validate and sanitize input
@@ -52,10 +44,7 @@ export async function createUpiAccount(data: {
 	}
 }
 
-export async function updateUpiAccount(
-	id: UpiAccount["id"],
-	data: Pick<UpiAccount, "label" | "upiId" | "enabled">,
-) {
+export async function updateUpiAccount(id: UpiAccount["id"], data: Pick<UpiAccount, "label" | "upiId" | "enabled">) {
 	await requireAdmin();
 
 	// Validate and sanitize input
@@ -89,10 +78,7 @@ export async function deleteUpiAccount(id: UpiAccount["id"]) {
 	const { id: validatedId } = deleteUpiAccountSchema.parse({ id });
 
 	try {
-		await db
-			.update(upiAccountsTable)
-			.set({ isDeleted: true })
-			.where(eq(upiAccountsTable.id, validatedId));
+		await db.update(upiAccountsTable).set({ isDeleted: true }).where(eq(upiAccountsTable.id, validatedId));
 
 		revalidateTag("upi-accounts", "max");
 		revalidateTag("upi-accounts-admin", "max");

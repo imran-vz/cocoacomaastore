@@ -6,14 +6,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { GetOrdersReturnType } from "./actions";
 
@@ -36,10 +29,7 @@ export function OrderCard({
 }) {
 	const [isExpanded, setIsExpanded] = useState(initialExpanded);
 
-	const totalItems = order.orderItems.reduce(
-		(acc, item) => acc + item.quantity,
-		0,
-	);
+	const totalItems = order.orderItems.reduce((acc, item) => acc + item.quantity, 0);
 
 	const itemsSummary = order.orderItems
 		.map((item) => {
@@ -93,26 +83,13 @@ export function OrderCard({
 								</span>
 							</div>
 
-							<h3 className="font-semibold text-lg truncate">
-								{order.customerName || "Walk-in Customer"}
-							</h3>
+							<h3 className="font-semibold text-lg truncate">{order.customerName || "Walk-in Customer"}</h3>
 
-							{!isExpanded && (
-								<p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-									{itemsSummary}
-								</p>
-							)}
+							{!isExpanded && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{itemsSummary}</p>}
 						</div>
 
 						<div className="flex flex-col items-end gap-1">
-							<span
-								className={cn(
-									"font-bold text-lg",
-									isCancelled && "line-through",
-								)}
-							>
-								₹{order.total}
-							</span>
+							<span className={cn("font-bold text-lg", isCancelled && "line-through")}>₹{order.total}</span>
 							<Badge variant="secondary" className="text-xs">
 								{totalItems} item{totalItems !== 1 ? "s" : ""}
 							</Badge>
@@ -142,22 +119,16 @@ export function OrderCard({
 												<TableCell className="py-2">
 													<div className="font-medium">
 														{item.comboName ? (
-															<span className="text-primary">
-																{item.comboName}
-															</span>
+															<span className="text-primary">{item.comboName}</span>
 														) : (
 															item.dessert.name
 														)}
 													</div>
 													{item.comboName && (
 														<div className="text-xs text-muted-foreground mt-1 ml-2 pl-2 border-l-2">
-															<div className="font-medium text-foreground/80">
-																{item.dessert.name}
-															</div>
+															<div className="font-medium text-foreground/80">{item.dessert.name}</div>
 															{item.modifiers.map((mod) => (
-																<div key={`${item.id}-mod-${mod.id}`}>
-																	{mod.dessert.name}
-																</div>
+																<div key={`${item.id}-mod-${mod.id}`}>{mod.dessert.name}</div>
 															))}
 														</div>
 													)}
@@ -171,9 +142,7 @@ export function OrderCard({
 														</div>
 													)}
 												</TableCell>
-												<TableCell className="text-right py-2 font-mono">
-													×{item.quantity}
-												</TableCell>
+												<TableCell className="text-right py-2 font-mono">×{item.quantity}</TableCell>
 											</TableRow>
 										))}
 									</TableBody>

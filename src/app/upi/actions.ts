@@ -19,30 +19,19 @@ async function getUPIAccountsForAdmin() {
 async function getUPIAccounts() {
 	// Get enabled UPI accounts from database, sorted by sequence
 	const accounts = await db.query.upiAccountsTable.findMany({
-		where: and(
-			eq(upiAccountsTable.isDeleted, false),
-			eq(upiAccountsTable.enabled, true),
-		),
+		where: and(eq(upiAccountsTable.isDeleted, false), eq(upiAccountsTable.enabled, true)),
 		orderBy: (accounts, { asc }) => [asc(accounts.sequence)],
 	});
 
 	return accounts;
 }
 
-export const getCachedUPIAccounts = unstable_cache(
-	getUPIAccounts,
-	["upi-accounts"],
-	{
-		revalidate: 60 * 60 * 24, // 24 hours
-		tags: ["upi-accounts"],
-	},
-);
+export const getCachedUPIAccounts = unstable_cache(getUPIAccounts, ["upi-accounts"], {
+	revalidate: 60 * 60 * 24, // 24 hours
+	tags: ["upi-accounts"],
+});
 
-export const getCachedUPIAccountsForAdmin = unstable_cache(
-	getUPIAccountsForAdmin,
-	["upi-accounts"],
-	{
-		revalidate: 60 * 60 * 24, // 24 hours
-		tags: ["upi-accounts"],
-	},
-);
+export const getCachedUPIAccountsForAdmin = unstable_cache(getUPIAccountsForAdmin, ["upi-accounts"], {
+	revalidate: 60 * 60 * 24, // 24 hours
+	tags: ["upi-accounts"],
+});

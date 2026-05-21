@@ -5,11 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getServerSession } from "@/lib/auth";
 
-export default async function AdminLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
 	const data = await getServerSession();
 
 	if (!data?.session) {

@@ -4,13 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
@@ -32,9 +26,7 @@ const SMIRKY_MESSAGES = [
 ];
 
 function getRandomMessage(exclude?: string): string {
-	const available = exclude
-		? SMIRKY_MESSAGES.filter((m) => m !== exclude)
-		: SMIRKY_MESSAGES;
+	const available = exclude ? SMIRKY_MESSAGES.filter((m) => m !== exclude) : SMIRKY_MESSAGES;
 	return available[Math.floor(Math.random() * available.length)];
 }
 
@@ -51,9 +43,7 @@ function RedirectingState() {
 	return (
 		<div className="flex flex-col items-center justify-center py-8 gap-4">
 			<Spinner className="size-8 text-primary" />
-			<p className="text-sm text-muted-foreground animate-pulse">
-				{message}
-			</p>
+			<p className="text-sm text-muted-foreground animate-pulse">{message}</p>
 		</div>
 	);
 }
@@ -68,8 +58,7 @@ function redirectForRole(role: string | null | undefined, router: ReturnType<typ
 
 export default function LoginPage() {
 	const router = useRouter();
-	const { data: session, isPending: isSessionPending } =
-		authClient.useSession();
+	const { data: session, isPending: isSessionPending } = authClient.useSession();
 	const emailID = useId();
 	const passwordID = useId();
 	const [email, setEmail] = useState("");
@@ -143,9 +132,7 @@ export default function LoginPage() {
 					<>
 						<CardHeader className="space-y-1">
 							<CardTitle className="text-2xl font-bold">Login</CardTitle>
-							<CardDescription>
-								Enter your email and password to access your account
-							</CardDescription>
+							<CardDescription>Enter your email and password to access your account</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<form onSubmit={handleSubmit} className="space-y-4">

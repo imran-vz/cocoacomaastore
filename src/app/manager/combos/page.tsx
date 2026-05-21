@@ -1,10 +1,6 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-	getCachedAllCombos,
-	getCachedBaseDesserts,
-	getCachedModifierDesserts,
-} from "./actions";
+import { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts } from "./actions";
 import ManageCombos from "./manage-combos";
 
 export const dynamic = "force-dynamic";
@@ -31,11 +27,7 @@ export default async function ManagerCombosPage() {
 					</div>
 				}
 			>
-				<ManageCombos
-					initialCombos={combos}
-					baseDesserts={baseDesserts}
-					modifierDesserts={modifierDesserts}
-				/>
+				<ManageCombos initialCombos={combos} baseDesserts={baseDesserts} modifierDesserts={modifierDesserts} />
 			</Suspense>
 		</main>
 	);

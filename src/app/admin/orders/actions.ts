@@ -4,12 +4,7 @@ import { performance } from "node:perf_hooks";
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { db } from "@/db";
-import {
-	type Dessert,
-	type Order,
-	type OrderItem,
-	ordersTable,
-} from "@/db/schema";
+import { type Dessert, type Order, type OrderItem, ordersTable } from "@/db/schema";
 import { getServerSession } from "@/lib/auth";
 
 async function requireAdmin() {

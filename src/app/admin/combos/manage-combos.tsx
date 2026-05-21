@@ -91,12 +91,7 @@ export default function ManageCombos({
 												<CardTitle className="text-base">{combo.name}</CardTitle>
 											</div>
 											<div className="flex items-center gap-1">
-												<Button
-													variant="ghost"
-													size="icon"
-													className="size-8"
-													onClick={() => openEditModal(combo)}
-												>
+												<Button variant="ghost" size="icon" className="size-8" onClick={() => openEditModal(combo)}>
 													<Pencil className="size-4" />
 												</Button>
 												<Switch
@@ -116,9 +111,7 @@ export default function ManageCombos({
 												+{" "}
 												{combo.items
 													.map((item) =>
-														item.quantity > 1
-															? `${item.quantity}× ${item.dessert.name}`
-															: item.dessert.name,
+														item.quantity > 1 ? `${item.quantity}× ${item.dessert.name}` : item.dessert.name,
 													)
 													.join(", ")}
 											</p>
@@ -138,9 +131,7 @@ export default function ManageCombos({
 
 				{disabledCombos.length > 0 && (
 					<div>
-						<h3 className="text-lg font-semibold mb-4 text-red-700">
-							Disabled Combos ({disabledCombos.length})
-						</h3>
+						<h3 className="text-lg font-semibold mb-4 text-red-700">Disabled Combos ({disabledCombos.length})</h3>
 						<div className="grid grid-cols-1 @sm/combos:grid-cols-2 @lg/combos:grid-cols-3 gap-4">
 							{disabledCombos.map((combo) => (
 								<Card key={combo.id} className="relative opacity-60">
@@ -151,12 +142,7 @@ export default function ManageCombos({
 												<CardTitle className="text-base">{combo.name}</CardTitle>
 											</div>
 											<div className="flex items-center gap-1">
-												<Button
-													variant="ghost"
-													size="icon"
-													className="size-8"
-													onClick={() => openEditModal(combo)}
-												>
+												<Button variant="ghost" size="icon" className="size-8" onClick={() => openEditModal(combo)}>
 													<Pencil className="size-4" />
 												</Button>
 												<Switch
@@ -176,9 +162,7 @@ export default function ManageCombos({
 												+{" "}
 												{combo.items
 													.map((item) =>
-														item.quantity > 1
-															? `${item.quantity}× ${item.dessert.name}`
-															: item.dessert.name,
+														item.quantity > 1 ? `${item.quantity}× ${item.dessert.name}` : item.dessert.name,
 													)
 													.join(", ")}
 											</p>

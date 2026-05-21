@@ -22,12 +22,8 @@ export default async function AdminSettingsPage() {
 	return (
 		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-4xl mx-auto">
 			<div className="mb-6">
-				<h2 className="text-2xl md:text-3xl font-bold tracking-tight">
-					Settings
-				</h2>
-				<p className="text-muted-foreground">
-					Manage your account and security settings
-				</p>
+				<h2 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h2>
+				<p className="text-muted-foreground">Manage your account and security settings</p>
 			</div>
 			<div className="max-w-lg">
 				<SettingsPage

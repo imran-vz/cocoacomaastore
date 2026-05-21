@@ -15,10 +15,7 @@ async function getCombos(): Promise<ComboWithDetails[]> {
 	const start = performance.now();
 
 	const combos = await db.query.dessertCombosTable.findMany({
-		where: and(
-			eq(dessertCombosTable.isDeleted, false),
-			eq(dessertCombosTable.enabled, true),
-		),
+		where: and(eq(dessertCombosTable.isDeleted, false), eq(dessertCombosTable.enabled, true)),
 		orderBy: (combos, { asc }) => [asc(combos.sequence)],
 		with: {
 			baseDessert: {
@@ -61,11 +58,7 @@ async function getModifierDesserts() {
 	const start = performance.now();
 
 	const modifiers = await db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-			eq(dessertsTable.kind, "modifier"),
-		),
+		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "modifier")),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
 		columns: {
 			id: true,
@@ -80,13 +73,9 @@ async function getModifierDesserts() {
 	return modifiers;
 }
 
-export const getCachedModifierDesserts = unstable_cache(
-	getModifierDesserts,
-	["modifier-desserts"],
-	{
-		revalidate: 60 * 60 * 24,
-		tags: ["desserts"],
-	},
-);
+export const getCachedModifierDesserts = unstable_cache(getModifierDesserts, ["modifier-desserts"], {
+	revalidate: 60 * 60 * 24,
+	tags: ["desserts"],
+});
 
 export type ModifierDessert = Awaited<ReturnType<typeof getModifierDesserts>>[number];

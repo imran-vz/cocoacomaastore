@@ -57,13 +57,12 @@ export function DashboardContent({
 
 		try {
 			const dateString = formatDateString(date);
-			const [newStats, newStock, newAuditLogs, newDailyRevenue] =
-				await Promise.all([
-					getCachedDashboardStats(dateString),
-					getCachedStockPerDessert(dateString),
-					getCachedAuditLogs(dateString),
-					getCachedDailyRevenue(dateString),
-				]);
+			const [newStats, newStock, newAuditLogs, newDailyRevenue] = await Promise.all([
+				getCachedDashboardStats(dateString),
+				getCachedStockPerDessert(dateString),
+				getCachedAuditLogs(dateString),
+				getCachedDailyRevenue(dateString),
+			]);
 
 			setStats(newStats);
 			setStock(newStock);
@@ -76,8 +75,7 @@ export function DashboardContent({
 		}
 	}, []);
 
-	const avgOrderValue =
-		stats.dayOrdersCount > 0 ? stats.dayRevenue / stats.dayOrdersCount : 0;
+	const avgOrderValue = stats.dayOrdersCount > 0 ? stats.dayRevenue / stats.dayOrdersCount : 0;
 
 	return (
 		<div className="space-y-4">
@@ -85,14 +83,9 @@ export function DashboardContent({
 			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 				<div>
 					<h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-					<p className="text-muted-foreground">
-						Overview of your store's performance
-					</p>
+					<p className="text-muted-foreground">Overview of your store's performance</p>
 				</div>
-				<DateSwitcher
-					selectedDate={selectedDate}
-					onDateChange={handleDateChange}
-				/>
+				<DateSwitcher selectedDate={selectedDate} onDateChange={handleDateChange} />
 			</div>
 
 			{/* Stats Grid */}

@@ -4,9 +4,7 @@ import { type NextRequest, NextResponse } from "next/server";
 const serverSecret = process.env.REVALIDATE_SECRET;
 
 if (!serverSecret) {
-	throw new Error(
-		"REVALIDATE_SECRET environment variable is required for the revalidation API",
-	);
+	throw new Error("REVALIDATE_SECRET environment variable is required for the revalidation API");
 }
 
 export async function POST(request: NextRequest) {

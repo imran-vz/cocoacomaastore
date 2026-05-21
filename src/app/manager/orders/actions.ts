@@ -22,12 +22,7 @@ import { getAnalyticsDay, getDayKey } from "@/lib/ist-date";
 import { recomputeAnalyticsForDate } from "@/lib/recompute-day-analytics";
 import { sanitizeCustomerName } from "@/lib/sanitize";
 import type { CartItem, CartLine } from "@/lib/types";
-import {
-	cancelOrderSchema,
-	createOrderSchema,
-	createOrderWithLinesSchema,
-	deleteOrderSchema,
-} from "@/lib/validation";
+import { cancelOrderSchema, createOrderSchema, createOrderWithLinesSchema, deleteOrderSchema } from "@/lib/validation";
 
 interface CreateOrderData {
 	customerName: string;
@@ -71,10 +66,7 @@ async function getOrders(day: Date): Promise<GetOrdersReturnType> {
 		columns: {
 			isDeleted: false,
 		},
-		where: and(
-			eq(ordersTable.isDeleted, false),
-			gte(ordersTable.createdAt, day),
-		),
+		where: and(eq(ordersTable.isDeleted, false), gte(ordersTable.createdAt, day)),
 		orderBy: [desc(ordersTable.createdAt)],
 		with: {
 			orderItems: {
@@ -135,15 +127,11 @@ export async function createOrder(data: CreateOrderData) {
 	const now = new Date();
 
 	// Filter out items with unlimited stock - they don't need inventory deduction
-	const itemsNeedingInventory = validated.items.filter(
-		(item) => !item.hasUnlimitedStock,
-	);
+	const itemsNeedingInventory = validated.items.filter((item) => !item.hasUnlimitedStock);
 
 	const order = await db.transaction(async (tx) => {
 		const dessertIds = itemsNeedingInventory.map((item) => item.id);
-		const quantityByDessertId = new Map(
-			itemsNeedingInventory.map((item) => [item.id, item.quantity]),
-		);
+		const quantityByDessertId = new Map(itemsNeedingInventory.map((item) => [item.id, item.quantity]));
 
 		let inventoryUpdates: {
 			dessertId: number;
@@ -170,9 +158,7 @@ export async function createOrder(data: CreateOrderData) {
 				.for("update");
 
 			// Build map of current stock levels
-			const stockMap = new Map(
-				lockedInventory.map((row) => [row.dessertId, row.quantity]),
-			);
+			const stockMap = new Map(lockedInventory.map((row) => [row.dessertId, row.quantity]));
 
 			// STEP 2: Validate stock levels while rows are locked
 			// This check is now atomic - no other transaction can modify stock
@@ -215,9 +201,7 @@ export async function createOrder(data: CreateOrderData) {
 			const updatedIds = new Set(updated.map((u) => u.dessertId));
 			for (const item of itemsNeedingInventory) {
 				if (!updatedIds.has(item.id)) {
-					throw new Error(
-						`Failed to update inventory for ${item.name} (unexpected error)`,
-					);
+					throw new Error(`Failed to update inventory for ${item.name} (unexpected error)`);
 				}
 			}
 
@@ -225,8 +209,7 @@ export async function createOrder(data: CreateOrderData) {
 			inventoryUpdates = updated.map((u) => ({
 				dessertId: u.dessertId,
 				newQuantity: u.newQuantity,
-				previousQuantity:
-					u.newQuantity + (quantityByDessertId.get(u.dessertId) ?? 0),
+				previousQuantity: u.newQuantity + (quantityByDessertId.get(u.dessertId) ?? 0),
 			}));
 		}
 
@@ -238,10 +221,7 @@ export async function createOrder(data: CreateOrderData) {
 				createdAt: now,
 				status: "completed",
 				total: validated.items
-					.reduce(
-						(acc, item) => acc + item.quantity * item.price,
-						Number.parseFloat(validated.deliveryCost),
-					)
+					.reduce((acc, item) => acc + item.quantity * item.price, Number.parseFloat(validated.deliveryCost))
 					.toFixed(2),
 				deliveryCost: validated.deliveryCost,
 			})
@@ -318,10 +298,7 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 
 	// Aggregate quantities by base dessert for inventory deduction
 	// Only base desserts with !hasUnlimitedStock need inventory deduction
-	const inventoryAggregation = new Map<
-		number,
-		{ quantity: number; name: string }
-	>();
+	const inventoryAggregation = new Map<number, { quantity: number; name: string }>();
 
 	for (const line of validated.lines) {
 		if (!line.hasUnlimitedStock) {
@@ -339,17 +316,9 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 
 	const dessertIds = Array.from(inventoryAggregation.keys());
 	const quantityByDessertId = new Map(
-		Array.from(inventoryAggregation.entries()).map(([id, data]) => [
-			id,
-			data.quantity,
-		]),
+		Array.from(inventoryAggregation.entries()).map(([id, data]) => [id, data.quantity]),
 	);
-	const nameByDessertId = new Map(
-		Array.from(inventoryAggregation.entries()).map(([id, data]) => [
-			id,
-			data.name,
-		]),
-	);
+	const nameByDessertId = new Map(Array.from(inventoryAggregation.entries()).map(([id, data]) => [id, data.name]));
 
 	let order: Order;
 	try {
@@ -378,9 +347,7 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 					.for("update");
 
 				// Build map of current stock levels
-				const stockMap = new Map(
-					lockedInventory.map((row) => [row.dessertId, row.quantity]),
-				);
+				const stockMap = new Map(lockedInventory.map((row) => [row.dessertId, row.quantity]));
 
 				// STEP 2: Validate stock levels while rows are locked
 				for (const dessertId of dessertIds) {
@@ -388,9 +355,7 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 					const requestedQty = quantityByDessertId.get(dessertId) ?? 0;
 					if (currentStock < requestedQty) {
 						const name = nameByDessertId.get(dessertId) ?? "Unknown";
-						throw new Error(
-							`Insufficient stock for ${name}. Available: ${currentStock}, Requested: ${requestedQty}`,
-						);
+						throw new Error(`Insufficient stock for ${name}. Available: ${currentStock}, Requested: ${requestedQty}`);
 					}
 				}
 
@@ -424,9 +389,7 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 				for (const dessertId of dessertIds) {
 					if (!updatedIds.has(dessertId)) {
 						const name = nameByDessertId.get(dessertId) ?? "Unknown";
-						throw new Error(
-							`Failed to update inventory for ${name} (unexpected error)`,
-						);
+						throw new Error(`Failed to update inventory for ${name} (unexpected error)`);
 					}
 				}
 
@@ -434,17 +397,13 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 				inventoryUpdates = updated.map((u) => ({
 					dessertId: u.dessertId,
 					newQuantity: u.newQuantity,
-					previousQuantity:
-						u.newQuantity + (quantityByDessertId.get(u.dessertId) ?? 0),
+					previousQuantity: u.newQuantity + (quantityByDessertId.get(u.dessertId) ?? 0),
 				}));
 			}
 
 			// Compute order total from cart lines
 			const total = validated.lines
-				.reduce(
-					(acc, line) => acc + line.quantity * line.unitPrice,
-					Number.parseFloat(validated.deliveryCost),
-				)
+				.reduce((acc, line) => acc + line.quantity * line.unitPrice, Number.parseFloat(validated.deliveryCost))
 				.toFixed(2);
 
 			// Create the order
@@ -497,9 +456,7 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 			const insertPromises: Promise<unknown>[] = [];
 
 			if (modifierInserts.length > 0) {
-				insertPromises.push(
-					tx.insert(orderItemModifiersTable).values(modifierInserts),
-				);
+				insertPromises.push(tx.insert(orderItemModifiersTable).values(modifierInserts));
 			}
 
 			if (inventoryUpdates.length > 0) {
@@ -661,10 +618,7 @@ export async function cancelOrder(orderId: number, reason?: string) {
 					.where(
 						and(
 							eq(dailyDessertInventoryTable.day, day),
-							inArray(
-								dailyDessertInventoryTable.dessertId,
-								dessertIdsToRestore,
-							),
+							inArray(dailyDessertInventoryTable.dessertId, dessertIdsToRestore),
 						),
 					)
 					.for("update");
@@ -686,10 +640,7 @@ export async function cancelOrder(orderId: number, reason?: string) {
 					.where(
 						and(
 							eq(dailyDessertInventoryTable.day, day),
-							inArray(
-								dailyDessertInventoryTable.dessertId,
-								dessertIdsToRestore,
-							),
+							inArray(dailyDessertInventoryTable.dessertId, dessertIdsToRestore),
 						),
 					)
 					.returning({
@@ -701,16 +652,12 @@ export async function cancelOrder(orderId: number, reason?: string) {
 				inventoryUpdates = updated.map((u) => ({
 					dessertId: u.dessertId,
 					newQuantity: u.newQuantity,
-					previousQuantity:
-						u.newQuantity - (quantityToRestore.get(u.dessertId) ?? 0),
+					previousQuantity: u.newQuantity - (quantityToRestore.get(u.dessertId) ?? 0),
 				}));
 			}
 
 			// STEP 6: Update order status to cancelled
-			await tx
-				.update(ordersTable)
-				.set({ status: "cancelled" })
-				.where(eq(ordersTable.id, validated.orderId));
+			await tx.update(ordersTable).set({ status: "cancelled" }).where(eq(ordersTable.id, validated.orderId));
 
 			// STEP 7: Create audit log entries for inventory restoration
 			if (inventoryUpdates.length > 0) {

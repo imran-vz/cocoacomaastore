@@ -6,23 +6,12 @@ export default function DessertsLoading() {
 		<main className="min-h-[calc(100vh-52px)] p-3 pb-6 max-w-7xl mx-auto">
 			<div className="space-y-4 md:space-y-6 lg:space-y-8 p-2 sm:p-4 md:p-0">
 				<div className="flex flex-col space-y-3 sm:space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
-					<h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">
-						Desserts
-					</h2>
+					<h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">Desserts</h2>
 					<div className="flex flex-col space-y-2 sm:flex-row sm:gap-2 sm:space-y-0 md:gap-3">
-						<Button
-							type="button"
-							variant="outline"
-							className="w-full sm:w-auto text-sm"
-							size="sm"
-						>
+						<Button type="button" variant="outline" className="w-full sm:w-auto text-sm" size="sm">
 							Disable All
 						</Button>
-						<Button
-							type="button"
-							className="w-full sm:w-auto text-sm"
-							size="sm"
-						>
+						<Button type="button" className="w-full sm:w-auto text-sm" size="sm">
 							Add Dessert
 						</Button>
 					</div>
@@ -34,9 +23,7 @@ export default function DessertsLoading() {
 
 				{/* Available Desserts Section */}
 				<div>
-					<h3 className="text-lg font-semibold mb-4 text-green-700">
-						Available Desserts
-					</h3>
+					<h3 className="text-lg font-semibold mb-4 text-green-700">Available Desserts</h3>
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
 						{Array.from({ length: 8 }).map((_, i) => (
 							<div

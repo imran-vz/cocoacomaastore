@@ -5,39 +5,18 @@ import { use, useId, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { User } from "@/db/schema";
 import { createManager, deleteManager } from "../actions";
 
 export default function ManagerClientPage({
 	managers,
 }: {
-	managers: Promise<
-		Pick<User, "id" | "name" | "email" | "role" | "createdAt">[]
-	>;
+	managers: Promise<Pick<User, "id" | "name" | "email" | "role" | "createdAt">[]>;
 }) {
 	const nameID = useId();
 	const emailID = useId();
@@ -85,9 +64,7 @@ export default function ManagerClientPage({
 			<div className="flex items-center justify-between">
 				<div>
 					<h2 className="text-3xl font-bold tracking-tight">Managers</h2>
-					<p className="text-muted-foreground">
-						Manage admin and manager accounts
-					</p>
+					<p className="text-muted-foreground">Manage admin and manager accounts</p>
 				</div>
 				<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
 					<Button type="button" onClick={() => setIsDialogOpen(true)}>
@@ -97,9 +74,7 @@ export default function ManagerClientPage({
 					<DialogContent>
 						<DialogHeader>
 							<DialogTitle>Add New Manager</DialogTitle>
-							<DialogDescription>
-								Create a new manager or admin account
-							</DialogDescription>
+							<DialogDescription>Create a new manager or admin account</DialogDescription>
 						</DialogHeader>
 						<form onSubmit={handleSubmit} className="space-y-4">
 							<div className="space-y-2">
@@ -107,9 +82,7 @@ export default function ManagerClientPage({
 								<Input
 									id={nameID}
 									value={formData.name}
-									onChange={(e) =>
-										setFormData({ ...formData, name: e.target.value })
-									}
+									onChange={(e) => setFormData({ ...formData, name: e.target.value })}
 									required
 								/>
 							</div>
@@ -119,9 +92,7 @@ export default function ManagerClientPage({
 									id={emailID}
 									type="email"
 									value={formData.email}
-									onChange={(e) =>
-										setFormData({ ...formData, email: e.target.value })
-									}
+									onChange={(e) => setFormData({ ...formData, email: e.target.value })}
 									required
 								/>
 							</div>
@@ -131,9 +102,7 @@ export default function ManagerClientPage({
 									id={passwordID}
 									type="password"
 									value={formData.password}
-									onChange={(e) =>
-										setFormData({ ...formData, password: e.target.value })
-									}
+									onChange={(e) => setFormData({ ...formData, password: e.target.value })}
 									required
 								/>
 							</div>
@@ -182,21 +151,11 @@ export default function ManagerClientPage({
 								<TableCell className="font-medium">{manager.name}</TableCell>
 								<TableCell>{manager.email}</TableCell>
 								<TableCell className="capitalize">
-									<Badge
-										variant={manager.role === "admin" ? "default" : "secondary"}
-									>
-										{manager.role}
-									</Badge>
+									<Badge variant={manager.role === "admin" ? "default" : "secondary"}>{manager.role}</Badge>
 								</TableCell>
-								<TableCell>
-									{new Date(manager.createdAt).toLocaleDateString()}
-								</TableCell>
+								<TableCell>{new Date(manager.createdAt).toLocaleDateString()}</TableCell>
 								<TableCell className="text-right">
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={() => handleDelete(manager.id)}
-									>
+									<Button variant="ghost" size="sm" onClick={() => handleDelete(manager.id)}>
 										<Trash2 className="h-4 w-4" />
 									</Button>
 								</TableCell>

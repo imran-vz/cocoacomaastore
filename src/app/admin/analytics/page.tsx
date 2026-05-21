@@ -37,13 +37,9 @@ export default async function AnalyticsPage() {
 	]);
 
 	// Get the most recent month for initial dessert revenue
-	const currentMonth =
-		availableMonths.length > 0
-			? availableMonths[0]
-			: new Date().toISOString().slice(0, 7);
+	const currentMonth = availableMonths.length > 0 ? availableMonths[0] : new Date().toISOString().slice(0, 7);
 
-	const monthlyDessertRevenue =
-		await getCachedMonthlyDessertRevenue(currentMonth);
+	const monthlyDessertRevenue = await getCachedMonthlyDessertRevenue(currentMonth);
 
 	return (
 		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-7xl mx-auto">

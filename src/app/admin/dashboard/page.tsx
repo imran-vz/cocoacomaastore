@@ -51,12 +51,7 @@ export default async function DashboardPage() {
 	return (
 		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-6xl mx-auto">
 			<Suspense fallback={<DashboardSkeleton />}>
-				<DashboardContent
-					stats={stats}
-					stock={stock}
-					auditLogs={auditLogs}
-					dailyRevenue={dailyRevenue}
-				/>
+				<DashboardContent stats={stats} stock={stock} auditLogs={auditLogs} dailyRevenue={dailyRevenue} />
 			</Suspense>
 		</main>
 	);

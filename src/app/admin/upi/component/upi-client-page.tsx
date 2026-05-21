@@ -5,35 +5,14 @@ import { use, useId, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { UpiAccount } from "@/db/schema";
-import {
-	createUpiAccount,
-	deleteUpiAccount,
-	updateUpiAccount,
-} from "../actions";
+import { createUpiAccount, deleteUpiAccount, updateUpiAccount } from "../actions";
 
-export default function UpiClientPage({
-	upiAccounts,
-}: {
-	upiAccounts: Promise<UpiAccount[]>;
-}) {
+export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<UpiAccount[]> }) {
 	const labelID = useId();
 	const upiIdID = useId();
 	const enabledID = useId();
@@ -54,11 +33,7 @@ export default function UpiClientPage({
 			: await createUpiAccount(formData);
 
 		if (result.success) {
-			toast.success(
-				editingAccount
-					? "UPI account updated successfully"
-					: "UPI account created successfully",
-			);
+			toast.success(editingAccount ? "UPI account updated successfully" : "UPI account created successfully");
 			setIsDialogOpen(false);
 			setEditingAccount(null);
 			setFormData({ label: "", upiId: "", enabled: true });
@@ -116,13 +91,9 @@ export default function UpiClientPage({
 					</Button>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>
-								{editingAccount ? "Edit UPI Account" : "Add New UPI Account"}
-							</DialogTitle>
+							<DialogTitle>{editingAccount ? "Edit UPI Account" : "Add New UPI Account"}</DialogTitle>
 							<DialogDescription>
-								{editingAccount
-									? "Update UPI account details"
-									: "Create a new UPI payment account"}
+								{editingAccount ? "Update UPI account details" : "Create a new UPI payment account"}
 							</DialogDescription>
 						</DialogHeader>
 						<form onSubmit={handleSubmit} className="space-y-4">
@@ -131,9 +102,7 @@ export default function UpiClientPage({
 								<Input
 									id={labelID}
 									value={formData.label}
-									onChange={(e) =>
-										setFormData({ ...formData, label: e.target.value })
-									}
+									onChange={(e) => setFormData({ ...formData, label: e.target.value })}
 									placeholder="e.g., Primary Account"
 									required
 								/>
@@ -143,9 +112,7 @@ export default function UpiClientPage({
 								<Input
 									id={upiIdID}
 									value={formData.upiId}
-									onChange={(e) =>
-										setFormData({ ...formData, upiId: e.target.value })
-									}
+									onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
 									placeholder="e.g., username@upi"
 									required
 								/>
@@ -155,9 +122,7 @@ export default function UpiClientPage({
 									type="checkbox"
 									id={enabledID}
 									checked={formData.enabled}
-									onChange={(e) =>
-										setFormData({ ...formData, enabled: e.target.checked })
-									}
+									onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
 									className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
 								/>
 								<Label htmlFor={enabledID} className="cursor-pointer">
@@ -193,23 +158,13 @@ export default function UpiClientPage({
 										{account.enabled ? "Enabled" : "Disabled"}
 									</Badge>
 								</TableCell>
-								<TableCell>
-									{new Date(account.createdAt).toLocaleDateString()}
-								</TableCell>
+								<TableCell>{new Date(account.createdAt).toLocaleDateString()}</TableCell>
 								<TableCell className="text-right">
 									<div className="flex justify-end gap-2">
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => handleEdit(account)}
-										>
+										<Button variant="ghost" size="sm" onClick={() => handleEdit(account)}>
 											<Edit className="h-4 w-4" />
 										</Button>
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => handleDelete(account.id)}
-										>
+										<Button variant="ghost" size="sm" onClick={() => handleDelete(account.id)}>
 											<Trash2 className="h-4 w-4" />
 										</Button>
 									</div>

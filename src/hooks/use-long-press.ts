@@ -265,7 +265,9 @@ export function useLongPress<
 			}
 			isLongPressActive.current = false;
 			isPressed.current = false;
-			timer.current !== undefined && clearTimeout(timer.current || undefined);
+			if (timer.current !== undefined) {
+				clearTimeout(timer.current);
+			}
 		},
 		[captureEvent, onFinish, onCancel],
 	);
@@ -296,7 +298,9 @@ export function useLongPress<
 	useEffect(
 		() => (): void => {
 			// Clear timeout on unmount
-			timer.current !== undefined && clearTimeout(timer.current || undefined);
+			if (timer.current !== undefined) {
+				clearTimeout(timer.current);
+			}
 		},
 		[],
 	);

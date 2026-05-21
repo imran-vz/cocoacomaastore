@@ -22,20 +22,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import {
-	cancelOrder,
-	type GetOrdersReturnType,
-	getCachedOrders,
-} from "./actions";
+import { cancelOrder, type GetOrdersReturnType, getCachedOrders } from "./actions";
 
 function formatTime(date: Date | string) {
 	const d = typeof date === "string" ? new Date(date) : date;
@@ -54,13 +43,7 @@ const CANCELLATION_REASONS = [
 	"Wrong order placed",
 	"Payment issue",
 ];
-function OrderCard({
-	order,
-	onOrderCancelled,
-}: {
-	order: GetOrdersReturnType[number];
-	onOrderCancelled: () => void;
-}) {
+function OrderCard({ order, onOrderCancelled }: { order: GetOrdersReturnType[number]; onOrderCancelled: () => void }) {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
 	const [cancelReason, setCancelReason] = useState("");
@@ -75,18 +58,13 @@ function OrderCard({
 			setCancelReason("");
 			onOrderCancelled();
 		} catch (error) {
-			toast.error(
-				error instanceof Error ? error.message : "Failed to cancel order",
-			);
+			toast.error(error instanceof Error ? error.message : "Failed to cancel order");
 		} finally {
 			setIsCancelling(false);
 		}
 	};
 
-	const totalItems = order.orderItems.reduce(
-		(acc, item) => acc + item.quantity,
-		0,
-	);
+	const totalItems = order.orderItems.reduce((acc, item) => acc + item.quantity, 0);
 
 	const itemsSummary = order.orderItems
 		.map((item) => {
@@ -140,26 +118,13 @@ function OrderCard({
 								</span>
 							</div>
 
-							<h3 className="font-semibold text-lg truncate">
-								{order.customerName || "Walk-in Customer"}
-							</h3>
+							<h3 className="font-semibold text-lg truncate">{order.customerName || "Walk-in Customer"}</h3>
 
-							{!isExpanded && (
-								<p className="text-sm text-muted-foreground mt-1 line-clamp-1">
-									{itemsSummary}
-								</p>
-							)}
+							{!isExpanded && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{itemsSummary}</p>}
 						</div>
 
 						<div className="flex flex-col items-end gap-1">
-							<span
-								className={cn(
-									"font-bold text-lg",
-									isCancelled && "line-through",
-								)}
-							>
-								₹{order.total}
-							</span>
+							<span className={cn("font-bold text-lg", isCancelled && "line-through")}>₹{order.total}</span>
 							<Badge variant="secondary" className="text-xs">
 								{totalItems} item{totalItems !== 1 ? "s" : ""}
 							</Badge>
@@ -189,22 +154,16 @@ function OrderCard({
 												<TableCell className="py-2">
 													<div className="font-medium">
 														{item.comboName ? (
-															<span className="text-primary">
-																{item.comboName}
-															</span>
+															<span className="text-primary">{item.comboName}</span>
 														) : (
 															item.dessert.name
 														)}
 													</div>
 													{item.comboName && (
 														<div className="text-xs text-muted-foreground mt-1 ml-2 pl-2 border-l-2">
-															<div className="font-medium text-foreground/80">
-																{item.dessert.name}
-															</div>
+															<div className="font-medium text-foreground/80">{item.dessert.name}</div>
 															{item.modifiers.map((mod) => (
-																<div key={`${item.id}-mod-${mod.id}`}>
-																	{mod.dessert.name}
-																</div>
+																<div key={`${item.id}-mod-${mod.id}`}>{mod.dessert.name}</div>
 															))}
 														</div>
 													)}
@@ -218,9 +177,7 @@ function OrderCard({
 														</div>
 													)}
 												</TableCell>
-												<TableCell className="text-right py-2 font-mono">
-													×{item.quantity}
-												</TableCell>
+												<TableCell className="text-right py-2 font-mono">×{item.quantity}</TableCell>
 											</TableRow>
 										))}
 									</TableBody>
@@ -237,17 +194,10 @@ function OrderCard({
 							{/* Cancel Order Button */}
 							{!isCancelled && (
 								<div className="pt-3 border-t mt-3">
-									<Dialog
-										open={isCancelDialogOpen}
-										onOpenChange={setIsCancelDialogOpen}
-									>
+									<Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
 										<DialogTrigger
 											render={
-												<Button
-													variant="destructive"
-													size="sm"
-													className="w-full"
-												>
+												<Button variant="destructive" size="sm" className="w-full">
 													<XCircle className="size-4 mr-2" />
 													Cancel Order
 												</Button>
@@ -258,15 +208,12 @@ function OrderCard({
 											<DialogHeader>
 												<DialogTitle>Cancel Order #{order.id}</DialogTitle>
 												<DialogDescription>
-													Are you sure you want to cancel this order? The
-													inventory will be restored automatically.
+													Are you sure you want to cancel this order? The inventory will be restored automatically.
 												</DialogDescription>
 											</DialogHeader>
 											<div className="space-y-4 py-4">
 												<div className="space-y-2">
-													<Label htmlFor="cancel-reason">
-														Reason (optional)
-													</Label>
+													<Label htmlFor="cancel-reason">Reason (optional)</Label>
 													<Input
 														id="cancel-reason"
 														list="cancel-reasons"
@@ -290,11 +237,7 @@ function OrderCard({
 														</Button>
 													}
 												/>
-												<Button
-													variant="destructive"
-													onClick={handleCancelOrder}
-													disabled={isCancelling}
-												>
+												<Button variant="destructive" onClick={handleCancelOrder} disabled={isCancelling}>
 													{isCancelling ? (
 														<>
 															<Spinner className="size-4 mr-2" />
@@ -317,11 +260,7 @@ function OrderCard({
 	);
 }
 
-export default function OrdersPage({
-	initialOrders,
-}: {
-	initialOrders: GetOrdersReturnType;
-}) {
+export default function OrdersPage({ initialOrders }: { initialOrders: GetOrdersReturnType }) {
 	const [orders, setOrders] = useState(initialOrders);
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -345,8 +284,7 @@ export default function OrdersPage({
 	}, []);
 
 	const totalItems = orders.reduce(
-		(acc, order) =>
-			acc + order.orderItems.reduce((sum, item) => sum + item.quantity, 0),
+		(acc, order) => acc + order.orderItems.reduce((sum, item) => sum + item.quantity, 0),
 		0,
 	);
 
@@ -356,9 +294,7 @@ export default function OrdersPage({
 			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 				<div>
 					<h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-					<p className="text-muted-foreground mt-1">
-						{todayLabel ? todayLabel : <Skeleton className="w-32 h-5" />}
-					</p>
+					<p className="text-muted-foreground mt-1">{todayLabel ? todayLabel : <Skeleton className="w-32 h-5" />}</p>
 				</div>
 				<Button
 					variant="outline"
@@ -375,9 +311,7 @@ export default function OrdersPage({
 			<div className="grid grid-cols-2 gap-4">
 				<Card className="p-0 gap-1">
 					<CardHeader className="p-4 pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">
-							Total Orders
-						</CardTitle>
+						<CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle>
 					</CardHeader>
 					<CardContent className="p-4 pt-0">
 						<div className="text-2xl font-bold">{orders.length}</div>
@@ -385,9 +319,7 @@ export default function OrdersPage({
 				</Card>
 				<Card className="p-0 gap-1">
 					<CardHeader className="p-4 pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">
-							Items Sold
-						</CardTitle>
+						<CardTitle className="text-sm font-medium text-muted-foreground">Items Sold</CardTitle>
 					</CardHeader>
 					<CardContent className="p-4 pt-0">
 						<div className="text-2xl font-bold">{totalItems}</div>
@@ -398,25 +330,16 @@ export default function OrdersPage({
 			{/* Orders List */}
 			<div className="space-y-4">
 				{orders.length > 0 ? (
-					orders.map((order) => (
-						<OrderCard
-							key={order.id}
-							order={order}
-							onOrderCancelled={refetch}
-						/>
-					))
+					orders.map((order) => <OrderCard key={order.id} order={order} onOrderCancelled={refetch} />)
 				) : (
 					<Card className="py-12 border-dashed">
 						<div className="flex flex-col items-center justify-center text-center text-muted-foreground">
 							<div className="bg-muted rounded-full p-4 mb-4">
 								<Package className="size-8 opacity-50" />
 							</div>
-							<h3 className="font-semibold text-lg text-foreground">
-								No orders yet
-							</h3>
+							<h3 className="font-semibold text-lg text-foreground">No orders yet</h3>
 							<p className="text-sm max-w-62.5 mt-1">
-								Orders will appear here automatically when customers make a
-								purchase.
+								Orders will appear here automatically when customers make a purchase.
 							</p>
 						</div>
 					</Card>

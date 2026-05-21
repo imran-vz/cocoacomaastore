@@ -14,7 +14,8 @@ export function sanitizeText(input: string): string {
 			.replace(/javascript:/gi, "")
 			.replace(/on\w+\s*=/gi, "")
 			// Remove null bytes
-			.replace(/\0/g, "")
+			.split("\u0000")
+			.join("")
 			// Trim whitespace
 			.trim()
 	);

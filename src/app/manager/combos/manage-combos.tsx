@@ -82,12 +82,7 @@ export default function ManageCombos({
 									disabled={toggleLoadingIds.has(combo.id)}
 									aria-label="Toggle combo"
 								/>
-								<Button
-									variant="ghost"
-									size="icon"
-									className="size-8"
-									onClick={() => openEditModal(combo)}
-								>
+								<Button variant="ghost" size="icon" className="size-8" onClick={() => openEditModal(combo)}>
 									<Pencil className="size-4" />
 									<span className="sr-only">Edit combo</span>
 								</Button>
@@ -96,10 +91,7 @@ export default function ManageCombos({
 						<CardContent>
 							<div className="text-sm text-muted-foreground space-y-1">
 								<p>Base: {combo.baseDessert.name}</p>
-								<p>
-									Price:{" "}
-									{combo.overridePrice ? `₹${combo.overridePrice} (Override)` : "Auto-calculated"}
-								</p>
+								<p>Price: {combo.overridePrice ? `₹${combo.overridePrice} (Override)` : "Auto-calculated"}</p>
 								<div className="mt-2">
 									<p className="font-medium text-foreground text-xs mb-1">Items:</p>
 									<div className="flex flex-wrap gap-1">

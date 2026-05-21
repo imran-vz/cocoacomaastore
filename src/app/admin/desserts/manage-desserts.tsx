@@ -5,11 +5,7 @@ import { getCachedDesserts } from "@/app/desserts/actions";
 import { DessertsTable } from "@/components/desserts-table";
 import type { Dessert } from "@/lib/types";
 
-export default function ManageDesserts({
-	initialDesserts,
-}: {
-	initialDesserts: Promise<Dessert[]>;
-}) {
+export default function ManageDesserts({ initialDesserts }: { initialDesserts: Promise<Dessert[]> }) {
 	const initial = use(initialDesserts);
 	const [desserts, setDesserts] = useState<Dessert[]>(initial);
 

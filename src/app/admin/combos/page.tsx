@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 
-import {
-	getCachedAllCombos,
-	getCachedBaseDesserts,
-	getCachedModifierDesserts,
-} from "./actions";
+import { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts } from "./actions";
 import ManageCombos from "./manage-combos";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +17,7 @@ export default async function page() {
 
 	return (
 		<main className="min-h-[calc(100vh-52px)] p-3 pb-6 max-w-7xl mx-auto">
-			<ManageCombos
-				initialCombos={combos}
-				baseDesserts={baseDesserts}
-				modifierDesserts={modifierDesserts}
-			/>
+			<ManageCombos initialCombos={combos} baseDesserts={baseDesserts} modifierDesserts={modifierDesserts} />
 		</main>
 	);
 }

@@ -16,13 +16,7 @@ import {
 	orderItemsTable,
 	ordersTable,
 } from "@/db/schema";
-import {
-	getAnalyticsDay,
-	getDayKey,
-	getEndOfDayIST,
-	getISTMonthKey,
-	getStartOfDayIST,
-} from "@/lib/ist-date";
+import { getAnalyticsDay, getDayKey, getEndOfDayIST, getISTMonthKey, getStartOfDayIST } from "@/lib/ist-date";
 
 // biome-ignore lint/suspicious/noExplicitAny: for next unstable_cache
 type Callback = (...args: any[]) => Promise<any>;
@@ -146,12 +140,7 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 				revenue: sum(analyticsDailyRevenueTable.grossRevenue).as("revenue"),
 			})
 			.from(analyticsDailyRevenueTable)
-			.where(
-				and(
-					gte(analyticsDailyRevenueTable.day, weekAgoUTC),
-					lt(analyticsDailyRevenueTable.day, dayStartUTC),
-				),
-			),
+			.where(and(gte(analyticsDailyRevenueTable.day, weekAgoUTC), lt(analyticsDailyRevenueTable.day, dayStartUTC))),
 	]);
 
 	const dayOrdersCount = todayOrders[0]?.count ?? 0;
@@ -191,10 +180,7 @@ async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
 		.from(dessertsTable)
 		.leftJoin(
 			dailyDessertInventoryTable,
-			and(
-				eq(dailyDessertInventoryTable.dessertId, dessertsTable.id),
-				eq(dailyDessertInventoryTable.day, dayStart),
-			),
+			and(eq(dailyDessertInventoryTable.dessertId, dessertsTable.id), eq(dailyDessertInventoryTable.day, dayStart)),
 		)
 		.where(eq(dessertsTable.isDeleted, false))
 		.orderBy(dessertsTable.sequence);
@@ -225,16 +211,8 @@ async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 			note: inventoryAuditLogTable.note,
 		})
 		.from(inventoryAuditLogTable)
-		.innerJoin(
-			dessertsTable,
-			eq(inventoryAuditLogTable.dessertId, dessertsTable.id),
-		)
-		.where(
-			and(
-				gte(inventoryAuditLogTable.createdAt, dayStart),
-				lt(inventoryAuditLogTable.createdAt, dayEnd),
-			),
-		)
+		.innerJoin(dessertsTable, eq(inventoryAuditLogTable.dessertId, dessertsTable.id))
+		.where(and(gte(inventoryAuditLogTable.createdAt, dayStart), lt(inventoryAuditLogTable.createdAt, dayEnd)))
 		.orderBy(desc(inventoryAuditLogTable.createdAt))
 		.limit(limit);
 
@@ -256,10 +234,7 @@ export type DailyRevenue = {
 	orders: number;
 };
 
-async function getDailyRevenue(
-	endDate: Date,
-	days = 7,
-): Promise<DailyRevenue[]> {
+async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]> {
 	const start = performance.now();
 
 	const endDay = getAnalyticsDay(endDate);
@@ -271,9 +246,7 @@ async function getDailyRevenue(
 	const isEndDateToday = endDay.getTime() === todayUTC.getTime();
 
 	// Query analytics for historical days (exclude today if it's in range)
-	const analyticsEndDay = isEndDateToday
-		? new Date(endDay.getTime() - 24 * 60 * 60 * 1000)
-		: endDay;
+	const analyticsEndDay = isEndDateToday ? new Date(endDay.getTime() - 24 * 60 * 60 * 1000) : endDay;
 
 	const results = await db
 		.select({
@@ -282,12 +255,7 @@ async function getDailyRevenue(
 			orders: analyticsDailyRevenueTable.orderCount,
 		})
 		.from(analyticsDailyRevenueTable)
-		.where(
-			and(
-				gte(analyticsDailyRevenueTable.day, startDay),
-				lte(analyticsDailyRevenueTable.day, analyticsEndDay),
-			),
-		)
+		.where(and(gte(analyticsDailyRevenueTable.day, startDay), lte(analyticsDailyRevenueTable.day, analyticsEndDay)))
 		.orderBy(analyticsDailyRevenueTable.day);
 
 	const dailyData: DailyRevenue[] = results.map((r) => ({
@@ -343,14 +311,10 @@ export async function getCachedDashboardStats(dateString?: string) {
 	const date = dateString ? new Date(dateString) : new Date();
 	const dayKey = getDayKey(date);
 
-	return unstable_cache(
-		() => getDashboardStats(date),
-		["dashboard-stats", dayKey],
-		{
-			revalidate: 60, // Revalidate every minute
-			tags: ["orders", "dashboard"],
-		},
-	)();
+	return unstable_cache(() => getDashboardStats(date), ["dashboard-stats", dayKey], {
+		revalidate: 60, // Revalidate every minute
+		tags: ["orders", "dashboard"],
+	})();
 }
 
 export async function getCachedStockPerDessert(dateString?: string) {
@@ -358,14 +322,10 @@ export async function getCachedStockPerDessert(dateString?: string) {
 	const day = getAnalyticsDay(date);
 	const dayKey = getDayKey(date);
 
-	return unstable_cache(
-		() => getStockPerDessert(day),
-		["stock-per-dessert", dayKey],
-		{
-			revalidate: 60,
-			tags: ["inventory", "desserts", "dashboard"],
-		},
-	)();
+	return unstable_cache(() => getStockPerDessert(day), ["stock-per-dessert", dayKey], {
+		revalidate: 60,
+		tags: ["inventory", "desserts", "dashboard"],
+	})();
 }
 
 export async function getCachedAuditLogs(dateString?: string) {
@@ -382,14 +342,10 @@ export async function getCachedDailyRevenue(dateString?: string) {
 	const date = dateString ? new Date(dateString) : new Date();
 	const dayKey = getDayKey(date);
 
-	return unstable_cache(
-		() => getDailyRevenue(date, 7),
-		["daily-revenue", dayKey],
-		{
-			revalidate: 60 * 5, // Revalidate every 5 minutes
-			tags: ["orders", "dashboard"],
-		},
-	)();
+	return unstable_cache(() => getDailyRevenue(date, 7), ["daily-revenue", dayKey], {
+		revalidate: 60 * 5, // Revalidate every 5 minutes
+		tags: ["orders", "dashboard"],
+	})();
 }
 
 // Get monthly revenue for the past N months
@@ -417,20 +373,14 @@ async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
 }
 
 export async function getCachedMonthlyRevenue(months = 6) {
-	return unstable_cache(
-		() => getMonthlyRevenue(months),
-		["monthly-revenue", String(months)],
-		{
-			revalidate: 60 * 60, // Revalidate every hour
-			tags: ["orders", "analytics"],
-		},
-	)();
+	return unstable_cache(() => getMonthlyRevenue(months), ["monthly-revenue", String(months)], {
+		revalidate: 60 * 60, // Revalidate every hour
+		tags: ["orders", "analytics"],
+	})();
 }
 
 // Get monthly per-dessert revenue for a specific month
-async function getMonthlyDessertRevenue(
-	month?: string,
-): Promise<MonthlyDessertRevenue[]> {
+async function getMonthlyDessertRevenue(month?: string): Promise<MonthlyDessertRevenue[]> {
 	const start = performance.now();
 
 	// Default to current month if not specified
@@ -450,10 +400,7 @@ async function getMonthlyDessertRevenue(
 			orderCount: analyticsMonthlyDessertRevenueTable.orderCount,
 		})
 		.from(analyticsMonthlyDessertRevenueTable)
-		.innerJoin(
-			dessertsTable,
-			eq(analyticsMonthlyDessertRevenueTable.dessertId, dessertsTable.id),
-		)
+		.innerJoin(dessertsTable, eq(analyticsMonthlyDessertRevenueTable.dessertId, dessertsTable.id))
 		.where(eq(analyticsMonthlyDessertRevenueTable.month, targetMonth))
 		.orderBy(desc(analyticsMonthlyDessertRevenueTable.grossRevenue));
 
@@ -477,14 +424,10 @@ export async function getCachedMonthlyDessertRevenue(month?: string) {
 			return getISTMonthKey();
 		})();
 
-	return unstable_cache(
-		() => getMonthlyDessertRevenue(targetMonth),
-		["monthly-dessert-revenue", targetMonth],
-		{
-			revalidate: 60 * 60, // Revalidate every hour
-			tags: ["orders", "analytics", "desserts"],
-		},
-	)();
+	return unstable_cache(() => getMonthlyDessertRevenue(targetMonth), ["monthly-dessert-revenue", targetMonth], {
+		revalidate: 60 * 60, // Revalidate every hour
+		tags: ["orders", "analytics", "desserts"],
+	})();
 }
 
 // Get EOD stock trends for the past N days for all desserts
@@ -504,16 +447,8 @@ async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
 			remainingStock: analyticsDailyEodStockTable.remainingStock,
 		})
 		.from(analyticsDailyEodStockTable)
-		.innerJoin(
-			dessertsTable,
-			eq(analyticsDailyEodStockTable.dessertId, dessertsTable.id),
-		)
-		.where(
-			and(
-				gte(analyticsDailyEodStockTable.day, startDay),
-				lte(analyticsDailyEodStockTable.day, endDay),
-			),
-		)
+		.innerJoin(dessertsTable, eq(analyticsDailyEodStockTable.dessertId, dessertsTable.id))
+		.where(and(gte(analyticsDailyEodStockTable.day, startDay), lte(analyticsDailyEodStockTable.day, endDay)))
 		.orderBy(analyticsDailyEodStockTable.day, dessertsTable.name);
 
 	const duration = performance.now() - start;
@@ -531,14 +466,10 @@ async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
 export async function getCachedEodStockTrends(days = 14) {
 	const dayKey = getDayKey(new Date());
 
-	return unstable_cache(
-		() => getEodStockTrends(days),
-		["eod-stock-trends", dayKey, String(days)],
-		{
-			revalidate: 60 * 60, // Revalidate every hour
-			tags: ["inventory", "analytics"],
-		},
-	)();
+	return unstable_cache(() => getEodStockTrends(days), ["eod-stock-trends", dayKey, String(days)], {
+		revalidate: 60 * 60, // Revalidate every hour
+		tags: ["inventory", "analytics"],
+	})();
 }
 
 // Get list of available months for analytics

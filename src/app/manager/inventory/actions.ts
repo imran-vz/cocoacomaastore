@@ -58,9 +58,7 @@ export async function getCachedTodayInventory() {
 	})();
 }
 
-export async function upsertTodayInventory(
-	updates: Array<{ dessertId: number; quantity: number }>,
-) {
+export async function upsertTodayInventory(updates: Array<{ dessertId: number; quantity: number }>) {
 	await requireAuth();
 
 	// Validate input
@@ -77,9 +75,7 @@ export async function upsertTodayInventory(
 	const values = validatedUpdates.map((update) => ({
 		day,
 		dessertId: update.dessertId,
-		quantity: Number.isFinite(update.quantity)
-			? Math.max(0, Math.floor(update.quantity))
-			: 0,
+		quantity: Number.isFinite(update.quantity) ? Math.max(0, Math.floor(update.quantity)) : 0,
 		updatedAt: now,
 	}));
 
@@ -89,10 +85,7 @@ export async function upsertTodayInventory(
 			.insert(dailyDessertInventoryTable)
 			.values(values)
 			.onConflictDoUpdate({
-				target: [
-					dailyDessertInventoryTable.day,
-					dailyDessertInventoryTable.dessertId,
-				],
+				target: [dailyDessertInventoryTable.day, dailyDessertInventoryTable.dessertId],
 				set: {
 					quantity: sql`excluded.quantity`,
 					updatedAt: sql`excluded.updated_at`,

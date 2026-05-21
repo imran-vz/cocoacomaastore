@@ -5,19 +5,10 @@ import { and, eq } from "drizzle-orm";
 import { revalidateTag, unstable_cache } from "next/cache";
 
 import { db } from "@/db";
-import {
-	dessertComboItemsTable,
-	dessertCombosTable,
-	dessertsTable,
-} from "@/db/schema";
+import { dessertComboItemsTable, dessertCombosTable, dessertsTable } from "@/db/schema";
 import { getServerSession } from "@/lib/auth";
 import type { ComboWithDetails } from "@/lib/types";
-import {
-	createComboSchema,
-	deleteComboSchema,
-	updateComboItemsSchema,
-	updateComboSchema,
-} from "@/lib/validation";
+import { createComboSchema, deleteComboSchema, updateComboItemsSchema, updateComboSchema } from "@/lib/validation";
 
 async function requireAdmin() {
 	const session = await getServerSession();
@@ -69,24 +60,16 @@ async function getAllCombos(): Promise<ComboWithDetails[]> {
 	return combos as ComboWithDetails[];
 }
 
-export const getCachedAllCombos = unstable_cache(
-	getAllCombos,
-	["admin-combos"],
-	{
-		revalidate: 60 * 60 * 24,
-		tags: ["combos"],
-	},
-);
+export const getCachedAllCombos = unstable_cache(getAllCombos, ["admin-combos"], {
+	revalidate: 60 * 60 * 24,
+	tags: ["combos"],
+});
 
 async function getBaseDesserts() {
 	const start = performance.now();
 
 	const desserts = await db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-			eq(dessertsTable.kind, "base"),
-		),
+		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "base")),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
 		columns: {
 			id: true,
@@ -102,24 +85,16 @@ async function getBaseDesserts() {
 	return desserts;
 }
 
-export const getCachedBaseDesserts = unstable_cache(
-	getBaseDesserts,
-	["base-desserts"],
-	{
-		revalidate: 60 * 60 * 24,
-		tags: ["desserts"],
-	},
-);
+export const getCachedBaseDesserts = unstable_cache(getBaseDesserts, ["base-desserts"], {
+	revalidate: 60 * 60 * 24,
+	tags: ["desserts"],
+});
 
 async function getModifierDesserts() {
 	const start = performance.now();
 
 	const desserts = await db.query.dessertsTable.findMany({
-		where: and(
-			eq(dessertsTable.isDeleted, false),
-			eq(dessertsTable.enabled, true),
-			eq(dessertsTable.kind, "modifier"),
-		),
+		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "modifier")),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
 		columns: {
 			id: true,
@@ -134,14 +109,10 @@ async function getModifierDesserts() {
 	return desserts;
 }
 
-export const getCachedModifierDesserts = unstable_cache(
-	getModifierDesserts,
-	["modifier-desserts-admin"],
-	{
-		revalidate: 60 * 60 * 24,
-		tags: ["desserts"],
-	},
-);
+export const getCachedModifierDesserts = unstable_cache(getModifierDesserts, ["modifier-desserts-admin"], {
+	revalidate: 60 * 60 * 24,
+	tags: ["desserts"],
+});
 
 // ============================================================================
 // Write Operations
@@ -231,10 +202,7 @@ export async function toggleCombo(id: number, enabled: boolean) {
 
 	const start = performance.now();
 
-	await db
-		.update(dessertCombosTable)
-		.set({ enabled, updatedAt: new Date() })
-		.where(eq(dessertCombosTable.id, id));
+	await db.update(dessertCombosTable).set({ enabled, updatedAt: new Date() }).where(eq(dessertCombosTable.id, id));
 
 	const duration = performance.now() - start;
 	console.log(`toggleCombo: ${duration.toFixed(2)}ms`);
@@ -242,10 +210,7 @@ export async function toggleCombo(id: number, enabled: boolean) {
 	revalidateTag("combos", "max");
 }
 
-export async function updateComboItems(
-	comboId: number,
-	items: Array<{ dessertId: number; quantity: number }>,
-) {
+export async function updateComboItems(comboId: number, items: Array<{ dessertId: number; quantity: number }>) {
 	await requireAdmin();
 
 	const validated = updateComboItemsSchema.parse({ comboId, items });
@@ -254,9 +219,7 @@ export async function updateComboItems(
 
 	await db.transaction(async (tx) => {
 		// Delete existing items
-		await tx
-			.delete(dessertComboItemsTable)
-			.where(eq(dessertComboItemsTable.comboId, validated.comboId));
+		await tx.delete(dessertComboItemsTable).where(eq(dessertComboItemsTable.comboId, validated.comboId));
 
 		// Insert new items
 		if (validated.items.length > 0) {
@@ -283,6 +246,4 @@ export async function updateComboItems(
 }
 
 export type BaseDessert = Awaited<ReturnType<typeof getBaseDesserts>>[number];
-export type ModifierDessert = Awaited<
-	ReturnType<typeof getModifierDesserts>
->[number];
+export type ModifierDessert = Awaited<ReturnType<typeof getModifierDesserts>>[number];
