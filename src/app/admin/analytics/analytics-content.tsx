@@ -3,11 +3,12 @@
 import { IconCalendar, IconChartBar, IconCookie, IconTrendingUp } from "@tabler/icons-react";
 import { useCallback, useState } from "react";
 import {
-	Area,
-	AreaChart,
+	Bar,
 	CartesianGrid,
 	Cell,
+	ComposedChart,
 	Legend,
+	Line,
 	Pie,
 	PieChart,
 	ResponsiveContainer,
@@ -175,20 +176,8 @@ export function AnalyticsContent({
 						</div>
 					) : (
 						<ResponsiveContainer width="100%" height={320}>
-							<AreaChart data={monthlyChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
-								<defs>
-									<linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-										<stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.26} />
-										<stop offset="58%" stopColor="var(--chart-1)" stopOpacity={0.1} />
-										<stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
-									</linearGradient>
-									<linearGradient id="ordersGradient" x1="0" y1="0" x2="0" y2="1">
-										<stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.2} />
-										<stop offset="62%" stopColor="var(--chart-2)" stopOpacity={0.07} />
-										<stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
-									</linearGradient>
-								</defs>
-								<CartesianGrid strokeDasharray="4 8" vertical={false} stroke="var(--border)" strokeOpacity={0.7} />
+							<ComposedChart data={monthlyChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+								<CartesianGrid strokeDasharray="3 8" vertical={false} stroke="var(--border)" strokeOpacity={0.75} />
 								<XAxis dataKey="month" axisLine={false} tickLine={false} tickMargin={12} />
 								<YAxis
 									yAxisId="revenue"
@@ -213,41 +202,30 @@ export function AnalyticsContent({
 									]}
 								/>
 								<Legend />
-								<Area
+								<Bar
 									yAxisId="revenue"
-									type="monotone"
 									dataKey="revenue"
-									stroke="var(--chart-1)"
-									strokeWidth={2.25}
-									fill="url(#revenueGradient)"
-									fillOpacity={1}
+									fill="#f2b38d"
 									name="Revenue"
-									dot={false}
-									activeDot={{
-										r: 4,
-										strokeWidth: 2,
-										stroke: "var(--background)",
-										fill: "var(--chart-1)",
-									}}
+									radius={[4, 4, 0, 0]}
+									barSize={26}
 								/>
-								<Area
+								<Line
 									yAxisId="orders"
 									type="monotone"
 									dataKey="orders"
-									stroke="var(--chart-2)"
-									strokeWidth={2.25}
-									fill="url(#ordersGradient)"
-									fillOpacity={1}
+									stroke="#12877f"
+									strokeWidth={3}
 									name="Orders"
 									dot={false}
 									activeDot={{
 										r: 4,
 										strokeWidth: 2,
 										stroke: "var(--background)",
-										fill: "var(--chart-2)",
+										fill: "#12877f",
 									}}
 								/>
-							</AreaChart>
+							</ComposedChart>
 						</ResponsiveContainer>
 					)}
 				</CardContent>
