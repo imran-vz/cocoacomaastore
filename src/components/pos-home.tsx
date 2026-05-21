@@ -1,7 +1,6 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useStore } from "@tanstack/react-store";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, X } from "lucide-react";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
@@ -291,102 +290,102 @@ export default function POSHome({
 		[addStockToggleLoadingId, updateDessert, removeStockToggleLoadingId],
 	);
 
-	const deliveryCost = useStore(form.store, (state) => state.values.deliveryCost);
-	const customerName = useStore(form.store, (state) => state.values.name);
-
-	const total = useMemo(() => {
-		const itemCost = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-		const dc = Number.parseFloat(deliveryCost || "0");
-		return itemCost + dc;
-	}, [cart, deliveryCost]);
-
 	return (
-		<div className="min-h-[calc(100vh-52px)] flex flex-col md:flex-row md:gap-4 lg:gap-6">
-			{/* Main Content - Products */}
-			<div className="flex-1 flex flex-col min-w-0">
-				{/* Search Header */}
-				<motion.div
-					initial={{ opacity: 0, y: -10 }}
-					animate={{ opacity: 1, y: 0 }}
-					className="sticky top-13 z-30 bg-background/80 backdrop-blur-lg md:relative md:top-0 md:bg-transparent md:backdrop-blur-none"
-				>
-					<div className="px-4 py-3 md:px-0 md:py-4">
-						<div className="relative">
-							<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-							<input
-								type="text"
-								placeholder="Search items..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className={cn(
-									"w-full h-11 pl-10 pr-10 rounded-xl border-2 bg-background",
-									"text-sm placeholder:text-muted-foreground",
-									"focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",
-									"transition-all duration-200",
-								)}
+		<form.Subscribe selector={(state) => state.values}>
+			{({ deliveryCost, name: customerName }) => {
+				const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
+				const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, deliveryCostAmount);
+
+				return (
+					<div className="min-h-[calc(100vh-52px)] flex flex-col md:flex-row md:gap-4 lg:gap-6">
+						{/* Main Content - Products */}
+						<div className="flex-1 flex flex-col min-w-0">
+							{/* Search Header */}
+							<motion.div
+								initial={{ opacity: 0, y: -10 }}
+								animate={{ opacity: 1, y: 0 }}
+								className="sticky top-13 z-30 bg-background/80 backdrop-blur-lg md:relative md:top-0 md:bg-transparent md:backdrop-blur-none"
+							>
+								<div className="px-4 py-3 md:px-0 md:py-4">
+									<div className="relative">
+										<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+										<input
+											type="text"
+											placeholder="Search items..."
+											value={searchQuery}
+											onChange={(e) => setSearchQuery(e.target.value)}
+											className={cn(
+												"w-full h-11 pl-10 pr-10 rounded-xl border-2 bg-background",
+												"text-sm placeholder:text-muted-foreground",
+												"focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",
+												"transition-all duration-200",
+											)}
+										/>
+										<AnimatePresence>
+											{searchQuery && (
+												<motion.button
+													type="button"
+													initial={{ opacity: 0, scale: 0.8 }}
+													animate={{ opacity: 1, scale: 1 }}
+													exit={{ opacity: 0, scale: 0.8 }}
+													onClick={() => setSearchQuery("")}
+													className="absolute right-3 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
+												>
+													<X className="size-3.5" />
+												</motion.button>
+											)}
+										</AnimatePresence>
+									</div>
+								</div>
+							</motion.div>
+
+							{/* Product Grid */}
+							<div className="flex-1 px-4 pb-24 md:pb-6 md:px-0">
+								<ProductGrid
+									desserts={dessertsWithInventory}
+									combos={availableCombos}
+									onAddToCart={addToCart}
+									onAddComboToCart={addComboToCart}
+									onToggleStock={handleToggleStock}
+									stockToggleLoadingIds={stockToggleLoadingIds}
+									searchQuery={searchQuery}
+								/>
+							</div>
+						</div>
+
+						{/* Cart - Mobile Bottom Sheet */}
+						<div className="md:hidden">
+							<MobileCartSheet
+								cart={cart}
+								updateQuantity={updateQuantity}
+								removeFromCart={removeFromCart}
+								form={form}
+								total={total}
+								upiAccounts={upiAccountsList}
+								customerName={customerName}
+								onOrderSaved={refreshInventory}
+								clearCart={clearCart}
 							/>
-							<AnimatePresence>
-								{searchQuery && (
-									<motion.button
-										type="button"
-										initial={{ opacity: 0, scale: 0.8 }}
-										animate={{ opacity: 1, scale: 1 }}
-										exit={{ opacity: 0, scale: 0.8 }}
-										onClick={() => setSearchQuery("")}
-										className="absolute right-3 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
-									>
-										<X className="size-3.5" />
-									</motion.button>
-								)}
-							</AnimatePresence>
+						</div>
+
+						{/* Cart - Tablet Sidebar */}
+						<div className="hidden md:block md:w-85 lg:w-95 xl:w-100 shrink-0 sticky top-13 h-[calc(100vh-52px-24px)] py-4 pr-4">
+							<TabletCartSidebar
+								cart={cart}
+								updateQuantity={updateQuantity}
+								removeFromCart={removeFromCart}
+								form={form}
+								total={total}
+								upiAccounts={upiAccountsList}
+								onOrderSaved={refreshInventory}
+								clearCart={clearCart}
+								customerName={customerName}
+								deliveryCost={deliveryCostAmount}
+							/>
 						</div>
 					</div>
-				</motion.div>
-
-				{/* Product Grid */}
-				<div className="flex-1 px-4 pb-24 md:pb-6 md:px-0">
-					<ProductGrid
-						desserts={dessertsWithInventory}
-						combos={availableCombos}
-						onAddToCart={addToCart}
-						onAddComboToCart={addComboToCart}
-						onToggleStock={handleToggleStock}
-						stockToggleLoadingIds={stockToggleLoadingIds}
-						searchQuery={searchQuery}
-					/>
-				</div>
-			</div>
-
-			{/* Cart - Mobile Bottom Sheet */}
-			<div className="md:hidden">
-				<MobileCartSheet
-					cart={cart}
-					updateQuantity={updateQuantity}
-					removeFromCart={removeFromCart}
-					form={form}
-					total={total}
-					upiAccounts={upiAccountsList}
-					customerName={customerName}
-					onOrderSaved={refreshInventory}
-					clearCart={clearCart}
-				/>
-			</div>
-
-			{/* Cart - Tablet Sidebar */}
-			<div className="hidden md:block md:w-85 lg:w-95 xl:w-100 shrink-0 sticky top-13 h-[calc(100vh-52px-24px)] py-4 pr-4">
-				<TabletCartSidebar
-					cart={cart}
-					updateQuantity={updateQuantity}
-					removeFromCart={removeFromCart}
-					form={form}
-					total={total}
-					upiAccounts={upiAccountsList}
-					onOrderSaved={refreshInventory}
-					clearCart={clearCart}
-					customerName={customerName}
-					deliveryCost={Number.parseFloat(deliveryCost || "0")}
-				/>
-			</div>
-		</div>
+				);
+			}}
+		</form.Subscribe>
 	);
 }

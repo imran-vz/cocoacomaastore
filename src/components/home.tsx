@@ -1,7 +1,6 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { useStore } from "@tanstack/react-store";
 import { use, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -261,66 +260,67 @@ export default function Home({
 		window.scrollTo({ top: 0, behavior: "smooth" });
 	};
 
-	const deliveryCost = useStore(form.store, (state) => state.values.deliveryCost);
-	const name = useStore(form.store, (state) => state.values.name);
-	const total = useMemo(() => {
-		const itemCost = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-		const dc = Number.parseFloat(deliveryCost || "0");
-		return itemCost + dc;
-	}, [cart, deliveryCost]);
-
 	return (
-		<div className="flex flex-col md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 md:items-start">
-			{/* Desserts Section - Takes 1 column on MD+, 2 columns on XL+ */}
-			<div className="xl:col-span-2">
-				<DessertList
-					desserts={dessertsWithInventory}
-					addToCart={addToCart}
-					combos={availableCombos}
-					addComboToCart={addComboToCart}
-					modifiers={modifiersList}
-				/>
-			</div>
+		<form.Subscribe selector={(state) => state.values}>
+			{({ deliveryCost, name }) => {
+				const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
+				const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, deliveryCostAmount);
 
-			{/* Cart & Receipt Section - Takes 1 column on MD+ screens */}
-			<div className="flex flex-col gap-4 md:sticky md:top-20">
-				<Card className="overflow-hidden shadow-sm border-2">
-					<CardContent className="p-3 sm:p-4">
-						<Cart cart={cart} updateQuantity={updateQuantity} removeFromCart={removeFromCart} form={form} />
-					</CardContent>
-				</Card>
-
-				<Card className="overflow-hidden gap-0 shadow-sm border-2">
-					<CardHeader className="p-3 sm:p-4 pb-0">
-						<Bill
-							order={{
-								lines: cart,
-								total: total,
-								deliveryCost: Number.parseFloat(deliveryCost || "0"),
-							}}
-							upiAccounts={upiAccountsList}
-						/>
-					</CardHeader>
-					<CardContent className="p-3 sm:p-4 pt-3">
-						{cart.length > 0 ? (
-							<Receipt
-								cart={cart}
-								total={total}
-								clearCart={clearCart}
-								deliveryCost={Number.parseFloat(deliveryCost || "0")}
-								upiAccounts={upiAccountsList}
-								customerName={name}
-								onOrderSaved={refreshInventory}
+				return (
+					<div className="flex flex-col md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 md:items-start">
+						{/* Desserts Section - Takes 1 column on MD+, 2 columns on XL+ */}
+						<div className="xl:col-span-2">
+							<DessertList
+								desserts={dessertsWithInventory}
+								addToCart={addToCart}
+								combos={availableCombos}
+								addComboToCart={addComboToCart}
+								modifiers={modifiersList}
 							/>
-						) : (
-							<div className="text-center py-6 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
-								<p className="text-sm font-medium">Receipt Preview</p>
-								<p className="text-xs mt-1">Add items to view details</p>
-							</div>
-						)}
-					</CardContent>
-				</Card>
-			</div>
-		</div>
+						</div>
+
+						{/* Cart & Receipt Section - Takes 1 column on MD+ screens */}
+						<div className="flex flex-col gap-4 md:sticky md:top-20">
+							<Card className="overflow-hidden shadow-sm border-2">
+								<CardContent className="p-3 sm:p-4">
+									<Cart cart={cart} updateQuantity={updateQuantity} removeFromCart={removeFromCart} form={form} />
+								</CardContent>
+							</Card>
+
+							<Card className="overflow-hidden gap-0 shadow-sm border-2">
+								<CardHeader className="p-3 sm:p-4 pb-0">
+									<Bill
+										order={{
+											lines: cart,
+											total: total,
+											deliveryCost: deliveryCostAmount,
+										}}
+										upiAccounts={upiAccountsList}
+									/>
+								</CardHeader>
+								<CardContent className="p-3 sm:p-4 pt-3">
+									{cart.length > 0 ? (
+										<Receipt
+											cart={cart}
+											total={total}
+											clearCart={clearCart}
+											deliveryCost={deliveryCostAmount}
+											upiAccounts={upiAccountsList}
+											customerName={name}
+											onOrderSaved={refreshInventory}
+										/>
+									) : (
+										<div className="text-center py-6 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
+											<p className="text-sm font-medium">Receipt Preview</p>
+											<p className="text-xs mt-1">Add items to view details</p>
+										</div>
+									)}
+								</CardContent>
+							</Card>
+						</div>
+					</div>
+				);
+			}}
+		</form.Subscribe>
 	);
 }
