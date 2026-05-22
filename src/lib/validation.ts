@@ -4,14 +4,14 @@ import { z } from "zod";
 // Order Validation
 // ============================================================================
 
-export const cartLineModifierSchema = z.object({
+const cartLineModifierSchema = z.object({
 	dessertId: z.number().int().positive(),
 	name: z.string().min(1).max(255),
 	price: z.number().int().min(0),
 	quantity: z.number().int().min(1).max(99),
 });
 
-export const cartLineSchema = z.object({
+const cartLineSchema = z.object({
 	cartLineId: z.string().min(1).max(100),
 	baseDessertId: z.number().int().positive(),
 	baseDessertName: z.string().min(1).max(255),
@@ -128,7 +128,7 @@ export const deleteManagerSchema = z.object({
 // Inventory Validation
 // ============================================================================
 
-export const inventoryUpdateSchema = z.object({
+const inventoryUpdateSchema = z.object({
 	dessertId: z.number().int().positive(),
 	quantity: z.number().int().min(0).max(10000),
 });
@@ -141,7 +141,7 @@ export const upsertInventorySchema = z.object({
 // UPI Validation
 // ============================================================================
 
-export const upiIdRegex = /^[\w.-]+@[\w.-]+$/;
+const upiIdRegex = /^[\w.-]+@[\w.-]+$/;
 
 export const createUpiAccountSchema = z.object({
 	label: z.string().trim().min(1).max(255),
@@ -187,7 +187,7 @@ export const deleteComboSchema = z.object({
 	id: z.number().int().positive(),
 });
 
-export const comboItemSchema = z.object({
+const comboItemSchema = z.object({
 	dessertId: z.number().int().positive(),
 	quantity: z.number().int().min(1).max(99),
 });

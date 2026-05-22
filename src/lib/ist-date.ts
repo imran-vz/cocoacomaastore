@@ -5,7 +5,7 @@ export type YearMonth = {
 	month: number;
 };
 
-export function getISTDateParts(date: Date = new Date()) {
+function getISTDateParts(date: Date = new Date()) {
 	const istTime = new Date(date.getTime() + IST_OFFSET_MS);
 	return {
 		year: istTime.getUTCFullYear(),
@@ -14,7 +14,7 @@ export function getISTDateParts(date: Date = new Date()) {
 	};
 }
 
-export function getISTYearMonth(date: Date = new Date()): YearMonth {
+function getISTYearMonth(date: Date = new Date()): YearMonth {
 	const ist = getISTDateParts(date);
 	return { year: ist.year, month: ist.month + 1 };
 }

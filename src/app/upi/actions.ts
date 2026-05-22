@@ -5,6 +5,7 @@ import { unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import { upiAccountsTable } from "@/db/schema";
+import { CacheTag } from "@/server/effect/cache-tags";
 
 async function getUPIAccountsForAdmin() {
 	// Get enabled UPI accounts from database, sorted by sequence
@@ -26,12 +27,12 @@ async function getUPIAccounts() {
 	return accounts;
 }
 
-export const getCachedUPIAccounts = unstable_cache(getUPIAccounts, ["upi-accounts"], {
+export const getCachedUPIAccounts = unstable_cache(getUPIAccounts, [CacheTag.upiAccounts], {
 	revalidate: 60 * 60 * 24, // 24 hours
-	tags: ["upi-accounts"],
+	tags: [CacheTag.upiAccounts],
 });
 
-export const getCachedUPIAccountsForAdmin = unstable_cache(getUPIAccountsForAdmin, ["upi-accounts"], {
+export const getCachedUPIAccountsForAdmin = unstable_cache(getUPIAccountsForAdmin, [CacheTag.upiAccounts], {
 	revalidate: 60 * 60 * 24, // 24 hours
-	tags: ["upi-accounts"],
+	tags: [CacheTag.upiAccounts],
 });

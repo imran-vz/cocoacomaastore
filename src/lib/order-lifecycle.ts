@@ -13,9 +13,9 @@ import {
 	ordersTable,
 } from "@/db/schema";
 import { isDatabaseUnavailableError } from "@/lib/errors";
-import { getAnalyticsDay, getDayKey } from "@/lib/ist-date";
-import { ORDER_DELETE_TAGS, refreshOrderMutationViews } from "@/lib/order-intake";
-import { updateTagsEffect } from "@/server/effect/cache-tags";
+import { getAnalyticsDay, getDayKey, getEndOfDayIST, getStartOfDayIST } from "@/lib/ist-date";
+import { refreshOrderMutationViews } from "@/lib/order-intake";
+import { CacheTag, OrderTags, updateTagsEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 
 type OrderItemModifierWithDessert = {
@@ -33,16 +33,20 @@ export type GetOrdersReturnType = (Omit<Order, "isDeleted"> & {
 	orderItems: OrderItemWithDessert[];
 })[];
 
-async function getOrders(day: Date): Promise<GetOrdersReturnType> {
+export async function getOrders(date?: Date): Promise<GetOrdersReturnType> {
 	const start = performance.now();
-	const nextDay = new Date(day);
-	nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+	const dayStart = getStartOfDayIST(date);
+	const dayEnd = getEndOfDayIST(date);
 
 	const orders = await db.query.ordersTable.findMany({
 		columns: {
 			isDeleted: false,
 		},
-		where: and(eq(ordersTable.isDeleted, false), gte(ordersTable.createdAt, day), lt(ordersTable.createdAt, nextDay)),
+		where: and(
+			eq(ordersTable.isDeleted, false),
+			gte(ordersTable.createdAt, dayStart),
+			lt(ordersTable.createdAt, dayEnd),
+		),
 		orderBy: [desc(ordersTable.createdAt)],
 		with: {
 			orderItems: {
@@ -81,13 +85,13 @@ async function getOrders(day: Date): Promise<GetOrdersReturnType> {
 	return orders as GetOrdersReturnType;
 }
 
-export async function getCachedOrders() {
-	const day = getAnalyticsDay();
+export async function getCachedOrders(date?: Date) {
+	const day = date ? getAnalyticsDay(date) : getAnalyticsDay();
 	const dayKey = getDayKey(day);
 
-	return unstable_cache(() => getOrders(day), ["orders", dayKey], {
+	return unstable_cache(() => getOrders(date), [CacheTag.orders, dayKey], {
 		revalidate: 60 * 60 * 24,
-		tags: ["orders"],
+		tags: [CacheTag.orders],
 	})();
 }
 
@@ -101,10 +105,10 @@ export async function softDeleteOrder(orderId: number) {
 	const duration = performance.now() - start;
 	console.log(`deleteOrder: ${duration}ms`);
 	if (order) {
-		await refreshOrderMutationViews(order.createdAt, ORDER_DELETE_TAGS);
+		await refreshOrderMutationViews(order.createdAt, OrderTags.delete);
 		return;
 	}
-	await runNextAppEffect(updateTagsEffect(ORDER_DELETE_TAGS));
+	await runNextAppEffect(updateTagsEffect(OrderTags.delete));
 }
 
 export async function cancelOrderAsNormalPath(orderId: number, userId: string, reason?: string) {

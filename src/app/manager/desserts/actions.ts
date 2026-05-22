@@ -4,7 +4,7 @@ import { performance } from "node:perf_hooks";
 import { Effect } from "effect";
 import { requireSession } from "@/lib/auth/guards";
 import { getDailyInventoryDay, setInventoryWithAuditEffect } from "@/lib/daily-inventory";
-import { updateTagsEffect } from "@/server/effect/cache-tags";
+import { updateInventoryTagsEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 
 // Manager-specific action for inventory management
@@ -20,7 +20,7 @@ export async function upsertInventoryWithAudit(updates: Array<{ dessertId: numbe
 	await runNextAppEffect(
 		Effect.gen(function* () {
 			yield* setInventoryWithAuditEffect({ day, updates, userId });
-			yield* updateTagsEffect(["inventory"]);
+			yield* updateInventoryTagsEffect();
 		}),
 	);
 

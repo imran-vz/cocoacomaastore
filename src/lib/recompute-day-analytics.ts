@@ -1,7 +1,75 @@
-import { sql } from "drizzle-orm";
+import { type SQL, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import { fmtMonth, getAnalyticsDay, getStartOfDayIST, istMidnightToUTC, nextMonth, pgTimestamp } from "@/lib/ist-date";
 import { Database } from "@/server/effect/services/db";
+
+// ============================================================================
+// Dessert revenue compilation — shared CTE for daily and monthly analytics
+// ============================================================================
+
+type DessertRevenueCompileInput = {
+	readonly startBound: string;
+	readonly endBound: string;
+	readonly targetTable: string;
+	readonly timeColumn: string;
+	readonly timeValueSql: SQL;
+};
+
+function buildDessertRevenueSql({
+	startBound,
+	endBound,
+	targetTable,
+	timeColumn,
+	timeValueSql,
+}: DessertRevenueCompileInput): {
+	readonly deleteSql: SQL;
+	readonly insertSql: SQL;
+} {
+	const deleteSql = sql`DELETE FROM ${sql.raw(targetTable)} WHERE ${sql.raw(timeColumn)} = ${timeValueSql}`;
+
+	const insertSql = sql`
+		WITH base_items AS (
+			SELECT
+				oi."dessertId" AS dessert_id,
+				oi."orderId" AS order_id,
+				SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
+				SUM(oi.quantity) AS quantity
+			FROM order_items oi
+			INNER JOIN orders o ON o.id = oi."orderId"
+			WHERE o.status = 'completed'
+				AND o."isDeleted" = false
+				AND o."createdAt" >= ${startBound}::timestamp
+				AND o."createdAt" < ${endBound}::timestamp
+			GROUP BY oi."dessertId", oi."orderId"
+		),
+		modifier_items AS (
+			SELECT
+				oim."dessertId" AS dessert_id,
+				oi."orderId" AS order_id,
+				0::numeric AS revenue,
+				SUM(oim.quantity * oi.quantity) AS quantity
+			FROM order_item_modifiers oim
+			INNER JOIN order_items oi ON oi.id = oim."orderItemId"
+			INNER JOIN orders o ON o.id = oi."orderId"
+			WHERE o.status = 'completed'
+				AND o."isDeleted" = false
+				AND o."createdAt" >= ${startBound}::timestamp
+				AND o."createdAt" < ${endBound}::timestamp
+			GROUP BY oim."dessertId", oi."orderId"
+		),
+		combined AS (
+			SELECT dessert_id, order_id, revenue, quantity FROM base_items
+			UNION ALL
+			SELECT dessert_id, order_id, revenue, quantity FROM modifier_items
+		)
+		INSERT INTO ${sql.raw(targetTable)} (${sql.raw(timeColumn)}, dessert_id, gross_revenue, quantity_sold, order_count)
+		SELECT ${timeValueSql}, dessert_id, SUM(revenue), SUM(quantity), COUNT(DISTINCT order_id)
+		FROM combined
+		GROUP BY dessert_id
+	`;
+
+	return { deleteSql, insertSql };
+}
 
 export function recomputeDayAnalyticsEffect(date: Date) {
 	const dayStart = getStartOfDayIST(date);
@@ -40,54 +108,20 @@ export function recomputeDayAnalyticsEffect(date: Date) {
 		`),
 		);
 
-		yield* database.attempt("recompute daily dessert revenue", () =>
-			db.transaction(async (tx) => {
-				await tx.execute(sql`DELETE FROM analytics_daily_dessert_revenue WHERE day = ${analyticsDayValue}::timestamp`);
+		yield* database.attempt("recompute daily dessert revenue", () => {
+			const { deleteSql, insertSql } = buildDessertRevenueSql({
+				startBound: dayStartValue,
+				endBound: dayEndValue,
+				targetTable: "analytics_daily_dessert_revenue",
+				timeColumn: "day",
+				timeValueSql: sql`${analyticsDayValue}::timestamp`,
+			});
 
-				await tx.execute(sql`
-					WITH base_items AS (
-						SELECT
-							oi."dessertId" AS dessert_id,
-							oi."orderId" AS order_id,
-							SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
-							SUM(oi.quantity) AS quantity
-						FROM order_items oi
-						INNER JOIN orders o ON o.id = oi."orderId"
-						WHERE o.status = 'completed'
-							AND o."isDeleted" = false
-							AND o."createdAt" >= ${dayStartValue}::timestamp
-							AND o."createdAt" < ${dayEndValue}::timestamp
-						GROUP BY oi."dessertId", oi."orderId"
-					),
-					modifier_items AS (
-						SELECT
-							oim."dessertId" AS dessert_id,
-							oi."orderId" AS order_id,
-							0::numeric AS revenue,
-							SUM(oim.quantity * oi.quantity) AS quantity
-						FROM order_item_modifiers oim
-						INNER JOIN order_items oi ON oi.id = oim."orderItemId"
-						INNER JOIN orders o ON o.id = oi."orderId"
-						WHERE o.status = 'completed'
-							AND o."isDeleted" = false
-							AND o."createdAt" >= ${dayStartValue}::timestamp
-							AND o."createdAt" < ${dayEndValue}::timestamp
-						GROUP BY oim."dessertId", oi."orderId"
-					),
-					combined AS (
-						SELECT dessert_id, order_id, revenue, quantity FROM base_items
-						UNION ALL
-						SELECT dessert_id, order_id, revenue, quantity FROM modifier_items
-					)
-					INSERT INTO analytics_daily_dessert_revenue (day, dessert_id, gross_revenue, quantity_sold, order_count)
-					SELECT
-						${analyticsDayValue}::timestamp,
-						dessert_id, SUM(revenue), SUM(quantity), COUNT(DISTINCT order_id)
-					FROM combined
-					GROUP BY dessert_id
-				`);
-			}),
-		);
+			return db.transaction(async (tx) => {
+				await tx.execute(deleteSql);
+				await tx.execute(insertSql);
+			});
+		});
 
 		yield* database.attempt("recompute daily end-of-day stock", () =>
 			db.transaction(async (tx) => {
@@ -164,52 +198,20 @@ export function recomputeMonthAnalyticsEffect(date: Date) {
 		`),
 		);
 
-		yield* database.attempt("recompute monthly dessert revenue", () =>
-			db.transaction(async (tx) => {
-				await tx.execute(sql`DELETE FROM analytics_monthly_dessert_revenue WHERE month = ${label}`);
+		yield* database.attempt("recompute monthly dessert revenue", () => {
+			const { deleteSql, insertSql } = buildDessertRevenueSql({
+				startBound: monthStartValue,
+				endBound: monthEndValue,
+				targetTable: "analytics_monthly_dessert_revenue",
+				timeColumn: "month",
+				timeValueSql: sql`${label}`,
+			});
 
-				await tx.execute(sql`
-					WITH base_items AS (
-						SELECT
-							oi."dessertId" AS dessert_id,
-							oi."orderId" AS order_id,
-							SUM(oi."unitPrice"::numeric * oi.quantity) AS revenue,
-							SUM(oi.quantity) AS quantity
-						FROM order_items oi
-						INNER JOIN orders o ON o.id = oi."orderId"
-						WHERE o.status = 'completed'
-							AND o."isDeleted" = false
-							AND o."createdAt" >= ${monthStartValue}::timestamp
-							AND o."createdAt" < ${monthEndValue}::timestamp
-						GROUP BY oi."dessertId", oi."orderId"
-					),
-					modifier_items AS (
-						SELECT
-							oim."dessertId" AS dessert_id,
-							oi."orderId" AS order_id,
-							0::numeric AS revenue,
-							SUM(oim.quantity * oi.quantity) AS quantity
-						FROM order_item_modifiers oim
-						INNER JOIN order_items oi ON oi.id = oim."orderItemId"
-						INNER JOIN orders o ON o.id = oi."orderId"
-						WHERE o.status = 'completed'
-							AND o."isDeleted" = false
-							AND o."createdAt" >= ${monthStartValue}::timestamp
-							AND o."createdAt" < ${monthEndValue}::timestamp
-						GROUP BY oim."dessertId", oi."orderId"
-					),
-					combined AS (
-						SELECT dessert_id, order_id, revenue, quantity FROM base_items
-						UNION ALL
-						SELECT dessert_id, order_id, revenue, quantity FROM modifier_items
-					)
-					INSERT INTO analytics_monthly_dessert_revenue (month, dessert_id, gross_revenue, quantity_sold, order_count)
-					SELECT ${label}, dessert_id, SUM(revenue), SUM(quantity), COUNT(DISTINCT order_id)
-					FROM combined
-					GROUP BY dessert_id
-				`);
-			}),
-		);
+			return db.transaction(async (tx) => {
+				await tx.execute(deleteSql);
+				await tx.execute(insertSql);
+			});
+		});
 	});
 }
 

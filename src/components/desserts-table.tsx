@@ -29,7 +29,7 @@ function capitalize(str: string) {
 		.join(" ");
 }
 
-export type InventoryData = {
+type InventoryData = {
 	quantities: Record<number, string>;
 	serverQuantities: Map<number, number>;
 	changedDessertIds: Set<number>;

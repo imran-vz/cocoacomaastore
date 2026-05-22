@@ -24,7 +24,7 @@ export function getDailyInventoryDayKey(date: Date = new Date()) {
 	return getDayKey(date);
 }
 
-export function normalizeInventoryQuantity(quantity: number) {
+function normalizeInventoryQuantity(quantity: number) {
 	return Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
 }
 

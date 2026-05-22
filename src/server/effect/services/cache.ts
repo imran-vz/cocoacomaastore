@@ -1,4 +1,5 @@
 import { Context, Effect, Layer } from "effect";
+import { CacheTag } from "@/server/effect/cache-tags";
 import { type BackendConfigError, BackendHttpError } from "@/server/effect/errors";
 
 type CacheRevalidationResult =
@@ -33,7 +34,7 @@ export class CacheRevalidator extends Context.Tag("CacheRevalidator")<
 				}
 
 				yield* Effect.forEach(
-					["dashboard", "analytics"] as const,
+					[CacheTag.dashboard, CacheTag.analytics] as const,
 					(tag) =>
 						Effect.tryPromise({
 							try: async () => {

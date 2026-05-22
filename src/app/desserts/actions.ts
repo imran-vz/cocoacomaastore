@@ -18,7 +18,7 @@ import {
 	updateDessertSchema,
 	updateDessertSequenceSchema,
 } from "@/lib/validation";
-import { updateTagsEffect } from "@/server/effect/cache-tags";
+import { CacheTag, updateDessertTagsEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 
 async function getDesserts({ shouldShowDisabled = false }: { shouldShowDisabled?: boolean } = {}) {
@@ -51,7 +51,7 @@ export async function toggleDessert(id: number, enabled: boolean) {
 		.where(eq(dessertsTable.id, validated.id));
 	const duration = performance.now() - start;
 	console.log(`toggleDessert: ${duration.toFixed(2)}ms`);
-	await runNextAppEffect(updateTagsEffect(["desserts"]));
+	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function toggleOutOfStock(id: number, isOutOfStock: boolean) {
@@ -67,12 +67,12 @@ export async function toggleOutOfStock(id: number, isOutOfStock: boolean) {
 		.where(eq(dessertsTable.id, validated.id));
 	const duration = performance.now() - start;
 	console.log(`toggleOutOfStock: ${duration.toFixed(2)}ms`);
-	await runNextAppEffect(updateTagsEffect(["desserts"]));
+	await runNextAppEffect(updateDessertTagsEffect());
 }
 
-export const getCachedDesserts = unstable_cache(getDesserts, ["desserts"], {
+export const getCachedDesserts = unstable_cache(getDesserts, [CacheTag.desserts], {
 	revalidate: 60 * 60 * 24,
-	tags: ["desserts"],
+	tags: [CacheTag.desserts],
 });
 
 export async function createDessert(data: Omit<Dessert, "id" | "sequence" | "isDeleted">) {
@@ -98,7 +98,7 @@ export async function createDessert(data: Omit<Dessert, "id" | "sequence" | "isD
 
 		const duration = performance.now() - start;
 		console.log(`createDessert: ${duration.toFixed(2)}ms`);
-		await runNextAppEffect(updateTagsEffect(["desserts"]));
+		await runNextAppEffect(updateDessertTagsEffect());
 	} catch (error: unknown) {
 		if (error instanceof Error && "code" in error && (error as { code: string }).code === "23505") {
 			throw new Error("A dessert with this name already exists");
@@ -129,7 +129,7 @@ export async function updateDessert(id: number, data: Omit<Dessert, "id" | "enab
 			.where(eq(dessertsTable.id, validated.id));
 		const duration = performance.now() - start;
 		console.log(`updateDessert: ${duration.toFixed(2)}ms`);
-		await runNextAppEffect(updateTagsEffect(["desserts"]));
+		await runNextAppEffect(updateDessertTagsEffect());
 	} catch (error: unknown) {
 		if (error instanceof Error && "code" in error && (error as { code: string }).code === "23505") {
 			throw new Error("A dessert with this name already exists");
@@ -163,7 +163,7 @@ export async function deleteDessert(id: number) {
 
 	const duration = performance.now() - start;
 	console.log(`deleteDessert: ${duration.toFixed(2)}ms`);
-	await runNextAppEffect(updateTagsEffect(["desserts"]));
+	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function updateDessertSequence(id: number, newScore: number) {
@@ -178,7 +178,7 @@ export async function updateDessertSequence(id: number, newScore: number) {
 
 	const duration = performance.now() - start;
 	console.log(`updateDessertSequence: ${duration.toFixed(2)}ms`);
-	await runNextAppEffect(updateTagsEffect(["desserts"]));
+	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function batchUpdateDessertSequences(updates: Array<{ id: number; newScore: number }>) {
@@ -196,7 +196,7 @@ export async function batchUpdateDessertSequences(updates: Array<{ id: number; n
 	console.log(`batchUpdateDessertSequences: ${updates.length} updates in ${duration.toFixed(2)}ms`);
 
 	// Only revalidate once at the end
-	await runNextAppEffect(updateTagsEffect(["desserts"]));
+	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function disableAllDesserts() {
@@ -205,7 +205,7 @@ export async function disableAllDesserts() {
 	await db.update(dessertsTable).set({ enabled: false }).where(eq(dessertsTable.isDeleted, false));
 	const duration = performance.now() - start;
 	console.log(`disableAllDesserts: ${duration.toFixed(2)}ms`);
-	await runNextAppEffect(updateTagsEffect(["desserts"]));
+	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function moveDessertToTop(id: number) {
@@ -228,7 +228,7 @@ export async function moveDessertToTop(id: number) {
 
 	const duration = performance.now() - start;
 	console.log(`moveDessertToTop: ${duration.toFixed(2)}ms`);
-	await runNextAppEffect(updateTagsEffect(["desserts"]));
+	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function moveDessertToBottom(id: number) {
@@ -251,5 +251,5 @@ export async function moveDessertToBottom(id: number) {
 
 	const duration = performance.now() - start;
 	console.log(`moveDessertToBottom: ${duration.toFixed(2)}ms`);
-	await runNextAppEffect(updateTagsEffect(["desserts"]));
+	await runNextAppEffect(updateDessertTagsEffect());
 }

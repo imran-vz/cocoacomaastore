@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import type { Dessert } from "@/lib/types";
 
-export type TodayInventoryRow = {
+type TodayInventoryRow = {
 	dessertId: number;
 	quantity: number;
 };

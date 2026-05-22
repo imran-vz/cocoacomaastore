@@ -9,7 +9,7 @@ import { auth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/auth/guards";
 import { sanitizeEmail } from "@/lib/sanitize";
 import { type CreateManagerSchema, createManagerSchema, deleteManagerSchema } from "@/lib/validation";
-import { updateNextCacheEffect } from "@/server/effect/cache-tags";
+import { CacheTag, updateNextCacheEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 import { Database } from "@/server/effect/services/db";
 
@@ -56,7 +56,7 @@ export async function createManager(data: CreateManagerSchema) {
 
 		await runNextAppEffect(
 			updateNextCacheEffect({
-				tags: ["managers"],
+				tags: [CacheTag.managers],
 				paths: ["/admin/settings/managers", "/admin/managers"],
 			}),
 		);
@@ -79,7 +79,7 @@ export async function deleteManager(id: string) {
 				const database = yield* Database;
 				yield* database.attempt("delete manager", (db) => db.delete(userTable).where(eq(userTable.id, validatedId)));
 				yield* updateNextCacheEffect({
-					tags: ["managers"],
+					tags: [CacheTag.managers],
 					paths: ["/admin/settings/managers", "/admin/managers"],
 				});
 			}),

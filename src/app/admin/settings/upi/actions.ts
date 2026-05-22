@@ -6,7 +6,7 @@ import { type UpiAccount, upiAccountsTable } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
 import { sanitizeUpiId } from "@/lib/sanitize";
 import { createUpiAccountSchema, deleteUpiAccountSchema, updateUpiAccountSchema } from "@/lib/validation";
-import { updateNextCacheEffect } from "@/server/effect/cache-tags";
+import { UpiTags, updateNextCacheEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 import { Database } from "@/server/effect/services/db";
 
@@ -55,7 +55,7 @@ export async function createUpiAccount(data: { label: string; upiId: string; ena
 					}),
 				);
 				yield* updateNextCacheEffect({
-					tags: ["upi-accounts", "upi-accounts-admin"],
+					tags: UpiTags.mutation,
 					paths: ["/admin/settings/upi", "/admin/upi"],
 				});
 			}),
@@ -89,7 +89,7 @@ export async function updateUpiAccount(id: UpiAccount["id"], data: Pick<UpiAccou
 						.where(eq(upiAccountsTable.id, validated.id)),
 				);
 				yield* updateNextCacheEffect({
-					tags: ["upi-accounts", "upi-accounts-admin"],
+					tags: UpiTags.mutation,
 					paths: ["/admin/settings/upi", "/admin/upi"],
 				});
 			}),
@@ -115,7 +115,7 @@ export async function deleteUpiAccount(id: UpiAccount["id"]) {
 					db.update(upiAccountsTable).set({ isDeleted: true }).where(eq(upiAccountsTable.id, validatedId)),
 				);
 				yield* updateNextCacheEffect({
-					tags: ["upi-accounts", "upi-accounts-admin"],
+					tags: UpiTags.mutation,
 					paths: ["/admin/settings/upi", "/admin/upi"],
 				});
 			}),

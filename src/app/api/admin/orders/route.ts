@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCachedOrders } from "@/app/admin/orders/actions";
 import { adminRouteGuard } from "@/lib/auth/guards";
+import { getCachedOrders } from "@/lib/order-lifecycle";
 
 function isValidDateString(value: string | null): value is string {
 	if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -23,6 +23,7 @@ export async function GET(request: Request) {
 		return NextResponse.json({ error: "Invalid date" }, { status: 400 });
 	}
 
-	const data = await getCachedOrders(dateString);
+	const date = new Date(dateString);
+	const data = await getCachedOrders(date);
 	return NextResponse.json(data);
 }

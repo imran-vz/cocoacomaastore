@@ -14,13 +14,10 @@ import { getAnalyticsDay } from "@/lib/ist-date";
 import { recomputeDayAnalyticsEffect } from "@/lib/recompute-day-analytics";
 import { sanitizeCustomerName } from "@/lib/sanitize";
 import type { CartLine } from "@/lib/types";
-import { updateTagsEffect } from "@/server/effect/cache-tags";
+import { OrderTags, updateTagsEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 
-export const ORDER_MUTATION_TAGS = ["orders", "inventory", "dashboard", "analytics"] as const;
-export const ORDER_DELETE_TAGS = ["orders", "dashboard", "analytics"] as const;
-
-export type OrderMutationTag = (typeof ORDER_MUTATION_TAGS)[number] | (typeof ORDER_DELETE_TAGS)[number];
+export type OrderMutationTag = (typeof OrderTags.mutation)[number] | (typeof OrderTags.delete)[number];
 
 export type InventoryDeductionRequest = {
 	dessertId: number;
@@ -28,7 +25,7 @@ export type InventoryDeductionRequest = {
 	name: string;
 };
 
-export type InsertedOrderItem = {
+type InsertedOrderItem = {
 	id: number;
 };
 
@@ -38,18 +35,18 @@ export type CreateCompletedOrderInput = {
 	deliveryCost: string;
 };
 
-export function refreshOrderMutationViewsEffect(date: Date, tags: readonly OrderMutationTag[] = ORDER_MUTATION_TAGS) {
+export function refreshOrderMutationViewsEffect(date: Date, tags: readonly OrderMutationTag[] = OrderTags.mutation) {
 	return Effect.gen(function* () {
 		yield* recomputeDayAnalyticsEffect(date);
 		yield* updateTagsEffect(tags);
 	});
 }
 
-export async function refreshOrderMutationViews(date: Date, tags: readonly OrderMutationTag[] = ORDER_MUTATION_TAGS) {
+export async function refreshOrderMutationViews(date: Date, tags: readonly OrderMutationTag[] = OrderTags.mutation) {
 	await runNextAppEffect(refreshOrderMutationViewsEffect(date, tags));
 }
 
-export function computeCartLineOrderTotal(lines: readonly CartLine[], deliveryCost: string) {
+function computeCartLineOrderTotal(lines: readonly CartLine[], deliveryCost: string) {
 	return lines.reduce((acc, line) => acc + line.quantity * line.unitPrice, Number.parseFloat(deliveryCost)).toFixed(2);
 }
 
@@ -74,7 +71,7 @@ export function getCartLineInventoryDeductions(lines: readonly CartLine[]): Inve
 	return Array.from(inventoryAggregation.values());
 }
 
-export function buildCartLineOrderItemInserts(orderId: number, lines: readonly CartLine[]) {
+function buildCartLineOrderItemInserts(orderId: number, lines: readonly CartLine[]) {
 	return lines.map((line) => ({
 		orderId,
 		dessertId: line.baseDessertId,
@@ -85,7 +82,7 @@ export function buildCartLineOrderItemInserts(orderId: number, lines: readonly C
 	}));
 }
 
-export function buildOrderItemModifierInserts(lines: readonly CartLine[], insertedItems: readonly InsertedOrderItem[]) {
+function buildOrderItemModifierInserts(lines: readonly CartLine[], insertedItems: readonly InsertedOrderItem[]) {
 	return lines.flatMap((line, index) =>
 		line.modifiers.map((modifier) => ({
 			orderItemId: insertedItems[index].id,

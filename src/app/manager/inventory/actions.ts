@@ -12,16 +12,16 @@ import {
 	upsertInventoryForDayEffect,
 } from "@/lib/daily-inventory";
 import { upsertInventorySchema } from "@/lib/validation";
-import { updateTagsEffect } from "@/server/effect/cache-tags";
+import { CacheTag, updateInventoryTagsEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 
 export async function getCachedTodayInventory() {
 	const day = getDailyInventoryDay();
 	const dayKey = getDailyInventoryDayKey();
 
-	return unstable_cache(() => getInventoryForDay(day), ["inventory", dayKey], {
+	return unstable_cache(() => getInventoryForDay(day), [CacheTag.inventory, dayKey], {
 		revalidate: 60 * 60 * 24,
-		tags: ["inventory"],
+		tags: [CacheTag.inventory],
 	})();
 }
 
@@ -39,7 +39,7 @@ export async function upsertTodayInventory(updates: Array<{ dessertId: number; q
 	await runNextAppEffect(
 		Effect.gen(function* () {
 			yield* upsertInventoryForDayEffect({ day, updates: validatedUpdates });
-			yield* updateTagsEffect(["inventory"]);
+			yield* updateInventoryTagsEffect();
 		}),
 	);
 

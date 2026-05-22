@@ -23,6 +23,7 @@ import {
 	getStartOfDayIST,
 	pgTimestamp,
 } from "@/lib/ist-date";
+import { DashboardTags } from "@/server/effect/cache-tags";
 
 // biome-ignore lint/suspicious/noExplicitAny: for next unstable_cache
 type Callback = (...args: any[]) => Promise<any>;
@@ -35,14 +36,14 @@ function unstable_cache<T extends Callback>(
 	keyParts?: string[],
 	options?: {
 		revalidate?: number | false;
-		tags?: string[];
+		tags?: readonly string[];
 	},
 ): T {
 	if (process.env.NODE_ENV === "development") {
 		return cb;
 	}
 
-	return next_unstable_cache(cb, keyParts, options);
+	return next_unstable_cache(cb, keyParts, options as { revalidate?: number | false; tags?: string[] });
 }
 // Types
 export type DashboardStats = {
@@ -96,7 +97,7 @@ export type MonthlyDessertRevenue = {
 	orderCount: number;
 };
 
-export type DailyEodStock = {
+type DailyEodStock = {
 	day: string;
 	dessertId: number;
 	dessertName: string;
@@ -376,7 +377,7 @@ export async function getCachedAuditLogs(dateString?: string) {
 
 	return unstable_cache(() => getAuditLogs(date), ["audit-logs", dayKey], {
 		revalidate: 60,
-		tags: ["inventory", "dashboard"],
+		tags: DashboardTags.auditLogs,
 	})();
 }
 
@@ -417,7 +418,7 @@ async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
 export async function getCachedMonthlyRevenue(months = 6) {
 	return unstable_cache(() => getMonthlyRevenue(months), ["monthly-revenue", String(months)], {
 		revalidate: 60 * 60, // Revalidate every hour
-		tags: ["orders", "analytics"],
+		tags: DashboardTags.monthlyRevenue,
 	})();
 }
 
@@ -531,7 +532,7 @@ async function getWeeklyRevenue(month: string): Promise<WeeklyRevenue[]> {
 export async function getCachedWeeklyRevenue(month: string) {
 	return unstable_cache(() => getWeeklyRevenue(month), ["weekly-revenue", month], {
 		revalidate: 60 * 60,
-		tags: ["orders", "analytics"],
+		tags: DashboardTags.monthlyRevenue,
 	})();
 }
 
@@ -626,7 +627,7 @@ export async function getCachedEodStockTrends(days = 14) {
 
 	return unstable_cache(() => getEodStockTrends(days), ["eod-stock-trends", dayKey, String(days)], {
 		revalidate: 60 * 60, // Revalidate every hour
-		tags: ["inventory", "analytics"],
+		tags: DashboardTags.eodStock,
 	})();
 }
 
@@ -645,6 +646,6 @@ async function getAvailableMonths(): Promise<string[]> {
 export async function getCachedAvailableMonths() {
 	return unstable_cache(() => getAvailableMonths(), ["available-months"], {
 		revalidate: 60 * 60 * 24, // Revalidate daily
-		tags: ["analytics"],
+		tags: DashboardTags.availableMonths,
 	})();
 }

@@ -60,9 +60,7 @@ function CardLoadingState({ message }: { message?: string }) {
 				<Sparkles className="relative size-10 text-[#f0b25f]" />
 			</div>
 			<div className="space-y-1">
-				<p className="text-sm font-semibold tracking-wide text-[#2c1810] animate-pulse">
-					{message ?? smirky}
-				</p>
+				<p className="text-sm font-semibold tracking-wide text-[#2c1810] animate-pulse">{message ?? smirky}</p>
 				<p className="text-xs text-[#a89080]">{smirky}</p>
 			</div>
 		</div>
@@ -164,9 +162,7 @@ export default function LoginPage() {
 						{/* Main card */}
 						<div className="relative rounded-2xl border border-[#c9a87c]/25 bg-white/80 p-6 shadow-xl shadow-[#2c1810]/5 backdrop-blur-sm sm:p-8">
 							{showLoading ? (
-								<CardLoadingState
-									message={isSessionPending ? "Checking session…" : undefined}
-								/>
+								<CardLoadingState message={isSessionPending ? "Checking session…" : undefined} />
 							) : (
 								<>
 									<div className="mb-6 flex items-center justify-between">
@@ -222,11 +218,7 @@ export default function LoginPage() {
 											disabled={isLoading}
 											className="h-12 w-full rounded-xl bg-[#2c1810] text-sm font-bold uppercase tracking-wider text-[#f5efe6] shadow-lg shadow-[#2c1810]/15 transition-transform hover:-translate-y-0.5 hover:bg-[#3d2218]"
 										>
-											{isLoading ? (
-												<Spinner className="text-white" />
-											) : (
-												"Enter dashboard"
-											)}
+											{isLoading ? <Spinner className="text-white" /> : "Enter dashboard"}
 										</Button>
 									</form>
 								</>
@@ -234,9 +226,7 @@ export default function LoginPage() {
 						</div>
 					</div>
 
-					<p className="mt-6 text-center text-xs text-[#a89080]">
-						Trouble signing in? Ask your store manager.
-					</p>
+					<p className="mt-6 text-center text-xs text-[#a89080]">Trouble signing in? Ask your store manager.</p>
 				</div>
 			</div>
 		</div>

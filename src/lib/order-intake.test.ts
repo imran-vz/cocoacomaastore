@@ -1,10 +1,7 @@
 import { Effect, Layer } from "effect";
 import { describe, expect, test } from "vitest";
-import {
-	getCartLineInventoryDeductions,
-	ORDER_MUTATION_TAGS,
-	refreshOrderMutationViewsEffect,
-} from "@/lib/order-intake";
+import { getCartLineInventoryDeductions, refreshOrderMutationViewsEffect } from "@/lib/order-intake";
+import { OrderTags } from "@/server/effect/cache-tags";
 import type { BackendDatabaseError } from "@/server/effect/errors";
 import { Database } from "@/server/effect/services/db";
 import { NextCache } from "@/server/effect/services/next-cache";
@@ -80,6 +77,6 @@ describe("order-intake", () => {
 			"recompute daily dessert revenue",
 			"recompute daily end-of-day stock",
 		]);
-		expect(updatedTags).toEqual([ORDER_MUTATION_TAGS]);
+		expect(updatedTags).toEqual([OrderTags.mutation]);
 	});
 });

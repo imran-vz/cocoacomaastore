@@ -7,6 +7,7 @@ import { unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { dessertCombosTable, dessertsTable } from "@/db/schema";
 import type { ComboWithDetails } from "@/lib/types";
+import { CacheTag } from "@/server/effect/cache-tags";
 
 /**
  * Fetches all enabled combos with their details for UI display.
@@ -46,9 +47,9 @@ async function getCombos(): Promise<ComboWithDetails[]> {
 	return combos as ComboWithDetails[];
 }
 
-export const getCachedCombos = unstable_cache(getCombos, ["combos"], {
+export const getCachedCombos = unstable_cache(getCombos, [CacheTag.combos], {
 	revalidate: 60 * 60 * 24,
-	tags: ["combos"],
+	tags: [CacheTag.combos],
 });
 
 /**
@@ -75,7 +76,7 @@ async function getModifierDesserts() {
 
 export const getCachedModifierDesserts = unstable_cache(getModifierDesserts, ["modifier-desserts"], {
 	revalidate: 60 * 60 * 24,
-	tags: ["desserts"],
+	tags: [CacheTag.desserts],
 });
 
 export type ModifierDessert = Awaited<ReturnType<typeof getModifierDesserts>>[number];

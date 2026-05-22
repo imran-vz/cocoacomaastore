@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { getCachedOrders } from "@/app/manager/orders/actions";
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
 import { OrdersSkeleton } from "../loading-skeletons";
+import { getCachedOrders } from "./actions";
 import OrdersPage from "./orders-page";
 
 export const dynamic = "force-dynamic";

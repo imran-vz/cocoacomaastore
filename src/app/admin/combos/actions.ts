@@ -1,115 +1,21 @@
 "use server";
 
-import { performance } from "node:perf_hooks";
-import { and, eq } from "drizzle-orm";
-import { Effect } from "effect";
-import { unstable_cache } from "next/cache";
-
-import { db } from "@/db";
-import { dessertComboItemsTable, dessertCombosTable, dessertsTable } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
-import type { ComboWithDetails } from "@/lib/types";
-import { createComboSchema, deleteComboSchema, updateComboItemsSchema, updateComboSchema } from "@/lib/validation";
-import { updateTagsEffect } from "@/server/effect/cache-tags";
-import { runNextAppEffect } from "@/server/effect/next-runtime";
-import { Database } from "@/server/effect/services/db";
+import {
+	type BaseDessert,
+	createCombo as createComboCore,
+	deleteCombo as deleteComboCore,
+	getCachedAllCombos,
+	getCachedBaseDesserts,
+	getCachedModifierDesserts,
+	type ModifierDessert,
+	toggleCombo as toggleComboCore,
+	updateCombo as updateComboCore,
+	updateComboItems as updateComboItemsCore,
+} from "@/lib/combo-service";
 
-// ============================================================================
-// Read Operations
-// ============================================================================
-
-async function getAllCombos(): Promise<ComboWithDetails[]> {
-	const start = performance.now();
-
-	const combos = await db.query.dessertCombosTable.findMany({
-		where: eq(dessertCombosTable.isDeleted, false),
-		orderBy: (combos, { asc }) => [asc(combos.sequence)],
-		with: {
-			baseDessert: {
-				columns: {
-					id: true,
-					name: true,
-					price: true,
-					hasUnlimitedStock: true,
-				},
-			},
-			items: {
-				with: {
-					dessert: {
-						columns: {
-							id: true,
-							name: true,
-							price: true,
-						},
-					},
-				},
-			},
-		},
-	});
-
-	const duration = performance.now() - start;
-	console.log(`getAllCombos: ${duration.toFixed(2)}ms`);
-
-	return combos as ComboWithDetails[];
-}
-
-export const getCachedAllCombos = unstable_cache(getAllCombos, ["admin-combos"], {
-	revalidate: 60 * 60 * 24,
-	tags: ["combos"],
-});
-
-async function getBaseDesserts() {
-	const start = performance.now();
-
-	const desserts = await db.query.dessertsTable.findMany({
-		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "base")),
-		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
-		columns: {
-			id: true,
-			name: true,
-			price: true,
-			hasUnlimitedStock: true,
-		},
-	});
-
-	const duration = performance.now() - start;
-	console.log(`getBaseDesserts: ${duration.toFixed(2)}ms`);
-
-	return desserts;
-}
-
-export const getCachedBaseDesserts = unstable_cache(getBaseDesserts, ["base-desserts"], {
-	revalidate: 60 * 60 * 24,
-	tags: ["desserts"],
-});
-
-async function getModifierDesserts() {
-	const start = performance.now();
-
-	const desserts = await db.query.dessertsTable.findMany({
-		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "modifier")),
-		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
-		columns: {
-			id: true,
-			name: true,
-			price: true,
-		},
-	});
-
-	const duration = performance.now() - start;
-	console.log(`getModifierDesserts: ${duration.toFixed(2)}ms`);
-
-	return desserts;
-}
-
-export const getCachedModifierDesserts = unstable_cache(getModifierDesserts, ["modifier-desserts-admin"], {
-	revalidate: 60 * 60 * 24,
-	tags: ["desserts"],
-});
-
-// ============================================================================
-// Write Operations
-// ============================================================================
+export { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts };
+export type { BaseDessert, ModifierDessert };
 
 export async function createCombo(data: {
 	name: string;
@@ -118,36 +24,7 @@ export async function createCombo(data: {
 	enabled?: boolean;
 }) {
 	await requireAdmin();
-
-	const validated = createComboSchema.parse(data);
-
-	const start = performance.now();
-
-	const [newCombo] = await runNextAppEffect(
-		Effect.gen(function* () {
-			const database = yield* Database;
-			const combo = yield* database.attempt(
-				"create combo",
-				async (db) =>
-					await db
-						.insert(dessertCombosTable)
-						.values({
-							name: validated.name,
-							baseDessertId: validated.baseDessertId,
-							overridePrice: validated.overridePrice ?? null,
-							enabled: validated.enabled,
-						})
-						.returning({ id: dessertCombosTable.id }),
-			);
-			yield* updateTagsEffect(["combos"]);
-
-			return combo;
-		}),
-	);
-
-	const duration = performance.now() - start;
-	console.log(`createCombo: ${duration.toFixed(2)}ms`);
-	return newCombo;
+	return createComboCore(data);
 }
 
 export async function updateCombo(
@@ -160,114 +37,20 @@ export async function updateCombo(
 	},
 ) {
 	await requireAdmin();
-
-	const validated = updateComboSchema.parse({ id, data });
-
-	const start = performance.now();
-
-	await runNextAppEffect(
-		Effect.gen(function* () {
-			const database = yield* Database;
-			yield* database.attempt("update combo", (db) =>
-				db
-					.update(dessertCombosTable)
-					.set({
-						name: validated.data.name,
-						baseDessertId: validated.data.baseDessertId,
-						overridePrice: validated.data.overridePrice,
-						enabled: validated.data.enabled,
-						updatedAt: new Date(),
-					})
-					.where(eq(dessertCombosTable.id, validated.id)),
-			);
-			yield* updateTagsEffect(["combos"]);
-		}),
-	);
-
-	const duration = performance.now() - start;
-	console.log(`updateCombo: ${duration.toFixed(2)}ms`);
+	return updateComboCore(id, data);
 }
 
 export async function deleteCombo(id: number) {
 	await requireAdmin();
-
-	const validated = deleteComboSchema.parse({ id });
-
-	const start = performance.now();
-
-	await runNextAppEffect(
-		Effect.gen(function* () {
-			const database = yield* Database;
-			yield* database.attempt("delete combo", (db) =>
-				db
-					.update(dessertCombosTable)
-					.set({ isDeleted: true, updatedAt: new Date() })
-					.where(eq(dessertCombosTable.id, validated.id)),
-			);
-			yield* updateTagsEffect(["combos"]);
-		}),
-	);
-
-	const duration = performance.now() - start;
-	console.log(`deleteCombo: ${duration.toFixed(2)}ms`);
+	return deleteComboCore(id);
 }
 
 export async function toggleCombo(id: number, enabled: boolean) {
 	await requireAdmin();
-
-	const start = performance.now();
-
-	await runNextAppEffect(
-		Effect.gen(function* () {
-			const database = yield* Database;
-			yield* database.attempt("toggle combo", (db) =>
-				db.update(dessertCombosTable).set({ enabled, updatedAt: new Date() }).where(eq(dessertCombosTable.id, id)),
-			);
-			yield* updateTagsEffect(["combos"]);
-		}),
-	);
-
-	const duration = performance.now() - start;
-	console.log(`toggleCombo: ${duration.toFixed(2)}ms`);
+	return toggleComboCore(id, enabled);
 }
 
 export async function updateComboItems(comboId: number, items: Array<{ dessertId: number; quantity: number }>) {
 	await requireAdmin();
-
-	const validated = updateComboItemsSchema.parse({ comboId, items });
-
-	const start = performance.now();
-
-	await runNextAppEffect(
-		Effect.gen(function* () {
-			const database = yield* Database;
-			yield* database.attempt("update combo items", (db) =>
-				db.transaction(async (tx) => {
-					await tx.delete(dessertComboItemsTable).where(eq(dessertComboItemsTable.comboId, validated.comboId));
-
-					if (validated.items.length > 0) {
-						await tx.insert(dessertComboItemsTable).values(
-							validated.items.map((item) => ({
-								comboId: validated.comboId,
-								dessertId: item.dessertId,
-								quantity: item.quantity,
-							})),
-						);
-					}
-
-					await tx
-						.update(dessertCombosTable)
-						.set({ updatedAt: new Date() })
-						.where(eq(dessertCombosTable.id, validated.comboId));
-				}),
-			);
-			yield* updateTagsEffect(["combos"]);
-		}),
-	);
-
-	const duration = performance.now() - start;
-	console.log(`updateComboItems: ${duration.toFixed(2)}ms`);
+	return updateComboItemsCore(comboId, items);
 }
-
-export type BaseDessert = Awaited<ReturnType<typeof getBaseDesserts>>[number];
-export type ModifierDessert = Awaited<ReturnType<typeof getModifierDesserts>>[number];

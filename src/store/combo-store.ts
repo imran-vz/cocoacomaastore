@@ -2,20 +2,20 @@ import { toast } from "sonner";
 import { create } from "zustand";
 import type { ComboWithDetails } from "@/lib/types";
 
-export interface BaseDessertOption {
+interface BaseDessertOption {
 	id: number;
 	name: string;
 	price: number;
 	hasUnlimitedStock: boolean;
 }
 
-export interface ModifierDessertOption {
+interface ModifierDessertOption {
 	id: number;
 	name: string;
 	price: number;
 }
 
-export interface ComboFormData {
+interface ComboFormData {
 	name: string;
 	baseDessertId: number | null;
 	overridePrice: string;
@@ -23,7 +23,7 @@ export interface ComboFormData {
 	items: Array<{ dessertId: number; quantity: number }>;
 }
 
-export interface ComboActions {
+interface ComboActions {
 	createCombo: (data: {
 		name: string;
 		baseDessertId: number;
