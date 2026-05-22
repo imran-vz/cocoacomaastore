@@ -1,10 +1,11 @@
 "use client";
 
+import { ShieldCheck, Sparkles } from "lucide-react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
@@ -30,30 +31,81 @@ function getRandomMessage(exclude?: string): string {
 	return available[Math.floor(Math.random() * available.length)];
 }
 
-function RedirectingState() {
-	const [message, setMessage] = useState(() => getRandomMessage());
-
-	useEffect(() => {
-		const interval = setInterval(() => {
-			setMessage((prev) => getRandomMessage(prev));
-		}, 2000);
-		return () => clearInterval(interval);
-	}, []);
-
-	return (
-		<div className="flex flex-col items-center justify-center py-8 gap-4">
-			<Spinner className="size-8 text-primary" />
-			<p className="text-sm text-muted-foreground animate-pulse">{message}</p>
-		</div>
-	);
-}
-
 function redirectForRole(role: string | null | undefined, router: ReturnType<typeof useRouter>) {
 	if (role === "admin") {
 		router.replace("/admin");
 	} else {
 		router.replace("/manager");
 	}
+}
+
+/**
+ * Scrolls the focused element into view when the on-screen keyboard appears.
+ * Uses the Visual Viewport API for accurate keyboard detection across
+ * iOS Safari, Chrome Android, and tablet browsers.
+ */
+function useVisualViewportScroll() {
+	useEffect(() => {
+		if (typeof window === "undefined" || !window.visualViewport) return;
+
+		const vv = window.visualViewport;
+		let lastHeight = vv.height;
+
+		const onResize = () => {
+			const currentHeight = vv.height;
+			const heightDiff = lastHeight - currentHeight;
+			lastHeight = currentHeight;
+
+			// Keyboard likely opened (viewport shrank significantly)
+			if (heightDiff > 100) {
+				const active = document.activeElement as HTMLElement | null;
+				if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+					// Small delay to let the browser finish layout
+					requestAnimationFrame(() => {
+						const rect = active.getBoundingClientRect();
+						const visibleBottom = vv.height - 24; // 24px padding from bottom
+						if (rect.bottom > visibleBottom) {
+							const scrollY = rect.bottom - visibleBottom + window.scrollY;
+							window.scrollTo({ top: scrollY, behavior: "smooth" });
+						}
+					});
+				}
+			}
+		};
+
+		vv.addEventListener("resize", onResize);
+		return () => vv.removeEventListener("resize", onResize);
+	}, []);
+}
+
+/**
+ * Loading state rendered inside the card stack aesthetic.
+ * Shown while checking session or redirecting after login.
+ */
+function CardLoadingState({ message }: { message?: string }) {
+	const [smirky, setSmirky] = useState(() => getRandomMessage());
+
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setSmirky((prev) => getRandomMessage(prev));
+		}, 2000);
+		return () => clearInterval(interval);
+	}, []);
+
+	return (
+		<div className="flex min-h-[280px] flex-col items-center justify-center gap-5 text-center">
+			<div className="relative">
+				<div className="absolute inset-0 rounded-full bg-[#f0b25f]/30 blur-xl" />
+				<Sparkles className="relative size-10 text-[#f0b25f]" />
+			</div>
+			<div className="space-y-1">
+				<p className="text-sm font-semibold tracking-wide text-[#2c1810] animate-pulse">
+					{message ?? smirky}
+				</p>
+				<p className="text-xs text-[#a89080]">{smirky}</p>
+			</div>
+		</div>
+	);
 }
 
 export default function LoginPage() {
@@ -66,6 +118,9 @@ export default function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isRedirecting, setIsRedirecting] = useState(false);
 	const hasRedirected = useRef(false);
+	const formRef = useRef<HTMLDivElement>(null);
+
+	useVisualViewportScroll();
 
 	// Already logged in — show loading and redirect once
 	useEffect(() => {
@@ -106,68 +161,117 @@ export default function LoginPage() {
 		[email, password, router],
 	);
 
-	// While checking existing session, show nothing (prevents form flash)
-	if (isSessionPending) {
-		return (
-			<div className="flex min-h-[calc(100vh-52px)] items-center justify-center bg-background p-4">
-				<Card className="w-full max-w-md">
-					<CardContent className="py-8">
-						<div className="flex items-center justify-center">
-							<Spinner className="size-6 text-muted-foreground" />
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		);
-	}
+	const showLoading = isSessionPending || isRedirecting;
 
 	return (
-		<div className="flex min-h-[calc(100vh-52px)] items-center justify-center bg-background p-4">
-			<Card className="w-full max-w-md">
-				{isRedirecting ? (
-					<CardContent>
-						<RedirectingState />
-					</CardContent>
-				) : (
-					<>
-						<CardHeader className="space-y-1">
-							<CardTitle className="text-2xl font-bold">Login</CardTitle>
-							<CardDescription>Enter your email and password to access your account</CardDescription>
-						</CardHeader>
-						<CardContent>
-							<form onSubmit={handleSubmit} className="space-y-4">
-								<div className="space-y-2">
-									<Label htmlFor={emailID}>Email</Label>
-									<Input
-										id={emailID}
-										type="email"
-										placeholder="you@example.com"
-										value={email}
-										onChange={(e) => setEmail(e.target.value)}
-										required
-										disabled={isLoading}
-									/>
+		<div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#f5efe6] text-[#2c1810]">
+			{/* ── Background ── */}
+			<div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-[#e8d5c4]/60 blur-3xl" />
+			<div className="absolute -bottom-40 -right-40 h-[600px] w-[600px] rounded-full bg-[#d4a574]/25 blur-3xl" />
+			<div className="absolute left-1/3 top-1/4 h-80 w-80 rounded-full bg-[#f0b25f]/10 blur-3xl" />
+			<div className="absolute inset-0 opacity-[0.4] [background-image:radial-gradient(#c9a87c_1px,transparent_1px)] [background-size:24px_24px]" />
+
+			{/* ── Content ── */}
+			<div className="relative z-10 w-full max-w-sm px-4 py-8">
+				{/* Brand */}
+				<div className="mb-8 text-center">
+					<div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-white shadow-lg shadow-[#2c1810]/5">
+						<Image
+							src="/logo.png"
+							alt="Cocoa Comaa"
+							width={36}
+							height={36}
+							className="size-9 object-contain"
+							priority
+						/>
+					</div>
+					<h1 className="text-xl font-bold tracking-tight text-[#2c1810]">Cocoa Comaa</h1>
+					<p className="mt-1 text-sm text-[#8b6914]">Staff portal</p>
+				</div>
+
+				{/* Card stack */}
+				<div ref={formRef} className="relative">
+					{/* Back card layers */}
+					<div className="absolute -top-2 left-2 right-2 h-full rounded-2xl bg-[#e8d5c4]/60" />
+					<div className="absolute -top-1 left-1 right-1 h-full rounded-2xl bg-[#f0b25f]/20" />
+
+					{/* Main card */}
+					<div className="relative rounded-2xl border border-[#c9a87c]/25 bg-white/80 p-6 shadow-xl shadow-[#2c1810]/5 backdrop-blur-sm sm:p-8">
+						{showLoading ? (
+							<CardLoadingState
+								message={isSessionPending ? "Checking session…" : undefined}
+							/>
+						) : (
+							<>
+								<div className="mb-6 flex items-center justify-between">
+									<h2 className="text-lg font-bold text-[#2c1810]">Sign in</h2>
+									<div className="flex h-7 items-center gap-1.5 rounded-full bg-[#f0b25f]/10 px-3 text-xs font-semibold text-[#8b6914]">
+										<ShieldCheck className="size-3" />
+										Secure
+									</div>
 								</div>
-								<div className="space-y-2">
-									<Label htmlFor={passwordID}>Password</Label>
-									<Input
-										id={passwordID}
-										type="password"
-										placeholder="••••••••"
-										value={password}
-										onChange={(e) => setPassword(e.target.value)}
-										required
+
+								<form onSubmit={handleSubmit} className="space-y-4">
+									<div className="space-y-1.5">
+										<Label
+											htmlFor={emailID}
+											className="text-xs font-semibold uppercase tracking-wider text-[#8b6914]"
+										>
+											Email
+										</Label>
+										<Input
+											id={emailID}
+											type="email"
+											placeholder="you@example.com"
+											value={email}
+											onChange={(e) => setEmail(e.target.value)}
+											required
+											disabled={isLoading}
+											autoComplete="email"
+											inputMode="email"
+											className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
+										/>
+									</div>
+									<div className="space-y-1.5">
+										<Label
+											htmlFor={passwordID}
+											className="text-xs font-semibold uppercase tracking-wider text-[#8b6914]"
+										>
+											Password
+										</Label>
+										<Input
+											id={passwordID}
+											type="password"
+											placeholder="••••••••"
+											value={password}
+											onChange={(e) => setPassword(e.target.value)}
+											required
+											disabled={isLoading}
+											autoComplete="current-password"
+											className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
+										/>
+									</div>
+									<Button
+										type="submit"
 										disabled={isLoading}
-									/>
-								</div>
-								<Button type="submit" className="w-full" disabled={isLoading}>
-									{isLoading ? <Spinner /> : "Login"}
-								</Button>
-							</form>
-						</CardContent>
-					</>
-				)}
-			</Card>
+										className="h-12 w-full rounded-xl bg-[#2c1810] text-sm font-bold uppercase tracking-wider text-[#f5efe6] shadow-lg shadow-[#2c1810]/15 transition-transform hover:-translate-y-0.5 hover:bg-[#3d2218]"
+									>
+										{isLoading ? (
+											<Spinner className="text-white" />
+										) : (
+											"Enter dashboard"
+										)}
+									</Button>
+								</form>
+							</>
+						)}
+					</div>
+				</div>
+
+				<p className="mt-6 text-center text-xs text-[#a89080]">
+					Trouble signing in? Ask your store manager.
+				</p>
+			</div>
 		</div>
 	);
 }
