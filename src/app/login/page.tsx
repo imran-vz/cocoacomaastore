@@ -125,7 +125,7 @@ export default function LoginPage() {
 			<div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-[#e8d5c4]/60 blur-3xl" />
 			<div className="absolute -bottom-40 -right-40 h-[600px] w-[600px] rounded-full bg-[#d4a574]/25 blur-3xl" />
 			<div className="absolute left-1/3 top-1/4 h-80 w-80 rounded-full bg-[#f0b25f]/10 blur-3xl" />
-			<div className="absolute inset-0 opacity-[0.4] [background-image:radial-gradient(#c9a87c_1px,transparent_1px)] [background-size:24px_24px]" />
+			<div className="absolute inset-0 opacity-[0.4] bg-[radial-gradient(#c9a87c_1px,transparent_1px)] bg-size-[24px_24px]" />
 
 			{/* ── Scrollable content ── */}
 			<div className="relative z-10 h-full overflow-y-auto overscroll-y-none scroll-smooth">
