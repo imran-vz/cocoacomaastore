@@ -1,9 +1,5 @@
-import { Spinner } from "@/components/ui/spinner";
+import { UpiAccountsSkeleton } from "../loading-skeletons";
 
 export default function AdminLoading() {
-	return (
-		<div className="flex justify-center items-center min-h-[calc(50svh)]">
-			<Spinner className="size-10" />
-		</div>
-	);
+	return <UpiAccountsSkeleton />;
 }

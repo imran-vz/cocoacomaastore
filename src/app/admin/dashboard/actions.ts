@@ -15,10 +15,14 @@ import {
 	inventoryAuditLogTable,
 	ordersTable,
 } from "@/db/schema";
-import { getAnalyticsDay, getDayKey, getEndOfDayIST, getISTMonthKey, getStartOfDayIST } from "@/lib/ist-date";
+import { getAnalyticsDay, getDayKey, getEndOfDayIST, getISTMonthKey, getStartOfDayIST, pgTimestamp } from "@/lib/ist-date";
 
 // biome-ignore lint/suspicious/noExplicitAny: for next unstable_cache
 type Callback = (...args: any[]) => Promise<any>;
+function timestampParam(date: Date) {
+	return sql`${pgTimestamp(date)}::timestamp`;
+}
+
 function unstable_cache<T extends Callback>(
 	cb: T,
 	keyParts?: string[],
@@ -97,6 +101,10 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 	const dayStartUTC = getAnalyticsDay(date);
 	const weekAgoUTC = new Date(dayStartUTC);
 	weekAgoUTC.setDate(weekAgoUTC.getDate() - 6);
+	const dayStartISTParam = timestampParam(dayStartIST);
+	const dayEndISTParam = timestampParam(dayEndIST);
+	const dayStartUTCParam = timestampParam(dayStartUTC);
+	const weekAgoUTCParam = timestampParam(weekAgoUTC);
 
 	// Today's stats from live orders table
 	const [todayOrders, todayItems, weekStats] = await Promise.all([
@@ -111,8 +119,8 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 				and(
 					eq(ordersTable.status, "completed"),
 					eq(ordersTable.isDeleted, false),
-					gte(ordersTable.createdAt, dayStartIST),
-					lt(ordersTable.createdAt, dayEndIST),
+					gte(ordersTable.createdAt, dayStartISTParam),
+					lt(ordersTable.createdAt, dayEndISTParam),
 				),
 			),
 
@@ -123,8 +131,8 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 				FROM orders
 				WHERE status = 'completed'
 					AND "isDeleted" = false
-					AND "createdAt" >= ${dayStartIST}
-					AND "createdAt" < ${dayEndIST}
+					AND "createdAt" >= ${pgTimestamp(dayStartIST)}::timestamp
+					AND "createdAt" < ${pgTimestamp(dayEndIST)}::timestamp
 			)
 			SELECT coalesce(sum(item_totals.quantity), 0)::int AS "totalItems"
 			FROM filtered_orders o
@@ -142,7 +150,7 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 				revenue: sum(analyticsDailyRevenueTable.grossRevenue).as("revenue"),
 			})
 			.from(analyticsDailyRevenueTable)
-			.where(and(gte(analyticsDailyRevenueTable.day, weekAgoUTC), lt(analyticsDailyRevenueTable.day, dayStartUTC))),
+			.where(and(gte(analyticsDailyRevenueTable.day, weekAgoUTCParam), lt(analyticsDailyRevenueTable.day, dayStartUTCParam))),
 	]);
 
 	const dayOrdersCount = todayOrders[0]?.count ?? 0;
@@ -170,6 +178,7 @@ async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
 	const start = performance.now();
 
 	const dayStart = getAnalyticsDay(day);
+	const dayStartParam = timestampParam(dayStart);
 
 	const desserts = await db
 		.select({
@@ -182,7 +191,7 @@ async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
 		.from(dessertsTable)
 		.leftJoin(
 			dailyDessertInventoryTable,
-			and(eq(dailyDessertInventoryTable.dessertId, dessertsTable.id), eq(dailyDessertInventoryTable.day, dayStart)),
+			and(eq(dailyDessertInventoryTable.dessertId, dessertsTable.id), eq(dailyDessertInventoryTable.day, dayStartParam)),
 		)
 		.where(eq(dessertsTable.isDeleted, false))
 		.orderBy(dessertsTable.sequence);
@@ -199,6 +208,8 @@ async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 
 	const dayStart = getStartOfDayIST(date);
 	const dayEnd = getEndOfDayIST(date);
+	const dayStartParam = timestampParam(dayStart);
+	const dayEndParam = timestampParam(dayEnd);
 
 	const logs = await db
 		.select({
@@ -214,7 +225,7 @@ async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 		})
 		.from(inventoryAuditLogTable)
 		.innerJoin(dessertsTable, eq(inventoryAuditLogTable.dessertId, dessertsTable.id))
-		.where(and(gte(inventoryAuditLogTable.createdAt, dayStart), lt(inventoryAuditLogTable.createdAt, dayEnd)))
+		.where(and(gte(inventoryAuditLogTable.createdAt, dayStartParam), lt(inventoryAuditLogTable.createdAt, dayEndParam)))
 		.orderBy(desc(inventoryAuditLogTable.createdAt))
 		.limit(limit);
 
@@ -242,6 +253,7 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 	const endDay = getAnalyticsDay(endDate);
 	const startDay = new Date(endDay);
 	startDay.setDate(startDay.getDate() - (days - 1));
+	const startDayParam = timestampParam(startDay);
 
 	// Check if endDate is today in IST
 	const todayUTC = getAnalyticsDay(new Date());
@@ -249,6 +261,7 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 
 	// Query analytics for historical days (exclude today if it's in range)
 	const analyticsEndDay = isEndDateToday ? new Date(endDay.getTime() - 24 * 60 * 60 * 1000) : endDay;
+	const analyticsEndDayParam = timestampParam(analyticsEndDay);
 
 	const results = await db
 		.select({
@@ -257,7 +270,7 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 			orders: analyticsDailyRevenueTable.orderCount,
 		})
 		.from(analyticsDailyRevenueTable)
-		.where(and(gte(analyticsDailyRevenueTable.day, startDay), lte(analyticsDailyRevenueTable.day, analyticsEndDay)))
+		.where(and(gte(analyticsDailyRevenueTable.day, startDayParam), lte(analyticsDailyRevenueTable.day, analyticsEndDayParam)))
 		.orderBy(analyticsDailyRevenueTable.day);
 
 	const dailyData: DailyRevenue[] = results.map((r) => ({
@@ -274,6 +287,8 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 	if (isEndDateToday) {
 		const dayStartIST = getStartOfDayIST(endDate);
 		const dayEndIST = getEndOfDayIST(endDate);
+		const dayStartISTParam = timestampParam(dayStartIST);
+		const dayEndISTParam = timestampParam(dayEndIST);
 
 		const [todayData] = await db
 			.select({
@@ -285,8 +300,8 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 				and(
 					eq(ordersTable.status, "completed"),
 					eq(ordersTable.isDeleted, false),
-					gte(ordersTable.createdAt, dayStartIST),
-					lt(ordersTable.createdAt, dayEndIST),
+					gte(ordersTable.createdAt, dayStartISTParam),
+					lt(ordersTable.createdAt, dayEndISTParam),
 				),
 			);
 
@@ -439,6 +454,8 @@ async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
 	const endDay = getAnalyticsDay(new Date());
 	const startDay = new Date(endDay);
 	startDay.setDate(startDay.getDate() - (days - 1));
+	const endDayParam = timestampParam(endDay);
+	const startDayParam = timestampParam(startDay);
 
 	const results = await db
 		.select({
@@ -450,7 +467,7 @@ async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
 		})
 		.from(analyticsDailyEodStockTable)
 		.innerJoin(dessertsTable, eq(analyticsDailyEodStockTable.dessertId, dessertsTable.id))
-		.where(and(gte(analyticsDailyEodStockTable.day, startDay), lte(analyticsDailyEodStockTable.day, endDay)))
+		.where(and(gte(analyticsDailyEodStockTable.day, startDayParam), lte(analyticsDailyEodStockTable.day, endDayParam)))
 		.orderBy(analyticsDailyEodStockTable.day, dessertsTable.name);
 
 	const duration = performance.now() - start;
