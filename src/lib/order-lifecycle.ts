@@ -1,5 +1,5 @@
 import { performance } from "node:perf_hooks";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { db } from "@/db";
 import {
@@ -35,11 +35,14 @@ export type GetOrdersReturnType = (Omit<Order, "isDeleted"> & {
 
 async function getOrders(day: Date): Promise<GetOrdersReturnType> {
 	const start = performance.now();
+	const nextDay = new Date(day);
+	nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+
 	const orders = await db.query.ordersTable.findMany({
 		columns: {
 			isDeleted: false,
 		},
-		where: and(eq(ordersTable.isDeleted, false), gte(ordersTable.createdAt, day)),
+		where: and(eq(ordersTable.isDeleted, false), gte(ordersTable.createdAt, day), lt(ordersTable.createdAt, nextDay)),
 		orderBy: [desc(ordersTable.createdAt)],
 		with: {
 			orderItems: {

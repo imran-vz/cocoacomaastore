@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { withQueryTiming } from "@/db/query-logger";
 import * as schema from "./schema";
 
 const connectionString = process.env.DATABASE_URL || "";
@@ -8,8 +9,8 @@ if (!process.env.DATABASE_URL) {
 	throw new Error("DATABASE_URL is not set");
 }
 
-const client = postgres(connectionString, { prepare: false });
+const client = withQueryTiming(postgres(connectionString, { prepare: false }));
 export const db = drizzle(client, {
 	schema,
-	logger: process.env.NODE_ENV === "development",
+	logger: process.env.NODE_ENV === "development" && process.env.DB_QUERY_TIMING !== "1",
 });

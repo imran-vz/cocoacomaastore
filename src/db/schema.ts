@@ -344,6 +344,7 @@ export const inventoryAuditLogTable = pgTable(
 	},
 	(table) => [
 		index("inventory_audit_log_day_idx").on(table.day),
+		index("inventory_audit_log_created_at_desc_idx").on(table.createdAt.desc()),
 		index("inventory_audit_log_dessert_idx").on(table.dessertId),
 		index("inventory_audit_log_order_idx").on(table.orderId),
 	],
@@ -382,10 +383,7 @@ export const analyticsDailyRevenueTable = pgTable(
 		orderCount: integer("order_count").notNull(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
-	(table) => [
-		uniqueIndex("analytics_daily_revenue_day_unique").on(table.day),
-		index("analytics_daily_revenue_day_idx").on(table.day),
-	],
+	(table) => [uniqueIndex("analytics_daily_revenue_day_unique").on(table.day)],
 );
 
 export type AnalyticsDailyRevenue = typeof analyticsDailyRevenueTable.$inferSelect;
@@ -408,7 +406,6 @@ export const analyticsDailyDessertRevenueTable = pgTable(
 	},
 	(table) => [
 		uniqueIndex("analytics_daily_dessert_revenue_unique").on(table.day, table.dessertId),
-		index("analytics_daily_dessert_revenue_day_idx").on(table.day),
 		index("analytics_daily_dessert_revenue_dessert_idx").on(table.dessertId),
 	],
 );
@@ -434,10 +431,7 @@ export const analyticsMonthlyRevenueTable = pgTable(
 		orderCount: integer("order_count").notNull(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
-	(table) => [
-		uniqueIndex("analytics_monthly_revenue_month_unique").on(table.month),
-		index("analytics_monthly_revenue_month_idx").on(table.month),
-	],
+	(table) => [uniqueIndex("analytics_monthly_revenue_month_unique").on(table.month)],
 );
 
 export type AnalyticsMonthlyRevenue = typeof analyticsMonthlyRevenueTable.$inferSelect;
@@ -460,7 +454,6 @@ export const analyticsMonthlyDessertRevenueTable = pgTable(
 	},
 	(table) => [
 		uniqueIndex("analytics_monthly_dessert_revenue_unique").on(table.month, table.dessertId),
-		index("analytics_monthly_dessert_revenue_month_idx").on(table.month),
 		index("analytics_monthly_dessert_revenue_dessert_idx").on(table.dessertId),
 	],
 );
@@ -488,7 +481,6 @@ export const analyticsDailyEodStockTable = pgTable(
 	},
 	(table) => [
 		uniqueIndex("analytics_daily_eod_stock_unique").on(table.day, table.dessertId),
-		index("analytics_daily_eod_stock_day_idx").on(table.day),
 		index("analytics_daily_eod_stock_dessert_idx").on(table.dessertId),
 	],
 );
@@ -515,10 +507,7 @@ export const analyticsDailyItemSalesTable = pgTable(
 		quantitySold: integer("quantity_sold").notNull(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
-	(table) => [
-		uniqueIndex("analytics_daily_item_sales_unique").on(table.day, table.itemType, table.itemId),
-		index("analytics_daily_item_sales_day_idx").on(table.day),
-	],
+	(table) => [uniqueIndex("analytics_daily_item_sales_unique").on(table.day, table.itemType, table.itemId)],
 );
 
 export type AnalyticsDailyItemSales = typeof analyticsDailyItemSalesTable.$inferSelect;

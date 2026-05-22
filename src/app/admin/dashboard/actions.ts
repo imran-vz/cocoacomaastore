@@ -13,7 +13,6 @@ import {
 	dailyDessertInventoryTable,
 	dessertsTable,
 	inventoryAuditLogTable,
-	orderItemsTable,
 	ordersTable,
 } from "@/db/schema";
 import { getAnalyticsDay, getDayKey, getEndOfDayIST, getISTMonthKey, getStartOfDayIST } from "@/lib/ist-date";
@@ -118,20 +117,23 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 			),
 
 		// Today's items sold from order_items (only completed orders)
-		db
-			.select({
-				totalItems: sql<number>`coalesce(sum(${orderItemsTable.quantity}), 0)::int`,
-			})
-			.from(orderItemsTable)
-			.leftJoin(ordersTable, eq(orderItemsTable.orderId, ordersTable.id))
-			.where(
-				and(
-					eq(ordersTable.status, "completed"),
-					eq(ordersTable.isDeleted, false),
-					gte(ordersTable.createdAt, dayStartIST),
-					lt(ordersTable.createdAt, dayEndIST),
-				),
-			),
+		db.execute<{ totalItems: number }>(sql`
+			WITH filtered_orders AS MATERIALIZED (
+				SELECT id
+				FROM orders
+				WHERE status = 'completed'
+					AND "isDeleted" = false
+					AND "createdAt" >= ${dayStartIST}
+					AND "createdAt" < ${dayEndIST}
+			)
+			SELECT coalesce(sum(item_totals.quantity), 0)::int AS "totalItems"
+			FROM filtered_orders o
+			CROSS JOIN LATERAL (
+				SELECT sum(quantity) AS quantity
+				FROM order_items oi
+				WHERE oi."orderId" = o.id
+			) item_totals
+		`),
 
 		// Week stats (past 7 days, excluding today) from analytics table
 		db
