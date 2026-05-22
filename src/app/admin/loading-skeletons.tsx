@@ -208,7 +208,34 @@ export function DashboardSkeleton({ includeMain = true }: { includeMain?: boolea
 					</div>
 				</CardHeader>
 				<CardContent>
-					<ChartSkeleton height="h-75" />
+					<div className="space-y-3 md:hidden">
+						<div className="grid grid-cols-2 gap-2">
+							{["best", "shown"].map((slot) => (
+								<div
+									key={`dashboard-mobile-chart-${slot}`}
+									className="space-y-2 rounded-lg border bg-muted/30 px-3 py-2.5"
+								>
+									<Skeleton className="h-3 w-20" />
+									<Skeleton className="h-5 w-16" />
+								</div>
+							))}
+						</div>
+						{listSlots.map((slot) => (
+							<div key={`dashboard-mobile-chart-row-${slot}`} className="space-y-3 rounded-lg border bg-card px-3 py-3">
+								<div className="flex items-center justify-between gap-3">
+									<div className="space-y-2">
+										<Skeleton className="h-4 w-16" />
+										<Skeleton className="h-3 w-14" />
+									</div>
+									<Skeleton className="h-4 w-20" />
+								</div>
+								<Skeleton className="h-2 w-full rounded-full" />
+							</div>
+						))}
+					</div>
+					<div className="hidden md:block">
+						<ChartSkeleton height="h-75" />
+					</div>
 				</CardContent>
 			</Card>
 			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -326,9 +353,12 @@ function DessertTableSectionSkeleton({
 export function CombosSkeleton({ includeMain = true }: { includeMain?: boolean } = {}) {
 	const content = (
 		<div className="@container/combos">
-			<div className="space-y-4 p-2 @sm/combos:p-4 @md/combos:space-y-6 @md/combos:p-0">
-				<PageHeaderSkeleton titleWidth="w-28" subtitleWidth="" actionWidth="w-28" />
-				<Skeleton className="h-10 w-full max-w-sm" />
+			<div className="space-y-4 p-0 @md/combos:space-y-6">
+				<div className="flex flex-col gap-3 @md/combos:flex-row @md/combos:items-center @md/combos:justify-between">
+					<Skeleton className="h-9 w-28 @md/combos:h-8" />
+					<Skeleton className="h-9 w-full @md/combos:w-28" />
+				</div>
+				<Skeleton className="h-10 w-full @md/combos:max-w-sm" />
 				<ComboSectionSkeleton titleWidth="w-40" />
 				<ComboSectionSkeleton titleWidth="w-44" muted />
 			</div>
@@ -344,25 +374,25 @@ function ComboSectionSkeleton({ titleWidth, muted = false }: { titleWidth: strin
 	return (
 		<div className={muted ? "opacity-60" : undefined}>
 			<Skeleton className={`mb-4 h-6 ${titleWidth}`} />
-			<div className="grid grid-cols-1 gap-4 @sm/combos:grid-cols-2 @lg/combos:grid-cols-3">
+			<div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,24rem),1fr))] gap-4">
 				{comboSlots.map((slot) => (
-					<Card key={`combo-card-${titleWidth}-${slot}`}>
+					<Card key={`combo-card-${titleWidth}-${slot}`} className="gap-0">
 						<CardHeader className="pb-2">
-							<div className="flex items-start justify-between gap-3">
-								<div className="flex items-center gap-2">
-									<Skeleton className="size-5 rounded" />
-									<Skeleton className="h-5 w-32" />
+							<div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+								<div className="flex min-w-0 items-start gap-2">
+									<Skeleton className="mt-1 size-4 shrink-0 rounded" />
+									<Skeleton className="h-6 w-40 max-w-full" />
 								</div>
-								<div className="flex gap-2">
+								<div className="flex shrink-0 gap-1">
 									<Skeleton className="size-8 rounded-md" />
 									<Skeleton className="h-6 w-10 rounded-full" />
 								</div>
 							</div>
 						</CardHeader>
 						<CardContent className="space-y-2">
-							<Skeleton className="h-4 w-40" />
-							<Skeleton className="h-3 w-52" />
-							<Skeleton className="h-5 w-16" />
+							<Skeleton className="h-4 w-56 max-w-full" />
+							<Skeleton className="h-3 w-44 max-w-full" />
+							<Skeleton className="h-6 w-24" />
 						</CardContent>
 					</Card>
 				))}
@@ -443,7 +473,31 @@ export function AnalyticsSkeleton({ includeMain = true }: { includeMain?: boolea
 					</div>
 				</CardHeader>
 				<CardContent>
-					<ChartSkeleton />
+					<div className="space-y-3 md:hidden">
+						<div className="grid grid-cols-2 gap-2">
+							{["best", "shown"].map((slot) => (
+								<div key={slot} className="space-y-2 rounded-lg border bg-muted/30 px-3 py-2.5">
+									<Skeleton className="h-3 w-20" />
+									<Skeleton className="h-5 w-16" />
+								</div>
+							))}
+						</div>
+						{listSlots.map((slot) => (
+							<div key={`monthly-mobile-${slot}`} className="space-y-3 rounded-lg border bg-card px-3 py-3">
+								<div className="flex items-center justify-between gap-3">
+									<div className="space-y-2">
+										<Skeleton className="h-4 w-20" />
+										<Skeleton className="h-3 w-16" />
+									</div>
+									<Skeleton className="h-4 w-20" />
+								</div>
+								<Skeleton className="h-2 w-full rounded-full" />
+							</div>
+						))}
+					</div>
+					<div className="hidden md:block">
+						<ChartSkeleton />
+					</div>
 				</CardContent>
 			</Card>
 			<Card>
@@ -457,7 +511,31 @@ export function AnalyticsSkeleton({ includeMain = true }: { includeMain?: boolea
 					</div>
 				</CardHeader>
 				<CardContent>
-					<div className="grid gap-6 transition-opacity xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)] xl:items-center">
+					<div className="space-y-3 md:hidden">
+						<div className="grid grid-cols-3 gap-2">
+							{["top", "shown", "total"].map((slot) => (
+								<div key={slot} className="space-y-2 rounded-lg border bg-muted/30 px-3 py-2.5">
+									<Skeleton className="h-3 w-10" />
+									<Skeleton className="h-5 w-12" />
+								</div>
+							))}
+						</div>
+						{revenueDistributionSlots.map((slot) => (
+							<div key={`distribution-mobile-${slot}`} className="space-y-3 rounded-lg border bg-card px-3 py-3">
+								<div className="flex items-center gap-3">
+									<Skeleton className="h-4 w-5" />
+									<Skeleton className="size-2.5 rounded-full" />
+									<div className="min-w-0 flex-1 space-y-2">
+										<Skeleton className="h-4 w-32" />
+										<Skeleton className="h-3 w-24" />
+									</div>
+									<Skeleton className="h-4 w-16" />
+								</div>
+								<Skeleton className="h-2 w-full rounded-full" />
+							</div>
+						))}
+					</div>
+					<div className="hidden gap-6 transition-opacity md:grid xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)] xl:items-center">
 						<div className="relative mx-auto aspect-square w-full max-w-96">
 							<Skeleton className="h-full w-full rounded-full" />
 							<div className="absolute inset-0 grid place-items-center">

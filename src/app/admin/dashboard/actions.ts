@@ -79,6 +79,14 @@ export type MonthlyRevenue = {
 	orderCount: number;
 };
 
+export type WeeklyRevenue = {
+	week: string;
+	startDate: string;
+	endDate: string;
+	grossRevenue: number;
+	orderCount: number;
+};
+
 export type MonthlyDessertRevenue = {
 	month: string;
 	dessertId: number;
@@ -409,6 +417,120 @@ async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
 export async function getCachedMonthlyRevenue(months = 6) {
 	return unstable_cache(() => getMonthlyRevenue(months), ["monthly-revenue", String(months)], {
 		revalidate: 60 * 60, // Revalidate every hour
+		tags: ["orders", "analytics"],
+	})();
+}
+
+function isValidMonthKey(month: string): boolean {
+	return /^\d{4}-\d{2}$/.test(month);
+}
+
+function formatWeekDate(month: string, day: number): string {
+	const [year, monthNum] = month.split("-").map(Number);
+	return new Date(Date.UTC(year, monthNum - 1, day)).toLocaleDateString("en-IN", {
+		day: "numeric",
+		month: "short",
+		timeZone: "UTC",
+	});
+}
+
+async function getWeeklyRevenue(month: string): Promise<WeeklyRevenue[]> {
+	const start = performance.now();
+
+	if (!isValidMonthKey(month)) {
+		throw new Error("Invalid month");
+	}
+
+	const [year, monthNum] = month.split("-").map(Number);
+	const daysInMonth = new Date(Date.UTC(year, monthNum, 0)).getUTCDate();
+	const monthStart = new Date(Date.UTC(year, monthNum - 1, 1));
+	const nextMonthStart = new Date(Date.UTC(year, monthNum, 1));
+	const monthStartParam = timestampParam(monthStart);
+	const nextMonthStartParam = timestampParam(nextMonthStart);
+	const todayUTC = getAnalyticsDay(new Date());
+	const isCurrentMonth = getISTMonthKey() === month;
+	const analyticsEndParam = isCurrentMonth ? timestampParam(todayUTC) : nextMonthStartParam;
+
+	const results = await db
+		.select({
+			day: analyticsDailyRevenueTable.day,
+			revenue: analyticsDailyRevenueTable.grossRevenue,
+			orders: analyticsDailyRevenueTable.orderCount,
+		})
+		.from(analyticsDailyRevenueTable)
+		.where(
+			and(gte(analyticsDailyRevenueTable.day, monthStartParam), lt(analyticsDailyRevenueTable.day, analyticsEndParam)),
+		)
+		.orderBy(analyticsDailyRevenueTable.day);
+
+	const dailyRows = results.map((row) => ({
+		day: row.day,
+		revenue: Number(row.revenue),
+		orders: row.orders,
+	}));
+
+	if (isCurrentMonth) {
+		const dayStartIST = getStartOfDayIST(new Date());
+		const dayEndIST = getEndOfDayIST(new Date());
+		const dayStartISTParam = timestampParam(dayStartIST);
+		const dayEndISTParam = timestampParam(dayEndIST);
+
+		const [todayData] = await db
+			.select({
+				count: sql<number>`count(*)::int`,
+				revenue: sql<string>`coalesce(sum(total), 0)`,
+			})
+			.from(ordersTable)
+			.where(
+				and(
+					eq(ordersTable.status, "completed"),
+					eq(ordersTable.isDeleted, false),
+					gte(ordersTable.createdAt, dayStartISTParam),
+					lt(ordersTable.createdAt, dayEndISTParam),
+				),
+			);
+
+		dailyRows.push({
+			day: todayUTC,
+			revenue: Number(todayData?.revenue ?? 0),
+			orders: todayData?.count ?? 0,
+		});
+	}
+
+	const weeks = Array.from({ length: Math.ceil(daysInMonth / 7) }, (_, index) => {
+		const startDay = index * 7 + 1;
+		const endDay = Math.min(startDay + 6, daysInMonth);
+
+		return {
+			week: `Week ${index + 1}`,
+			startDate: formatWeekDate(month, startDay),
+			endDate: formatWeekDate(month, endDay),
+			grossRevenue: 0,
+			orderCount: 0,
+		};
+	});
+
+	for (const row of dailyRows) {
+		if (row.day < monthStart || row.day >= nextMonthStart) continue;
+
+		const dayOfMonth = row.day.getUTCDate();
+		const weekIndex = Math.floor((dayOfMonth - 1) / 7);
+		const week = weeks[weekIndex];
+		if (!week) continue;
+
+		week.grossRevenue += row.revenue;
+		week.orderCount += row.orders;
+	}
+
+	const duration = performance.now() - start;
+	console.log(`getWeeklyRevenue: ${duration.toFixed(2)}ms`);
+
+	return weeks;
+}
+
+export async function getCachedWeeklyRevenue(month: string) {
+	return unstable_cache(() => getWeeklyRevenue(month), ["weekly-revenue", month], {
+		revalidate: 60 * 60,
 		tags: ["orders", "analytics"],
 	})();
 }

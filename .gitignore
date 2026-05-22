@@ -49,3 +49,4 @@ postgres-data
 redis-data
 
 .trigger
+tmp/

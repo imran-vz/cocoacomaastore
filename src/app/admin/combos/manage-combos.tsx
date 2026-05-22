@@ -99,15 +99,60 @@ export default function ManageCombos({
 	const filteredCombos = combos.filter((combo) => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
 	const enabledCombos = filteredCombos.filter((c) => c.enabled);
 	const disabledCombos = filteredCombos.filter((c) => !c.enabled);
+	const renderComboCard = (combo: ComboWithDetails, isDisabled = false) => (
+		<Card key={combo.id} className={isDisabled ? "relative gap-0 opacity-60" : "relative gap-0"}>
+			<CardHeader className="pb-2">
+				<div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+					<div className="flex min-w-0 items-start gap-2">
+						<Package
+							className={
+								isDisabled ? "mt-1 size-4 shrink-0 text-muted-foreground" : "mt-1 size-4 shrink-0 text-primary"
+							}
+						/>
+						<CardTitle className="min-w-0 text-base leading-snug break-words @md/combos:text-lg">
+							{combo.name}
+						</CardTitle>
+					</div>
+					<div className="flex shrink-0 items-center gap-1">
+						<Button variant="ghost" size="icon" className="size-8" onClick={() => openEditModal(combo)}>
+							<Pencil className="size-4" />
+						</Button>
+						<Switch
+							checked={combo.enabled}
+							onCheckedChange={() => handleToggle(combo)}
+							disabled={toggleLoadingIds.has(combo.id)}
+						/>
+					</div>
+				</div>
+			</CardHeader>
+			<CardContent className="space-y-2 text-sm text-muted-foreground">
+				<p className="leading-relaxed">
+					Base: <span className="font-medium text-foreground/80">{combo.baseDessert.name}</span>
+				</p>
+				{combo.items.length > 0 && (
+					<p className="text-xs leading-relaxed">
+						+{" "}
+						{combo.items
+							.map((item) => (item.quantity > 1 ? `${item.quantity}× ${item.dessert.name}` : item.dessert.name))
+							.join(", ")}
+					</p>
+				)}
+				<p className="text-base font-semibold text-foreground">
+					₹{getDisplayPrice(combo)}
+					{combo.overridePrice !== null && <span className="ml-1 text-xs text-muted-foreground">(override)</span>}
+				</p>
+			</CardContent>
+		</Card>
+	);
 
 	return (
 		<div className="@container/combos">
-			<div className="space-y-4 @md/combos:space-y-6 p-2 @sm/combos:p-4 @md/combos:p-0">
+			<div className="space-y-4 p-0 @md/combos:space-y-6">
 				<ComboFormDialog />
 
-				<div className="flex flex-col space-y-3 @md/combos:flex-row @md/combos:justify-between @md/combos:items-center @md/combos:space-y-0">
-					<h2 className="text-xl @sm/combos:text-2xl font-bold">Combos</h2>
-					<Button onClick={openCreateModal} size="sm">
+				<div className="flex flex-col gap-3 @md/combos:flex-row @md/combos:items-center @md/combos:justify-between">
+					<h2 className="text-3xl font-bold tracking-tight @md/combos:text-2xl">Combos</h2>
+					<Button onClick={openCreateModal} size="sm" className="w-full @md/combos:w-auto">
 						<Plus className="size-4 mr-2" />
 						Add Combo
 					</Button>
@@ -117,56 +162,14 @@ export default function ManageCombos({
 					placeholder="Search combos..."
 					value={searchTerm}
 					onChange={(e) => setSearchTerm(e.target.value)}
-					className="max-w-sm"
+					className="w-full @md/combos:max-w-sm"
 				/>
 
 				{enabledCombos.length > 0 && (
 					<div>
 						<h3 className="text-lg font-semibold mb-4 text-green-700">Active Combos ({enabledCombos.length})</h3>
-						<div className="grid grid-cols-1 @sm/combos:grid-cols-2 @lg/combos:grid-cols-3 gap-4">
-							{enabledCombos.map((combo) => (
-								<Card key={combo.id} className="relative gap-0">
-									<CardHeader className="pb-2">
-										<div className="flex items-start justify-between">
-											<div className="flex items-center gap-2">
-												<Package className="size-5 text-primary" />
-												<CardTitle className="text-base">{combo.name}</CardTitle>
-											</div>
-											<div className="flex items-center gap-1">
-												<Button variant="ghost" size="icon" className="size-8" onClick={() => openEditModal(combo)}>
-													<Pencil className="size-4" />
-												</Button>
-												<Switch
-													checked={combo.enabled}
-													onCheckedChange={() => handleToggle(combo)}
-													disabled={toggleLoadingIds.has(combo.id)}
-												/>
-											</div>
-										</div>
-									</CardHeader>
-									<CardContent className="text-sm text-muted-foreground">
-										<p className="mb-1">
-											Base: <span className="font-medium">{combo.baseDessert.name}</span>
-										</p>
-										{combo.items.length > 0 && (
-											<p className="mb-2 text-xs">
-												+{" "}
-												{combo.items
-													.map((item) =>
-														item.quantity > 1 ? `${item.quantity}× ${item.dessert.name}` : item.dessert.name,
-													)
-													.join(", ")}
-											</p>
-										)}
-										<p className="font-semibold text-foreground">
-											₹{getDisplayPrice(combo)}
-											{combo.overridePrice !== null && (
-												<span className="text-xs text-muted-foreground ml-1">(override)</span>
-											)}
-										</p>
-									</CardContent>
-								</Card>
-							))}
+						<div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,24rem),1fr))] gap-4">
+							{enabledCombos.map((combo) => renderComboCard(combo))}
 						</div>
 					</div>
 				)}
@@ -174,45 +177,8 @@ export default function ManageCombos({
 				{disabledCombos.length > 0 && (
 					<div>
 						<h3 className="text-lg font-semibold mb-4 text-red-700">Disabled Combos ({disabledCombos.length})</h3>
-						<div className="grid grid-cols-1 @sm/combos:grid-cols-2 @lg/combos:grid-cols-3 gap-4">
-							{disabledCombos.map((combo) => (
-								<Card key={combo.id} className="relative opacity-60">
-									<CardHeader className="pb-2">
-										<div className="flex items-start justify-between">
-											<div className="flex items-center gap-2">
-												<Package className="size-5 text-muted-foreground" />
-												<CardTitle className="text-base">{combo.name}</CardTitle>
-											</div>
-											<div className="flex items-center gap-1">
-												<Button variant="ghost" size="icon" className="size-8" onClick={() => openEditModal(combo)}>
-													<Pencil className="size-4" />
-												</Button>
-												<Switch
-													checked={combo.enabled}
-													onCheckedChange={() => handleToggle(combo)}
-													disabled={toggleLoadingIds.has(combo.id)}
-												/>
-											</div>
-										</div>
-									</CardHeader>
-									<CardContent className="text-sm text-muted-foreground">
-										<p className="mb-1">
-											Base: <span className="font-medium">{combo.baseDessert.name}</span>
-										</p>
-										{combo.items.length > 0 && (
-											<p className="mb-2 text-xs">
-												+{" "}
-												{combo.items
-													.map((item) =>
-														item.quantity > 1 ? `${item.quantity}× ${item.dessert.name}` : item.dessert.name,
-													)
-													.join(", ")}
-											</p>
-										)}
-										<p className="font-semibold text-foreground">₹{getDisplayPrice(combo)}</p>
-									</CardContent>
-								</Card>
-							))}
+						<div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,24rem),1fr))] gap-4">
+							{disabledCombos.map((combo) => renderComboCard(combo, true))}
 						</div>
 					</div>
 				)}

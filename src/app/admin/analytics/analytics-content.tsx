@@ -1,10 +1,12 @@
 "use client";
 
-import { IconCalendar, IconChartBar, IconTrendingUp } from "@tabler/icons-react";
+import { IconCalendar, IconChartBar, IconLoader2, IconTrendingUp, IconX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { use, useCallback, useMemo, useState } from "react";
+import type { ComponentProps } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, CartesianGrid, Cell, ComposedChart, Line, Pie, PieChart, XAxis, YAxis } from "recharts";
-import type { MonthlyDessertRevenue, MonthlyRevenue } from "@/app/admin/dashboard/actions";
+import type { MonthlyDessertRevenue, MonthlyRevenue, WeeklyRevenue } from "@/app/admin/dashboard/actions";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	type ChartConfig,
@@ -15,7 +17,7 @@ import {
 	ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 type AnalyticsContentProps = {
 	monthlyRevenue: Promise<MonthlyRevenue[]>;
@@ -28,6 +30,22 @@ type AnalyticsOverview = {
 	monthlyRevenue: MonthlyRevenue[];
 	availableMonths: string[];
 	initialMonth: string;
+};
+
+type MonthlyChartRow = {
+	month: string;
+	monthKey: string;
+	revenue: number | null;
+	orders: number | null;
+};
+
+type TrendChartRow = {
+	key: string;
+	label: string;
+	subtitle: string;
+	revenue: number | null;
+	orders: number | null;
+	monthKey?: string;
 };
 
 const COLORS = [
@@ -60,6 +78,44 @@ const dessertRevenueChartConfig = {
 		color: "var(--chart-1)",
 	},
 } satisfies ChartConfig;
+
+type DelayedChartTooltipContentProps = ComponentProps<typeof ChartTooltipContent> & {
+	delayMs?: number;
+};
+
+function DelayedChartTooltipContent({
+	active,
+	label,
+	delayMs = 430,
+	className,
+	...props
+}: DelayedChartTooltipContentProps) {
+	const [isVisible, setIsVisible] = useState(false);
+	const tooltipIdentity = active ? String(label ?? "") : "__inactive__";
+
+	useEffect(() => {
+		setIsVisible(false);
+
+		if (tooltipIdentity === "__inactive__") return;
+
+		const timeout = window.setTimeout(() => {
+			setIsVisible(true);
+		}, delayMs);
+
+		return () => window.clearTimeout(timeout);
+	}, [delayMs, tooltipIdentity]);
+
+	if (!active) return null;
+
+	return (
+		<ChartTooltipContent
+			active={active}
+			className={cn("transition-opacity duration-100", isVisible ? "opacity-100" : "opacity-0", className)}
+			label={label}
+			{...props}
+		/>
+	);
+}
 
 function formatMonth(month: string): string {
 	const [year, monthNum] = month.split("-");
@@ -102,6 +158,19 @@ async function fetchAnalyticsOverview(signal?: AbortSignal): Promise<AnalyticsOv
 	return response.json();
 }
 
+async function fetchWeeklyRevenue(month: string, signal?: AbortSignal): Promise<WeeklyRevenue[]> {
+	const response = await fetch(`/api/admin/analytics/weekly-revenue?month=${encodeURIComponent(month)}`, {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch weekly revenue (${response.status})`);
+	}
+
+	return response.json();
+}
+
 export function AnalyticsContent({
 	monthlyRevenue,
 	monthlyDessertRevenue,
@@ -128,6 +197,9 @@ export function AnalyticsContent({
 		gcTime: 2 * 60 * 60 * 1000,
 	});
 	const [selectedMonth, setSelectedMonth] = useState(initialMonth);
+	const [selectedTrendMonth, setSelectedTrendMonth] = useState<string | null>(null);
+	const [displayedTrendMonth, setDisplayedTrendMonth] = useState<string | null>(null);
+	const [isReturningToMonthly, setIsReturningToMonthly] = useState(false);
 	const {
 		data: dessertRevenue = [],
 		error: dessertRevenueError,
@@ -140,15 +212,67 @@ export function AnalyticsContent({
 		staleTime: 60 * 60 * 1000,
 		gcTime: 2 * 60 * 60 * 1000,
 	});
+	const {
+		data: weeklyRevenue = [],
+		dataUpdatedAt: weeklyRevenueUpdatedAt,
+		error: weeklyRevenueError,
+		isFetching: isLoadingWeeklyRevenue,
+	} = useQuery({
+		queryKey: ["admin-analytics", "weekly-revenue", selectedTrendMonth],
+		queryFn: ({ signal }) => fetchWeeklyRevenue(selectedTrendMonth || "", signal),
+		enabled: !!selectedTrendMonth,
+		placeholderData: (previousData) => previousData,
+		staleTime: 60 * 60 * 1000,
+		gcTime: 2 * 60 * 60 * 1000,
+	});
 	const handleMonthChange = useCallback((month: string) => {
 		setSelectedMonth(month);
 	}, []);
+	const handleTrendMonthSelect = useCallback((month: string) => {
+		setIsReturningToMonthly(false);
+		setSelectedTrendMonth(month);
+	}, []);
+	const handleTrendMonthClear = useCallback(() => {
+		if (!displayedTrendMonth) return;
+		setIsReturningToMonthly(true);
+	}, [displayedTrendMonth]);
+	useEffect(() => {
+		if (!selectedTrendMonth || weeklyRevenueUpdatedAt === 0 || isLoadingWeeklyRevenue) return;
+
+		setDisplayedTrendMonth(selectedTrendMonth);
+	}, [isLoadingWeeklyRevenue, selectedTrendMonth, weeklyRevenueUpdatedAt]);
+	useEffect(() => {
+		if (!isReturningToMonthly) return;
+
+		const timeout = window.setTimeout(() => {
+			setDisplayedTrendMonth(null);
+			setSelectedTrendMonth(null);
+			setIsReturningToMonthly(false);
+		}, 160);
+
+		return () => window.clearTimeout(timeout);
+	}, [isReturningToMonthly]);
+	useEffect(() => {
+		if (!displayedTrendMonth) return;
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				handleTrendMonthClear();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [displayedTrendMonth, handleTrendMonthClear]);
 
 	if (dessertRevenueError) {
 		console.error("Failed to fetch dessert revenue:", dessertRevenueError);
 	}
 	if (overviewError) {
 		console.error("Failed to fetch analytics overview:", overviewError);
+	}
+	if (weeklyRevenueError) {
+		console.error("Failed to fetch weekly revenue:", weeklyRevenueError);
 	}
 
 	const availableMonths = overview.availableMonths;
@@ -180,19 +304,87 @@ export function AnalyticsContent({
 		[overviewMonthlyRevenue],
 	);
 	const currentYear = new Date().getFullYear();
-	const monthlyChartData = useMemo(
+	const monthlyChartData = useMemo<MonthlyChartRow[]>(
 		() =>
 			Array.from({ length: 12 }, (_, i) => {
 				const monthKey = `${currentYear}-${String(i + 1).padStart(2, "0")}`;
 				const data = revenueByMonth.get(monthKey);
 				return {
 					month: formatMonth(monthKey),
+					monthKey,
 					revenue: data?.grossRevenue ?? null,
 					orders: data?.orderCount ?? null,
 				};
 			}),
 		[currentYear, revenueByMonth],
 	);
+	const mobileMonthlyRows = useMemo(
+		() => monthlyChartData.filter((row) => row.revenue !== null || row.orders !== null),
+		[monthlyChartData],
+	);
+	const weeklyChartData = useMemo<TrendChartRow[]>(
+		() =>
+			weeklyRevenue.map((week) => ({
+				key: week.week,
+				label: week.week,
+				subtitle: `${week.startDate} - ${week.endDate}`,
+				revenue: week.grossRevenue,
+				orders: week.orderCount,
+			})),
+		[weeklyRevenue],
+	);
+	const monthlyTrendData = useMemo<TrendChartRow[]>(
+		() =>
+			monthlyChartData.map((row) => ({
+				key: row.monthKey,
+				label: row.month,
+				subtitle: row.orders === null ? "No revenue data" : `${row.orders} orders`,
+				revenue: row.revenue,
+				orders: row.orders,
+				monthKey: row.monthKey,
+			})),
+		[monthlyChartData],
+	);
+	const isWeeklyTrend = !!displayedTrendMonth;
+	const isLoadingTrendMonth =
+		!!selectedTrendMonth && selectedTrendMonth !== displayedTrendMonth && isLoadingWeeklyRevenue;
+	const isTrendTransitioning = isLoadingTrendMonth || isReturningToMonthly;
+	const trendLoadingLabel = isReturningToMonthly
+		? "Loading monthly"
+		: selectedTrendMonth
+			? `Loading ${formatMonth(selectedTrendMonth)}`
+			: "Loading";
+	const trendChartData = useMemo(
+		() => (isWeeklyTrend ? weeklyChartData : monthlyTrendData),
+		[isWeeklyTrend, monthlyTrendData, weeklyChartData],
+	);
+	const mobileTrendRows = useMemo<TrendChartRow[]>(
+		() =>
+			isWeeklyTrend
+				? weeklyChartData
+				: mobileMonthlyRows.map((row) => ({
+						key: row.monthKey,
+						label: row.month,
+						subtitle: `${row.orders ?? 0} orders`,
+						revenue: row.revenue,
+						orders: row.orders,
+						monthKey: row.monthKey,
+					})),
+		[isWeeklyTrend, mobileMonthlyRows, weeklyChartData],
+	);
+	const maxTrendRevenue = useMemo(
+		() => Math.max(...trendChartData.map((row) => Number(row.revenue ?? 0)), 1),
+		[trendChartData],
+	);
+	const bestTrendRow = useMemo(
+		() =>
+			mobileTrendRows.reduce<TrendChartRow | null>(
+				(best, row) => (Number(row.revenue ?? 0) > Number(best?.revenue ?? -1) ? row : best),
+				null,
+			),
+		[mobileTrendRows],
+	);
+	const displayedTrendMonthLabel = displayedTrendMonth ? formatMonth(displayedTrendMonth) : null;
 
 	// Prepare donut chart data for dessert revenue
 	const pieChartData = useMemo(() => {
@@ -206,6 +398,7 @@ export function AnalyticsContent({
 		}));
 	}, [dessertRevenue]);
 	const topDessertShare = pieChartData[0]?.percent ?? 0;
+	const maxDessertRevenue = Math.max(...pieChartData.map((entry) => entry.value), 1);
 
 	return (
 		<div className="flex-1 space-y-6">
@@ -254,11 +447,41 @@ export function AnalyticsContent({
 			{/* Monthly Revenue Chart */}
 			<Card>
 				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<IconTrendingUp className="size-5" />
-						Monthly Revenue Trend
-					</CardTitle>
-					<CardDescription>Revenue and order count by month</CardDescription>
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<CardTitle className="flex items-center gap-2">
+								<IconTrendingUp className="size-5" />
+								{isWeeklyTrend ? `${displayedTrendMonthLabel} Weekly Revenue` : "Monthly Revenue Trend"}
+							</CardTitle>
+							<CardDescription>
+								{isWeeklyTrend ? "Revenue and order count by week" : "Revenue and order count by month"}
+							</CardDescription>
+						</div>
+						<div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+							{isTrendTransitioning && (
+								<div
+									className="inline-flex h-8 items-center justify-center gap-2 rounded-full border bg-card px-3 text-xs font-medium text-muted-foreground shadow-sm"
+									aria-live="polite"
+								>
+									<IconLoader2 className="size-3.5 animate-spin text-primary" />
+									<span>{trendLoadingLabel}</span>
+								</div>
+							)}
+							{isWeeklyTrend && (
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									className="w-full shrink-0 gap-1 sm:w-auto"
+									onClick={handleTrendMonthClear}
+									disabled={isReturningToMonthly}
+								>
+									<IconX className="size-4" />
+									Back to monthly
+								</Button>
+							)}
+						</div>
+					</div>
 				</CardHeader>
 				<CardContent>
 					{overviewMonthlyRevenue.length === 0 ? (
@@ -267,64 +490,145 @@ export function AnalyticsContent({
 							months.
 						</div>
 					) : (
-						<ChartContainer config={monthlyRevenueChartConfig} className="h-80 w-full">
-							<ComposedChart data={monthlyChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
-								<CartesianGrid strokeDasharray="3 8" vertical={false} stroke="var(--border)" strokeOpacity={0.75} />
-								<XAxis dataKey="month" axisLine={false} tickLine={false} tickMargin={12} />
-								<YAxis
-									yAxisId="revenue"
-									axisLine={false}
-									tickLine={false}
-									tickMargin={12}
-									tickFormatter={(value) => (value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`)}
-									width={58}
-								/>
-								<YAxis
-									yAxisId="orders"
-									orientation="right"
-									axisLine={false}
-									tickLine={false}
-									tickMargin={12}
-									width={34}
-								/>
-								<ChartTooltip
-									content={
-										<ChartTooltipContent
-											formatter={(value, name) => (
-												<div className="flex w-full items-center justify-between gap-8">
-													<span className="text-muted-foreground">{String(name)}</span>
-													<span className="font-mono font-medium tabular-nums">{formatChartValue(value, name)}</span>
+						<>
+							<div className="relative space-y-3 transition-opacity md:hidden">
+								<div className="grid grid-cols-2 gap-2">
+									<div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+										<p className="text-xs font-medium text-muted-foreground">Best {isWeeklyTrend ? "week" : "month"}</p>
+										<p className="mt-1 truncate text-base font-semibold">{bestTrendRow?.label ?? "No data"}</p>
+									</div>
+									<div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+										<p className="text-xs font-medium text-muted-foreground">
+											{isWeeklyTrend ? "Weeks" : "Months"} shown
+										</p>
+										<p className="mt-1 text-base font-semibold tabular-nums">{mobileTrendRows.length}</p>
+									</div>
+								</div>
+								<div className="space-y-2">
+									{mobileTrendRows.map((row) => {
+										const revenue = Number(row.revenue ?? 0);
+										const percent = Math.max(8, Math.round((revenue / maxTrendRevenue) * 100));
+										const isSelected = row.monthKey === selectedTrendMonth;
+										const canDrillIn =
+											!isWeeklyTrend && !isTrendTransitioning && !!row.monthKey && row.revenue !== null;
+
+										return (
+											<button
+												key={row.key}
+												type="button"
+												onClick={() => {
+													if (canDrillIn && row.monthKey) handleTrendMonthSelect(row.monthKey);
+												}}
+												disabled={!canDrillIn}
+												className={`w-full rounded-lg border bg-card px-3 py-3 text-left transition-colors ${
+													isSelected
+														? "border-primary/50 bg-primary/5"
+														: canDrillIn
+															? "hover:bg-muted/40"
+															: "cursor-default"
+												}`}
+											>
+												<div className="mb-2 flex items-center justify-between gap-3">
+													<div className="min-w-0">
+														<p className="truncate text-sm font-medium">{row.label}</p>
+														<p className="text-xs text-muted-foreground tabular-nums">{row.subtitle}</p>
+													</div>
+													<p className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(revenue)}</p>
 												</div>
-											)}
+												<div className="h-2 overflow-hidden rounded-full bg-muted">
+													<div className="h-full rounded-full bg-[#f2b38d]" style={{ width: `${percent}%` }} />
+												</div>
+											</button>
+										);
+									})}
+								</div>
+							</div>
+							<div className="relative hidden md:block">
+								<ChartContainer config={monthlyRevenueChartConfig} className="h-80 w-full transition-opacity md:flex">
+									<ComposedChart data={trendChartData} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
+										<CartesianGrid strokeDasharray="3 8" vertical={false} stroke="var(--border)" strokeOpacity={0.75} />
+										<XAxis dataKey="label" axisLine={false} tickLine={false} tickMargin={12} />
+										<YAxis
+											yAxisId="revenue"
+											axisLine={false}
+											tickLine={false}
+											tickMargin={12}
+											tickFormatter={(value) => (value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`)}
+											width={58}
 										/>
-									}
-								/>
-								<ChartLegend content={<ChartLegendContent />} />
-								<Bar
-									yAxisId="revenue"
-									dataKey="revenue"
-									fill="var(--color-revenue)"
-									name="Revenue"
-									radius={[4, 4, 0, 0]}
-									barSize={26}
-								/>
-								<Line
-									yAxisId="orders"
-									type="monotone"
-									dataKey="orders"
-									stroke="var(--color-orders)"
-									strokeWidth={3}
-									name="Orders"
-									dot={false}
-									activeDot={{
-										r: 4,
-										strokeWidth: 2,
-										stroke: "var(--background)",
-										fill: "var(--color-orders)",
-									}}
-								/>
-							</ComposedChart>
-						</ChartContainer>
+										<YAxis
+											yAxisId="orders"
+											orientation="right"
+											axisLine={false}
+											tickLine={false}
+											tickMargin={12}
+											width={34}
+										/>
+										<ChartTooltip
+											content={
+												<DelayedChartTooltipContent
+													formatter={(value, name) => (
+														<div className="flex w-full items-center justify-between gap-8">
+															<span className="text-muted-foreground">{String(name)}</span>
+															<span className="font-mono font-medium tabular-nums">
+																{formatChartValue(value, name)}
+															</span>
+														</div>
+													)}
+												/>
+											}
+										/>
+										<ChartLegend content={<ChartLegendContent />} />
+										<Bar
+											yAxisId="revenue"
+											dataKey="revenue"
+											fill="var(--color-revenue)"
+											name="Revenue"
+											radius={[4, 4, 0, 0]}
+											barSize={isWeeklyTrend ? 44 : 26}
+											activeBar={false}
+											animationDuration={750}
+											animationEasing="ease-in-out"
+											onClick={(entry: unknown) => {
+												if (isWeeklyTrend) return;
+												const monthKey = (entry as { payload?: { monthKey?: string } }).payload?.monthKey;
+												if (monthKey && !isTrendTransitioning) handleTrendMonthSelect(monthKey);
+											}}
+										>
+											{trendChartData.map((entry) => (
+												<Cell
+													key={`trend-bar-${entry.key}`}
+													cursor={
+														!isWeeklyTrend && !isTrendTransitioning && entry.monthKey && entry.revenue !== null
+															? "pointer"
+															: "default"
+													}
+													fill="var(--color-revenue)"
+													opacity={entry.revenue === null ? 0.28 : 1}
+												/>
+											))}
+										</Bar>
+										<Line
+											yAxisId="orders"
+											type="monotone"
+											dataKey="orders"
+											stroke="var(--color-orders)"
+											strokeWidth={3}
+											name="Orders"
+											dot={isWeeklyTrend}
+											animationDuration={650}
+											animationEasing="ease-in-out"
+											activeDot={{
+												r: 4,
+												strokeWidth: 2,
+												stroke: "var(--background)",
+												fill: "var(--color-orders)",
+											}}
+										/>
+									</ComposedChart>
+								</ChartContainer>
+							</div>
+						</>
 					)}
 				</CardContent>
 			</Card>
@@ -356,105 +660,150 @@ export function AnalyticsContent({
 							No dessert revenue data for this month
 						</div>
 					) : (
-						<div
-							className={`grid gap-6 transition-opacity xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)] xl:items-center ${
-								isLoadingDesserts ? "opacity-70" : "opacity-100"
-							}`}
-						>
-							<div className="relative mx-auto aspect-square w-full max-w-96">
-								<ChartContainer config={dessertRevenueChartConfig} className="h-full w-full">
-									<PieChart>
-										<Pie
-											data={pieChartData}
-											cx="50%"
-											cy="50%"
-											innerRadius="62%"
-											outerRadius="84%"
-											cornerRadius={12}
-											paddingAngle={3}
-											dataKey="value"
-											stroke="var(--card)"
-											strokeWidth={3}
-										>
-											{pieChartData.map((entry) => (
-												<Cell key={entry.name} fill={entry.fill} />
-											))}
-										</Pie>
-										<ChartTooltip
-											shared={false}
-											wrapperStyle={{ zIndex: 30 }}
-											content={
-												<ChartTooltipContent
-													hideLabel
-													nameKey="name"
-													formatter={(value, name, item) => (
-														<div className="flex w-full items-center justify-between gap-8">
-															<span className="text-muted-foreground">{String(name)}</span>
-															<div className="text-right">
-																<div className="font-mono font-medium tabular-nums">
-																	{formatCurrency(toNumber(value))}
-																</div>
-																<div className="text-[0.7rem] text-muted-foreground">
-																	{((Number(item.payload?.percent) || 0) * 100).toFixed(1)}%
-																</div>
-															</div>
-														</div>
-													)}
-												/>
-											}
-										/>
-									</PieChart>
-								</ChartContainer>
-								<div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-									<div className="grid size-32 place-items-center rounded-full border bg-card/95 shadow-sm ring-8 ring-background/70">
-										<div className="text-center">
-											<div className="text-[0.68rem] font-medium uppercase text-muted-foreground tracking-normal">
-												Total
-											</div>
-											<div className="text-lg font-semibold tabular-nums">{formatCurrency(monthlyDessertTotal)}</div>
-										</div>
+						<div className={`transition-opacity ${isLoadingDesserts ? "opacity-70" : "opacity-100"}`}>
+							<div className="space-y-3 md:hidden">
+								<div className="grid grid-cols-3 gap-2">
+									<div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+										<p className="text-xs font-medium text-muted-foreground">Top</p>
+										<p className="mt-1 text-base font-semibold tabular-nums">{(topDessertShare * 100).toFixed(0)}%</p>
 									</div>
+									<div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+										<p className="text-xs font-medium text-muted-foreground">Shown</p>
+										<p className="mt-1 text-base font-semibold tabular-nums">{pieChartData.length}</p>
+									</div>
+									<div className="rounded-lg border bg-muted/30 px-3 py-2.5">
+										<p className="text-xs font-medium text-muted-foreground">Total</p>
+										<p className="mt-1 text-base font-semibold tabular-nums">{formatCurrency(monthlyDessertTotal)}</p>
+									</div>
+								</div>
+								<div className="space-y-2">
+									{pieChartData.map((entry, index) => {
+										const percent = Math.max(8, Math.round((entry.value / maxDessertRevenue) * 100));
+
+										return (
+											<div key={entry.name} className="rounded-lg border bg-card px-3 py-3">
+												<div className="mb-2 flex items-center gap-3">
+													<span className="text-xs font-semibold text-muted-foreground tabular-nums">#{index + 1}</span>
+													<span
+														className="size-2.5 shrink-0 rounded-full"
+														style={{ backgroundColor: entry.fill }}
+														aria-hidden="true"
+													/>
+													<div className="min-w-0 flex-1">
+														<p className="truncate text-sm font-medium">{entry.name}</p>
+														<p className="text-xs text-muted-foreground tabular-nums">
+															{(entry.percent * 100).toFixed(0)}% of top desserts
+														</p>
+													</div>
+													<p className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(entry.value)}</p>
+												</div>
+												<div className="h-2 overflow-hidden rounded-full bg-muted">
+													<div
+														className="h-full rounded-full"
+														style={{ width: `${percent}%`, backgroundColor: entry.fill }}
+													/>
+												</div>
+											</div>
+										);
+									})}
 								</div>
 							</div>
-							<div className="space-y-3">
-								<div className="grid gap-3 sm:grid-cols-3">
-									<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
-										<p className="text-xs font-medium text-muted-foreground">Largest share</p>
-										<p className="mt-1 text-lg font-semibold tabular-nums">{(topDessertShare * 100).toFixed(0)}%</p>
-									</div>
-									<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
-										<p className="text-xs font-medium text-muted-foreground">Desserts shown</p>
-										<p className="mt-1 text-lg font-semibold tabular-nums">{pieChartData.length}</p>
-									</div>
-									<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
-										<p className="text-xs font-medium text-muted-foreground">Top dessert</p>
-										<p className="mt-1 truncate text-lg font-semibold">{pieChartData[0]?.name}</p>
-									</div>
-								</div>
-								<div className="grid gap-2 md:grid-cols-2">
-									{pieChartData.map((entry) => (
-										<div
-											key={entry.name}
-											className="group rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-muted/40"
-										>
-											<div className="flex items-center gap-3">
-												<span
-													className="h-9 w-1.5 shrink-0 rounded-full"
-													style={{ backgroundColor: entry.fill }}
-													aria-hidden="true"
-												/>
-												<div className="min-w-0 flex-1">
-													<div className="truncate text-sm font-medium">{entry.name}</div>
-													<div className="text-xs text-muted-foreground tabular-nums">
-														{(entry.percent * 100).toFixed(0)}% of top desserts
-													</div>
+							<div className="hidden gap-6 md:grid xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)] xl:items-center">
+								<div className="relative mx-auto aspect-square w-full max-w-96">
+									<ChartContainer config={dessertRevenueChartConfig} className="h-full w-full">
+										<PieChart>
+											<Pie
+												data={pieChartData}
+												cx="50%"
+												cy="50%"
+												innerRadius="62%"
+												outerRadius="84%"
+												cornerRadius={12}
+												paddingAngle={3}
+												dataKey="value"
+												stroke="var(--card)"
+												strokeWidth={3}
+											>
+												{pieChartData.map((entry) => (
+													<Cell key={entry.name} fill={entry.fill} />
+												))}
+											</Pie>
+											<ChartTooltip
+												shared={false}
+												wrapperStyle={{ zIndex: 30 }}
+												content={
+													<ChartTooltipContent
+														hideLabel
+														nameKey="name"
+														formatter={(value, name, item) => (
+															<div className="flex w-full items-center justify-between gap-8">
+																<span className="text-muted-foreground">{String(name)}</span>
+																<div className="text-right">
+																	<div className="font-mono font-medium tabular-nums">
+																		{formatCurrency(toNumber(value))}
+																	</div>
+																	<div className="text-[0.7rem] text-muted-foreground">
+																		{((Number(item.payload?.percent) || 0) * 100).toFixed(1)}%
+																	</div>
+																</div>
+															</div>
+														)}
+													/>
+												}
+											/>
+										</PieChart>
+									</ChartContainer>
+									<div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+										<div className="grid size-32 place-items-center rounded-full border bg-card/95 shadow-sm ring-8 ring-background/70">
+											<div className="text-center">
+												<div className="text-[0.68rem] font-medium uppercase text-muted-foreground tracking-normal">
+													Total
 												</div>
-												<div className="text-right text-sm font-semibold tabular-nums">
-													{formatCurrency(entry.value)}
-												</div>
+												<div className="text-lg font-semibold tabular-nums">{formatCurrency(monthlyDessertTotal)}</div>
 											</div>
 										</div>
-									))}
+									</div>
+								</div>
+								<div className="space-y-3">
+									<div className="grid gap-3 sm:grid-cols-3">
+										<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
+											<p className="text-xs font-medium text-muted-foreground">Largest share</p>
+											<p className="mt-1 text-lg font-semibold tabular-nums">{(topDessertShare * 100).toFixed(0)}%</p>
+										</div>
+										<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
+											<p className="text-xs font-medium text-muted-foreground">Desserts shown</p>
+											<p className="mt-1 text-lg font-semibold tabular-nums">{pieChartData.length}</p>
+										</div>
+										<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
+											<p className="text-xs font-medium text-muted-foreground">Top dessert</p>
+											<p className="mt-1 truncate text-lg font-semibold">{pieChartData[0]?.name}</p>
+										</div>
+									</div>
+									<div className="grid gap-2 md:grid-cols-2">
+										{pieChartData.map((entry) => (
+											<div
+												key={entry.name}
+												className="group rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-muted/40"
+											>
+												<div className="flex items-center gap-3">
+													<span
+														className="h-9 w-1.5 shrink-0 rounded-full"
+														style={{ backgroundColor: entry.fill }}
+														aria-hidden="true"
+													/>
+													<div className="min-w-0 flex-1">
+														<div className="truncate text-sm font-medium">{entry.name}</div>
+														<div className="text-xs text-muted-foreground tabular-nums">
+															{(entry.percent * 100).toFixed(0)}% of top desserts
+														</div>
+													</div>
+													<div className="text-right text-sm font-semibold tabular-nums">
+														{formatCurrency(entry.value)}
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
 								</div>
 							</div>
 						</div>
