@@ -40,45 +40,6 @@ function redirectForRole(role: string | null | undefined, router: ReturnType<typ
 }
 
 /**
- * Scrolls the focused element into view when the on-screen keyboard appears.
- * Uses the Visual Viewport API for accurate keyboard detection across
- * iOS Safari, Chrome Android, and tablet browsers.
- */
-function useVisualViewportScroll() {
-	useEffect(() => {
-		if (typeof window === "undefined" || !window.visualViewport) return;
-
-		const vv = window.visualViewport;
-		let lastHeight = vv.height;
-
-		const onResize = () => {
-			const currentHeight = vv.height;
-			const heightDiff = lastHeight - currentHeight;
-			lastHeight = currentHeight;
-
-			// Keyboard likely opened (viewport shrank significantly)
-			if (heightDiff > 100) {
-				const active = document.activeElement as HTMLElement | null;
-				if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
-					// Small delay to let the browser finish layout
-					requestAnimationFrame(() => {
-						const rect = active.getBoundingClientRect();
-						const visibleBottom = vv.height - 24; // 24px padding from bottom
-						if (rect.bottom > visibleBottom) {
-							const scrollY = rect.bottom - visibleBottom + window.scrollY;
-							window.scrollTo({ top: scrollY, behavior: "smooth" });
-						}
-					});
-				}
-			}
-		};
-
-		vv.addEventListener("resize", onResize);
-		return () => vv.removeEventListener("resize", onResize);
-	}, []);
-}
-
-/**
  * Loading state rendered inside the card stack aesthetic.
  * Shown while checking session or redirecting after login.
  */
@@ -118,9 +79,6 @@ export default function LoginPage() {
 	const [isLoading, setIsLoading] = useState(false);
 	const [isRedirecting, setIsRedirecting] = useState(false);
 	const hasRedirected = useRef(false);
-	const formRef = useRef<HTMLDivElement>(null);
-
-	useVisualViewportScroll();
 
 	// Already logged in — show loading and redirect once
 	useEffect(() => {
@@ -164,113 +122,122 @@ export default function LoginPage() {
 	const showLoading = isSessionPending || isRedirecting;
 
 	return (
-		<div className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[#f5efe6] text-[#2c1810]">
-			{/* ── Background ── */}
+		<div className="relative h-[100dvh] overflow-hidden bg-[#f5efe6] text-[#2c1810]">
+			{/* ── Fixed background ── */}
 			<div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-[#e8d5c4]/60 blur-3xl" />
 			<div className="absolute -bottom-40 -right-40 h-[600px] w-[600px] rounded-full bg-[#d4a574]/25 blur-3xl" />
 			<div className="absolute left-1/3 top-1/4 h-80 w-80 rounded-full bg-[#f0b25f]/10 blur-3xl" />
 			<div className="absolute inset-0 opacity-[0.4] [background-image:radial-gradient(#c9a87c_1px,transparent_1px)] [background-size:24px_24px]" />
 
-			{/* ── Content ── */}
-			<div className="relative z-10 w-full max-w-sm px-4 py-8">
-				{/* Brand */}
-				<div className="mb-8 text-center">
-					<div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-white shadow-lg shadow-[#2c1810]/5">
-						<Image
-							src="/logo.png"
-							alt="Cocoa Comaa"
-							width={36}
-							height={36}
-							className="size-9 object-contain"
-							priority
-						/>
-					</div>
-					<h1 className="text-xl font-bold tracking-tight text-[#2c1810]">Cocoa Comaa</h1>
-					<p className="mt-1 text-sm text-[#8b6914]">Staff portal</p>
-				</div>
+			{/* ── Scrollable content ── */}
+			<div className="relative z-10 h-full overflow-y-auto overscroll-y-none scroll-smooth">
+				{/*
+					Mobile: content starts from top (pt-8) with generous bottom padding (pb-32)
+					so the keyboard never covers inputs. No flex centering — the browser's native
+					scroll-into-view handles focus without fighting layout.
 
-				{/* Card stack */}
-				<div ref={formRef} className="relative">
-					{/* Back card layers */}
-					<div className="absolute -top-2 left-2 right-2 h-full rounded-2xl bg-[#e8d5c4]/60" />
-					<div className="absolute -top-1 left-1 right-1 h-full rounded-2xl bg-[#f0b25f]/20" />
-
-					{/* Main card */}
-					<div className="relative rounded-2xl border border-[#c9a87c]/25 bg-white/80 p-6 shadow-xl shadow-[#2c1810]/5 backdrop-blur-sm sm:p-8">
-						{showLoading ? (
-							<CardLoadingState
-								message={isSessionPending ? "Checking session…" : undefined}
+					Desktop (sm+): vertically center with justify-center and normal padding.
+				*/}
+				<div className="mx-auto flex min-h-full w-full max-w-sm flex-col px-4 pt-8 pb-32 sm:justify-center sm:py-12 sm:pb-12">
+					{/* Brand */}
+					<div className="mb-8 text-center">
+						<div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-white shadow-lg shadow-[#2c1810]/5">
+							<Image
+								src="/logo.png"
+								alt="Cocoa Comaa"
+								width={36}
+								height={36}
+								className="size-9 object-contain"
+								priority
 							/>
-						) : (
-							<>
-								<div className="mb-6 flex items-center justify-between">
-									<h2 className="text-lg font-bold text-[#2c1810]">Sign in</h2>
-									<div className="flex h-7 items-center gap-1.5 rounded-full bg-[#f0b25f]/10 px-3 text-xs font-semibold text-[#8b6914]">
-										<ShieldCheck className="size-3" />
-										Secure
-									</div>
-								</div>
-
-								<form onSubmit={handleSubmit} className="space-y-4">
-									<div className="space-y-1.5">
-										<Label
-											htmlFor={emailID}
-											className="text-xs font-semibold uppercase tracking-wider text-[#8b6914]"
-										>
-											Email
-										</Label>
-										<Input
-											id={emailID}
-											type="email"
-											placeholder="you@example.com"
-											value={email}
-											onChange={(e) => setEmail(e.target.value)}
-											required
-											disabled={isLoading}
-											autoComplete="email"
-											inputMode="email"
-											className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<Label
-											htmlFor={passwordID}
-											className="text-xs font-semibold uppercase tracking-wider text-[#8b6914]"
-										>
-											Password
-										</Label>
-										<Input
-											id={passwordID}
-											type="password"
-											placeholder="••••••••"
-											value={password}
-											onChange={(e) => setPassword(e.target.value)}
-											required
-											disabled={isLoading}
-											autoComplete="current-password"
-											className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
-										/>
-									</div>
-									<Button
-										type="submit"
-										disabled={isLoading}
-										className="h-12 w-full rounded-xl bg-[#2c1810] text-sm font-bold uppercase tracking-wider text-[#f5efe6] shadow-lg shadow-[#2c1810]/15 transition-transform hover:-translate-y-0.5 hover:bg-[#3d2218]"
-									>
-										{isLoading ? (
-											<Spinner className="text-white" />
-										) : (
-											"Enter dashboard"
-										)}
-									</Button>
-								</form>
-							</>
-						)}
+						</div>
+						<h1 className="text-xl font-bold tracking-tight text-[#2c1810]">Cocoa Comaa</h1>
+						<p className="mt-1 text-sm text-[#8b6914]">Staff portal</p>
 					</div>
-				</div>
 
-				<p className="mt-6 text-center text-xs text-[#a89080]">
-					Trouble signing in? Ask your store manager.
-				</p>
+					{/* Card stack */}
+					<div className="relative">
+						{/* Back card layers */}
+						<div className="absolute -top-2 left-2 right-2 h-full rounded-2xl bg-[#e8d5c4]/60" />
+						<div className="absolute -top-1 left-1 right-1 h-full rounded-2xl bg-[#f0b25f]/20" />
+
+						{/* Main card */}
+						<div className="relative rounded-2xl border border-[#c9a87c]/25 bg-white/80 p-6 shadow-xl shadow-[#2c1810]/5 backdrop-blur-sm sm:p-8">
+							{showLoading ? (
+								<CardLoadingState
+									message={isSessionPending ? "Checking session…" : undefined}
+								/>
+							) : (
+								<>
+									<div className="mb-6 flex items-center justify-between">
+										<h2 className="text-lg font-bold text-[#2c1810]">Sign in</h2>
+										<div className="flex h-7 items-center gap-1.5 rounded-full bg-[#f0b25f]/10 px-3 text-xs font-semibold text-[#8b6914]">
+											<ShieldCheck className="size-3" />
+											Secure
+										</div>
+									</div>
+
+									<form onSubmit={handleSubmit} className="space-y-4">
+										<div className="space-y-1.5">
+											<Label
+												htmlFor={emailID}
+												className="text-xs font-semibold uppercase tracking-wider text-[#8b6914]"
+											>
+												Email
+											</Label>
+											<Input
+												id={emailID}
+												type="email"
+												placeholder="you@example.com"
+												value={email}
+												onChange={(e) => setEmail(e.target.value)}
+												required
+												disabled={isLoading}
+												autoComplete="email"
+												inputMode="email"
+												className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
+											/>
+										</div>
+										<div className="space-y-1.5">
+											<Label
+												htmlFor={passwordID}
+												className="text-xs font-semibold uppercase tracking-wider text-[#8b6914]"
+											>
+												Password
+											</Label>
+											<Input
+												id={passwordID}
+												type="password"
+												placeholder="••••••••"
+												value={password}
+												onChange={(e) => setPassword(e.target.value)}
+												required
+												disabled={isLoading}
+												autoComplete="current-password"
+												className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
+											/>
+										</div>
+										<Button
+											type="submit"
+											disabled={isLoading}
+											className="h-12 w-full rounded-xl bg-[#2c1810] text-sm font-bold uppercase tracking-wider text-[#f5efe6] shadow-lg shadow-[#2c1810]/15 transition-transform hover:-translate-y-0.5 hover:bg-[#3d2218]"
+										>
+											{isLoading ? (
+												<Spinner className="text-white" />
+											) : (
+												"Enter dashboard"
+											)}
+										</Button>
+									</form>
+								</>
+							)}
+						</div>
+					</div>
+
+					<p className="mt-6 text-center text-xs text-[#a89080]">
+						Trouble signing in? Ask your store manager.
+					</p>
+				</div>
 			</div>
 		</div>
 	);
