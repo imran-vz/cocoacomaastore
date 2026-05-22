@@ -2,20 +2,27 @@
 
 import { requireManagerAccess as requireManager } from "@/lib/auth/guards";
 import {
-	type BaseDessert,
 	createCombo as createComboCore,
 	deleteCombo as deleteComboCore,
-	getCachedAllCombos,
-	getCachedBaseDesserts,
-	getCachedModifierDesserts,
-	type ModifierDessert,
+	getCachedAllCombos as getCachedAllCombosCore,
+	getCachedBaseDesserts as getCachedBaseDessertsCore,
+	getCachedModifierDesserts as getCachedModifierDessertsCore,
 	toggleCombo as toggleComboCore,
 	updateCombo as updateComboCore,
 	updateComboItems as updateComboItemsCore,
 } from "@/lib/combo-service";
 
-export { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts };
-export type { BaseDessert, ModifierDessert };
+export async function getCachedAllCombos() {
+	return getCachedAllCombosCore();
+}
+
+export async function getCachedBaseDesserts() {
+	return getCachedBaseDessertsCore();
+}
+
+export async function getCachedModifierDesserts() {
+	return getCachedModifierDessertsCore();
+}
 
 export async function createCombo(data: {
 	name: string;

@@ -9,17 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import type { BaseDessert, ModifierDessert } from "@/lib/combo-service";
 import type { ComboWithDetails } from "@/lib/types";
 import { useComboStore } from "@/store/combo-store";
-import {
-	type BaseDessert,
-	createCombo,
-	deleteCombo,
-	type ModifierDessert,
-	toggleCombo,
-	updateCombo,
-	updateComboItems,
-} from "./actions";
+import { createCombo, deleteCombo, toggleCombo, updateCombo, updateComboItems } from "./actions";
 
 const combosQueryKey = ["admin-combos"] as const;
 

@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { GetOrdersReturnType } from "@/lib/order-lifecycle";
 import { cn } from "@/lib/utils";
-import type { GetOrdersReturnType } from "./actions";
 
 function formatTime(date: Date | string) {
 	const d = typeof date === "string" ? new Date(date) : date;

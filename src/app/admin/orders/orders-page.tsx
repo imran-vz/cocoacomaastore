@@ -8,8 +8,8 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateSwitcher } from "@/components/date-switcher";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { GetOrdersReturnType } from "@/lib/order-lifecycle";
 import { OrderCardsSkeleton } from "../loading-skeletons";
-import type { GetOrdersReturnType } from "./actions";
 import { OrderCard } from "./order-card";
 
 function formatDateString(date: Date): string {

@@ -1,3 +1,7 @@
 "use server";
 
-export { type GetOrdersReturnType, getCachedOrders } from "@/lib/order-lifecycle";
+import { getCachedOrders as getCachedOrdersCore } from "@/lib/order-lifecycle";
+
+export async function getCachedOrders() {
+	return getCachedOrdersCore();
+}
