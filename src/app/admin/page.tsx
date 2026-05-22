@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
-import Home from "@/components/home";
-import { getCachedCombos, getCachedModifierDesserts } from "../combos/actions";
+import POSHome from "@/components/pos-home";
+import { getCachedCombos } from "../combos/actions";
 import { getCachedDesserts } from "../desserts/actions";
 import { getCachedTodayInventory } from "../manager/inventory/actions";
 import { getCachedUPIAccounts } from "../upi/actions";
@@ -12,18 +12,11 @@ export default function AdminPage() {
 	const upiAccounts = getCachedUPIAccounts();
 	const inventory = getCachedTodayInventory();
 	const combos = getCachedCombos();
-	const modifierDesserts = getCachedModifierDesserts();
 
 	return (
-		<AdminPageShell>
+		<AdminPageShell className="p-0 pb-0">
 			<Suspense fallback={<AdminHomeSkeleton includeMain={false} />}>
-				<Home
-					desserts={desserts}
-					upiAccounts={upiAccounts}
-					inventory={inventory}
-					combos={combos}
-					modifierDesserts={modifierDesserts}
-				/>
+				<POSHome desserts={desserts} upiAccounts={upiAccounts} inventory={inventory} combos={combos} />
 			</Suspense>
 		</AdminPageShell>
 	);

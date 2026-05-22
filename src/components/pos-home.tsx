@@ -7,7 +7,6 @@ import { Search, X } from "lucide-react";
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import type { ModifierDessert } from "@/app/combos/actions";
 import { toggleOutOfStock } from "@/app/desserts/actions";
 import type { UpiAccount } from "@/db/schema";
 import type { CartLine, ComboWithDetails, Dessert } from "@/lib/types";
@@ -45,16 +44,9 @@ interface POSHomeProps {
 	upiAccounts: Promise<UpiAccount[]>;
 	inventory: Promise<Array<{ dessertId: number; quantity: number }>>;
 	combos: Promise<ComboWithDetails[]>;
-	modifierDesserts: Promise<ModifierDessert[]>;
 }
 
-export default function POSHome({
-	desserts,
-	upiAccounts,
-	inventory,
-	combos,
-	modifierDesserts: _modifierDesserts,
-}: POSHomeProps) {
+export default function POSHome({ desserts, upiAccounts, inventory, combos }: POSHomeProps) {
 	const items = use(desserts);
 	const upiAccountsList = use(upiAccounts);
 	const initialInventory = use(inventory);
