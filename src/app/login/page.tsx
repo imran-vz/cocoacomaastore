@@ -54,7 +54,7 @@ function CardLoadingState({ message }: { message?: string }) {
 	}, []);
 
 	return (
-		<div className="flex min-h-[280px] flex-col items-center justify-center gap-5 text-center">
+		<div className="flex min-h-70 flex-col items-center justify-center gap-5 text-center">
 			<div className="relative">
 				<div className="absolute inset-0 rounded-full bg-[#f0b25f]/30 blur-xl" />
 				<Sparkles className="relative size-10 text-[#f0b25f]" />
@@ -88,7 +88,7 @@ export default function LoginPage() {
 	}, [session, router]);
 
 	const handleSubmit = useCallback(
-		async (e: React.FormEvent) => {
+		async (e: React.SubmitEvent) => {
 			e.preventDefault();
 			setIsLoading(true);
 
@@ -120,10 +120,10 @@ export default function LoginPage() {
 	const showLoading = isSessionPending || isRedirecting;
 
 	return (
-		<div className="relative h-[100dvh] overflow-hidden bg-[#f5efe6] text-[#2c1810]">
+		<div className="relative h-dvh overflow-hidden bg-[#f5efe6] text-[#2c1810]">
 			{/* ── Fixed background ── */}
-			<div className="absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-[#e8d5c4]/60 blur-3xl" />
-			<div className="absolute -bottom-40 -right-40 h-[600px] w-[600px] rounded-full bg-[#d4a574]/25 blur-3xl" />
+			<div className="absolute -left-32 -top-32 h-125 w-125 rounded-full bg-[#e8d5c4]/60 blur-3xl" />
+			<div className="absolute -bottom-40 -right-40 h-150 w-150 rounded-full bg-[#d4a574]/25 blur-3xl" />
 			<div className="absolute left-1/3 top-1/4 h-80 w-80 rounded-full bg-[#f0b25f]/10 blur-3xl" />
 			<div className="absolute inset-0 opacity-[0.4] bg-[radial-gradient(#c9a87c_1px,transparent_1px)] bg-size-[24px_24px]" />
 

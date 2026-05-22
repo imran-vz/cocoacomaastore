@@ -102,7 +102,7 @@ export default function ManageCombos({
 								isDisabled ? "mt-1 size-4 shrink-0 text-muted-foreground" : "mt-1 size-4 shrink-0 text-primary"
 							}
 						/>
-						<CardTitle className="min-w-0 text-base leading-snug break-words @md/combos:text-lg">
+						<CardTitle className="min-w-0 text-base leading-snug wrap-break-word @md/combos:text-lg">
 							{combo.name}
 						</CardTitle>
 					</div>
