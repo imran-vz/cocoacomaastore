@@ -5,7 +5,7 @@ import {
 	getCachedDashboardStats,
 	getCachedStockPerDessert,
 } from "@/app/admin/dashboard/actions";
-import { getServerSession } from "@/lib/auth";
+import { adminRouteGuard } from "@/lib/auth/guards";
 
 function isValidDateString(value: string | null): value is string {
 	if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -18,15 +18,8 @@ function isValidDateString(value: string | null): value is string {
 }
 
 export async function GET(request: Request) {
-	const session = await getServerSession();
-
-	if (!session?.session || !session.user) {
-		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-	}
-
-	if (session.user.role !== "admin") {
-		return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-	}
+	const authError = await adminRouteGuard();
+	if (authError) return authError;
 
 	const { searchParams } = new URL(request.url);
 	const dateString = searchParams.get("date");

@@ -4,9 +4,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SetStateAction } from "react";
 import { use, useCallback } from "react";
 import { DessertsTable } from "@/components/desserts-table";
+import { useInventory } from "@/components/use-inventory";
+import type { TodayInventoryRow } from "@/lib/daily-inventory";
 import type { Dessert } from "@/lib/types";
+import { upsertInventoryWithAudit } from "./actions";
 
 const dessertsQueryKey = ["desserts", { shouldShowDisabled: true }] as const;
+const inventoryQueryKey = ["inventory", "today"] as const;
 
 async function fetchDesserts(signal?: AbortSignal): Promise<Dessert[]> {
 	const response = await fetch("/api/desserts?shouldShowDisabled=true", {
@@ -21,19 +25,50 @@ async function fetchDesserts(signal?: AbortSignal): Promise<Dessert[]> {
 	return response.json();
 }
 
-export default function ManageDesserts({ initialDesserts }: { initialDesserts: Promise<Dessert[]> }) {
-	const initial = use(initialDesserts);
+async function fetchTodayInventory(signal?: AbortSignal): Promise<TodayInventoryRow[]> {
+	const response = await fetch("/api/manager/inventory/today", {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch today's inventory (${response.status})`);
+	}
+
+	return response.json();
+}
+
+export default function ManageDesserts({
+	initialDesserts,
+	initialInventory,
+}: {
+	initialDesserts: Promise<Dessert[]>;
+	initialInventory: Promise<TodayInventoryRow[]>;
+}) {
+	const dessertsData = use(initialDesserts);
+	const inventoryData = use(initialInventory);
 	const queryClient = useQueryClient();
 	const {
 		data: desserts,
-		error,
-		refetch,
+		error: dessertsError,
+		refetch: refetchDesserts,
 	} = useQuery({
 		queryKey: dessertsQueryKey,
 		queryFn: ({ signal }) => fetchDesserts(signal),
-		initialData: initial,
+		initialData: dessertsData,
 		staleTime: 60_000,
 		gcTime: 10 * 60_000,
+	});
+	const {
+		data: inventoryRows,
+		error: inventoryError,
+		refetch: refetchInventory,
+	} = useQuery({
+		queryKey: inventoryQueryKey,
+		queryFn: ({ signal }) => fetchTodayInventory(signal),
+		initialData: inventoryData,
+		staleTime: 30_000,
+		gcTime: 5 * 60_000,
 	});
 
 	const setDesserts = useCallback(
@@ -45,21 +80,39 @@ export default function ManageDesserts({ initialDesserts }: { initialDesserts: P
 		[queryClient],
 	);
 
-	const refreshDesserts = useCallback(async () => {
-		await refetch();
-	}, [refetch]);
+	const refetchAll = useCallback(async () => {
+		const [dessertsResult, inventoryResult] = await Promise.all([refetchDesserts(), refetchInventory()]);
+		const newDesserts = dessertsResult.data ?? desserts;
+		const newInventory = inventoryResult.data ?? inventoryRows;
+		return { desserts: newDesserts, inventory: newInventory };
+	}, [desserts, inventoryRows, refetchDesserts, refetchInventory]);
 
-	if (error) {
-		console.error("Failed to fetch desserts:", error);
+	const refreshDesserts = useCallback(async () => {
+		await refetchAll();
+	}, [refetchAll]);
+
+	if (dessertsError) {
+		console.error("Failed to fetch desserts:", dessertsError);
 	}
+	if (inventoryError) {
+		console.error("Failed to fetch today's inventory:", inventoryError);
+	}
+
+	const inventory = useInventory({
+		desserts,
+		initialInventory: inventoryRows,
+		onSave: upsertInventoryWithAudit,
+		onRefetch: refetchAll,
+	});
 
 	return (
 		<DessertsTable
 			desserts={desserts}
 			setDesserts={setDesserts}
 			onRefetch={refreshDesserts}
-			title="Desserts"
-			subtitle="Manage your dessert inventory and visibility"
+			inventory={inventory}
+			title="Desserts & Inventory"
+			subtitle="Manage your dessert inventory, stock, and visibility"
 			maxWidth="max-w-4xl"
 		/>
 	);

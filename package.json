@@ -3,21 +3,23 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "bun run --bun next dev",
-		"build": "bun run --bun next build",
-		"start": "bun run --bun next start",
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"db:clone:supabase": "bash scripts/clone-supabase-db.sh",
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",
-		"knip": "knip",
+
 		"lint": "biome check src",
 		"lint:fix": "biome check --write src",
 		"format": "biome format --write src",
+		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
 		"trigger:dev": "trigger dev",
 		"trigger:deploy": "trigger deploy",
-		"analytics:trigger": "bun run scripts/trigger-analytics.ts",
-		"analytics:trigger:daily": "bun run scripts/trigger-analytics.ts daily",
-		"analytics:trigger:monthly": "bun run scripts/trigger-analytics.ts monthly"
+		"analytics:trigger": "tsx scripts/trigger-analytics.ts",
+		"analytics:trigger:daily": "tsx scripts/trigger-analytics.ts daily",
+		"analytics:trigger:monthly": "tsx scripts/trigger-analytics.ts monthly"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.5.0",
@@ -33,6 +35,7 @@
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"drizzle-orm": "^0.41.0",
+		"effect": "3.21.0",
 		"framer-motion": "^12.40.0",
 		"lucide-react": "^0.562.0",
 		"motion": "^12.40.0",
@@ -55,20 +58,20 @@
 		"@biomejs/biome": "2.4.0",
 		"@tailwindcss/postcss": "^4.3.0",
 		"@trigger.dev/build": "4.4.6",
-		"@types/bun": "^1.3.14",
 		"@types/react": "^19.2.15",
 		"@types/react-dom": "^19.2.3",
 		"@types/ws": "^8.18.1",
 		"drizzle-kit": "^0.31.10",
-		"knip": "^5.88.1",
 		"shadcn": "^3.8.5",
 		"tailwindcss": "^4.3.0",
 		"trigger.dev": "4.4.6",
 		"tsx": "^4.22.3",
-		"typescript": "^5.9.3"
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.14"
 	},
-	"packageManager": "bun@1.3.4",
+	"packageManager": "pnpm@11.0.6",
 	"engines": {
-		"bun": ">=1.3.4"
+		"node": "24.x",
+		"pnpm": ">=11.0.6"
 	}
 }

@@ -1,9 +1,6 @@
 import { logger, schedules } from "@trigger.dev/sdk";
-import {
-	compileDailyAnalyticsRepairWindow,
-	compilePreviousClosedMonth,
-	revalidateAnalyticsCaches,
-} from "@/lib/analytics-jobs";
+import { compileDailyAnalyticsTaskEffect, compileMonthlyAnalyticsTaskEffect } from "@/lib/analytics-jobs";
+import { runAppEffect } from "@/server/effect/runtime";
 
 export const dailyAnalyticsJob = schedules.task({
 	id: "daily-analytics",
@@ -17,18 +14,13 @@ export const dailyAnalyticsJob = schedules.task({
 			timezone: payload.timezone,
 		});
 
-		const result = await compileDailyAnalyticsRepairWindow(payload.timestamp);
-		const revalidation = await revalidateAnalyticsCaches();
+		const result = await runAppEffect(compileDailyAnalyticsTaskEffect(payload.timestamp));
 
 		logger.info("Finished daily analytics repair window", {
 			...result,
-			revalidation,
 		});
 
-		return {
-			...result,
-			revalidation,
-		};
+		return result;
 	},
 });
 
@@ -44,17 +36,12 @@ export const monthlyAnalyticsJob = schedules.task({
 			timezone: payload.timezone,
 		});
 
-		const result = await compilePreviousClosedMonth(payload.timestamp);
-		const revalidation = await revalidateAnalyticsCaches();
+		const result = await runAppEffect(compileMonthlyAnalyticsTaskEffect(payload.timestamp));
 
 		logger.info("Finished monthly analytics compilation", {
 			...result,
-			revalidation,
 		});
 
-		return {
-			...result,
-			revalidation,
-		};
+		return result;
 	},
 });

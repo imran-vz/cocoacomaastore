@@ -3,9 +3,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SetStateAction } from "react";
 import { use, useCallback } from "react";
-import type { TodayInventoryRow } from "@/app/manager/inventory/actions";
 import { DessertsTable } from "@/components/desserts-table";
 import { useInventory } from "@/components/use-inventory";
+import type { TodayInventoryRow } from "@/lib/daily-inventory";
 import type { Dessert } from "@/lib/types";
 import { upsertInventoryWithAudit } from "./actions";
 

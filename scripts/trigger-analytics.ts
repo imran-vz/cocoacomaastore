@@ -4,7 +4,7 @@ import type { dailyAnalyticsJob, monthlyAnalyticsJob } from "../src/trigger/anal
 const job = process.argv[2];
 
 if (job !== "daily" && job !== "monthly") {
-	console.error("Usage: bun run analytics:trigger -- daily|monthly");
+	console.error("Usage: pnpm analytics:trigger -- daily|monthly");
 	process.exit(1);
 }
 

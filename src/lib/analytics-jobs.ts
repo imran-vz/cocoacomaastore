@@ -1,5 +1,7 @@
+import { Effect } from "effect";
 import { getAnalyticsDay, istMidnightToUTC } from "@/lib/ist-date";
-import { recomputeDayAnalytics, recomputeMonthAnalytics } from "@/lib/recompute-day-analytics";
+import { recomputeDayAnalyticsEffect, recomputeMonthAnalyticsEffect } from "@/lib/recompute-day-analytics";
+import { CacheRevalidator } from "@/server/effect/services/cache";
 
 const DAY_MS = 86_400_000;
 const DEFAULT_DAILY_REPAIR_DAYS = 7;
@@ -7,14 +9,6 @@ const DEFAULT_DAILY_REPAIR_DAYS = 7;
 type YearMonth = {
 	year: number;
 	month: number;
-};
-
-export type DailyAnalyticsRepairResult = {
-	compiledDays: string[];
-};
-
-export type MonthlyAnalyticsResult = {
-	compiledMonth: string;
 };
 
 function formatDay(date: Date): string {
@@ -37,7 +31,7 @@ function getCurrentISTYearMonth(now = new Date()): YearMonth {
 	};
 }
 
-export function getClosedAnalyticsDays(now = new Date(), days = DEFAULT_DAILY_REPAIR_DAYS): Date[] {
+function getClosedAnalyticsDays(now = new Date(), days = DEFAULT_DAILY_REPAIR_DAYS): Date[] {
 	const currentISTDay = getAnalyticsDay(now);
 
 	return Array.from({ length: days }, (_, index) => {
@@ -46,58 +40,61 @@ export function getClosedAnalyticsDays(now = new Date(), days = DEFAULT_DAILY_RE
 	});
 }
 
-export async function compileDailyAnalyticsRepairWindow(
-	now = new Date(),
-	days = DEFAULT_DAILY_REPAIR_DAYS,
-): Promise<DailyAnalyticsRepairResult> {
+function compileDailyAnalyticsRepairWindowEffect(now = new Date(), days = DEFAULT_DAILY_REPAIR_DAYS) {
 	const dates = getClosedAnalyticsDays(now, days);
 
-	for (const date of dates) {
-		await recomputeDayAnalytics(date);
-	}
+	return Effect.gen(function* () {
+		yield* Effect.forEach(dates, (date) => recomputeDayAnalyticsEffect(date), {
+			discard: true,
+		});
 
-	return {
-		compiledDays: dates.map(formatDay),
-	};
+		return {
+			compiledDays: dates.map(formatDay),
+		};
+	});
 }
 
-export async function compilePreviousClosedMonth(now = new Date()): Promise<MonthlyAnalyticsResult> {
+function compilePreviousClosedMonthEffect(now = new Date()) {
 	const month = previousMonth(getCurrentISTYearMonth(now));
 	const monthDate = istMidnightToUTC(month.year, month.month, 1);
 
-	await recomputeMonthAnalytics(monthDate);
+	return Effect.gen(function* () {
+		yield* recomputeMonthAnalyticsEffect(monthDate);
 
-	return {
-		compiledMonth: formatMonth(month),
-	};
+		return {
+			compiledMonth: formatMonth(month),
+		};
+	});
 }
 
-export async function revalidateAnalyticsCaches() {
-	const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-	const secret = process.env.REVALIDATE_SECRET;
+function revalidateAnalyticsCachesEffect() {
+	return Effect.gen(function* () {
+		const cache = yield* CacheRevalidator;
 
-	if (!appUrl || !secret) {
+		return yield* cache.revalidateAnalyticsCaches();
+	});
+}
+
+export function compileDailyAnalyticsTaskEffect(now = new Date()) {
+	return Effect.gen(function* () {
+		const result = yield* compileDailyAnalyticsRepairWindowEffect(now);
+		const revalidation = yield* revalidateAnalyticsCachesEffect();
+
 		return {
-			revalidated: false,
-			reason: "NEXT_PUBLIC_APP_URL or REVALIDATE_SECRET is not configured",
+			...result,
+			revalidation,
 		};
-	}
+	});
+}
 
-	await Promise.all(
-		["dashboard", "analytics"].map((tag) =>
-			fetch(new URL("/api/revalidate", appUrl), {
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-				},
-				body: JSON.stringify({ tag, secret }),
-			}).then((response) => {
-				if (!response.ok) {
-					throw new Error(`Failed to revalidate ${tag}: ${response.status}`);
-				}
-			}),
-		),
-	);
+export function compileMonthlyAnalyticsTaskEffect(now = new Date()) {
+	return Effect.gen(function* () {
+		const result = yield* compilePreviousClosedMonthEffect(now);
+		const revalidation = yield* revalidateAnalyticsCachesEffect();
 
-	return { revalidated: true };
+		return {
+			...result,
+			revalidation,
+		};
+	});
 }

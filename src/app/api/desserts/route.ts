@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getCachedDesserts } from "@/app/desserts/actions";
-import { getServerSession } from "@/lib/auth";
+import { authenticatedRouteGuard } from "@/lib/auth/guards";
 
 export async function GET(request: Request) {
-	const session = await getServerSession();
-	if (!session?.session || !session?.user) {
-		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-	}
+	const authError = await authenticatedRouteGuard();
+	if (authError) return authError;
 
 	const { searchParams } = new URL(request.url);
 	const shouldShowDisabled = searchParams.get("shouldShowDisabled") === "true";

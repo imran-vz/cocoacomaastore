@@ -1,12 +1,4 @@
 services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    command: redis-server
-    volumes:
-      - ./redis-data:/data
-
   postgres:
     image: postgres:17.6-alpine
     environment:

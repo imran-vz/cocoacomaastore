@@ -38,6 +38,8 @@ The application should make day-to-day store work fast and clear:
   - A customer transaction in `orders`.
   - Relevant statuses are `pending`, `completed`, and `cancelled`.
   - Completed, non-deleted orders are the source of truth for revenue analytics.
+  - Order lifecycle covers reading manager Orders, creating completed Orders, cancelling Orders, and the soft-delete cleanup path.
+  - Cancellation is the normal operational path for reversing an Order.
   - Orders are expected to be finalized within the same operating day; changing an order after its day has passed is not a normal workflow.
 - Order item:
   - A line in `order_items`, with snapshotted `unitPrice`.
@@ -45,6 +47,10 @@ The application should make day-to-day store work fast and clear:
 - Order item modifier:
   - A persisted modifier selection in `order_item_modifiers`.
   - Modifier revenue is currently attributed as zero in dessert-level analytics unless sold as a base order item; modifier quantity is still counted.
+- Cart line:
+  - The canonical Order intake shape for POS carts.
+  - Represents one base Dessert, optional modifier selections, optional Combo identity, snapshotted unit price, and line quantity.
+  - Legacy base-only cart items should be adapted into cart lines before crossing the Order intake module interface.
 - Daily inventory:
   - `daily_dessert_inventory` stores stock per dessert per day.
 - Inventory audit log:
@@ -61,13 +67,13 @@ The application should make day-to-day store work fast and clear:
 
 - Next.js App Router with React client/server components.
 - TypeScript.
-- Bun for package/runtime scripts.
+- Node.js 24 with pnpm for package/runtime scripts.
 - PostgreSQL with Drizzle ORM schema in `src/db/schema.ts`.
 - Better Auth with the admin plugin.
 - Recharts for chart rendering.
 - Base UI/shadcn-style local UI primitives under `src/components/ui`.
 - Biome for formatting/linting through:
-  - `bun run format`
+  - `pnpm format`
   - `vp lint`
   - `vp run typecheck`
 
@@ -128,14 +134,16 @@ Batch workflow:
 - The old direct compile CLI has been removed as an operational entry point.
 - A CLI may remain as a thin on-demand helper that triggers a Trigger.dev job.
 - On-demand analytics runs are developer/operator-only for now; there is no admin UI for triggering analytics jobs.
-- Shared analytics compile logic should live in reusable TypeScript modules called by Trigger.dev tasks.
+- Shared analytics compile logic lives in reusable TypeScript modules exposed as Effect programs.
 - Jobs produce daily, monthly, dessert-level, and end-of-day stock analytics.
 
 Inline recompute workflow:
 
 - Library: `src/lib/recompute-day-analytics.ts`
 - Entry point: `recomputeAnalyticsForDate(date)`
+- Effect entry point: `recomputeAnalyticsForDateEffect(date)`
 - Used after order mutations so affected day/month analytics stay fresh.
+- Manager order mutations run analytics recompute and cache-tag invalidation through the Next-specific Effect runtime in `src/server/effect/next-runtime.ts`.
 
 Cache invalidation:
 

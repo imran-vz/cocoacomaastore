@@ -1,24 +1,17 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { Effect } from "effect";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import { userTable } from "@/db/schema";
-import { auth, getServerSession } from "@/lib/auth";
+import { auth } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth/guards";
 import { sanitizeEmail } from "@/lib/sanitize";
 import { type CreateManagerSchema, createManagerSchema, deleteManagerSchema } from "@/lib/validation";
-
-async function requireAdmin() {
-	const session = await getServerSession();
-	if (!session?.session || !session?.user) {
-		throw new Error("Unauthorized");
-	}
-	if (session.user.role !== "admin") {
-		throw new Error("Forbidden: Admin access required");
-	}
-	return session.user;
-}
+import { updateNextCacheEffect } from "@/server/effect/cache-tags";
+import { runNextAppEffect } from "@/server/effect/next-runtime";
+import { Database } from "@/server/effect/services/db";
 
 export async function getCachedManagers() {
 	const managers = await db
@@ -54,8 +47,12 @@ export async function createManager(data: CreateManagerSchema) {
 			headers: await headers(),
 		});
 
-		revalidateTag("managers", "max");
-		revalidatePath("/admin/managers");
+		await runNextAppEffect(
+			updateNextCacheEffect({
+				tags: ["managers"],
+				paths: ["/admin/managers"],
+			}),
+		);
 		return { success: true };
 	} catch (error) {
 		console.error("Error creating manager:", error);
@@ -70,11 +67,16 @@ export async function deleteManager(id: string) {
 	const { id: validatedId } = deleteManagerSchema.parse({ id });
 
 	try {
-		// Delete user (cascade deletes sessions and accounts)
-		await db.delete(userTable).where(eq(userTable.id, validatedId));
-
-		revalidateTag("managers", "max");
-		revalidatePath("/admin/managers");
+		await runNextAppEffect(
+			Effect.gen(function* () {
+				const database = yield* Database;
+				yield* database.attempt("delete manager", (db) => db.delete(userTable).where(eq(userTable.id, validatedId)));
+				yield* updateNextCacheEffect({
+					tags: ["managers"],
+					paths: ["/admin/managers"],
+				});
+			}),
+		);
 		return { success: true };
 	} catch (error) {
 		console.error("Error deleting manager:", error);

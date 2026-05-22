@@ -1,23 +1,14 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath, revalidateTag } from "next/cache";
-import { db } from "@/db";
+import { Effect } from "effect";
 import { type UpiAccount, upiAccountsTable } from "@/db/schema";
-import { getServerSession } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth/guards";
 import { sanitizeUpiId } from "@/lib/sanitize";
 import { createUpiAccountSchema, deleteUpiAccountSchema, updateUpiAccountSchema } from "@/lib/validation";
-
-async function requireAdmin() {
-	const session = await getServerSession();
-	if (!session?.session || !session?.user) {
-		throw new Error("Unauthorized");
-	}
-	if (session.user.role !== "admin") {
-		throw new Error("Forbidden: Admin access required");
-	}
-	return session.user;
-}
+import { updateNextCacheEffect } from "@/server/effect/cache-tags";
+import { runNextAppEffect } from "@/server/effect/next-runtime";
+import { Database } from "@/server/effect/services/db";
 
 export async function createUpiAccount(data: { label: string; upiId: string; enabled?: boolean }) {
 	await requireAdmin();
@@ -27,16 +18,23 @@ export async function createUpiAccount(data: { label: string; upiId: string; ena
 	const sanitizedUpiId = sanitizeUpiId(validated.upiId);
 
 	try {
-		await db.insert(upiAccountsTable).values({
-			label: validated.label,
-			upiId: sanitizedUpiId,
-			enabled: validated.enabled,
-			sequence: 0,
-		});
-
-		revalidateTag("upi-accounts", "max");
-		revalidateTag("upi-accounts-admin", "max");
-		revalidatePath("/admin/upi");
+		await runNextAppEffect(
+			Effect.gen(function* () {
+				const database = yield* Database;
+				yield* database.attempt("create UPI account", (db) =>
+					db.insert(upiAccountsTable).values({
+						label: validated.label,
+						upiId: sanitizedUpiId,
+						enabled: validated.enabled,
+						sequence: 0,
+					}),
+				);
+				yield* updateNextCacheEffect({
+					tags: ["upi-accounts", "upi-accounts-admin"],
+					paths: ["/admin/upi"],
+				});
+			}),
+		);
 		return { success: true };
 	} catch (error) {
 		console.error("Error creating UPI account:", error);
@@ -52,18 +50,25 @@ export async function updateUpiAccount(id: UpiAccount["id"], data: Pick<UpiAccou
 	const sanitizedUpiId = sanitizeUpiId(validated.data.upiId);
 
 	try {
-		await db
-			.update(upiAccountsTable)
-			.set({
-				label: validated.data.label,
-				upiId: sanitizedUpiId,
-				enabled: validated.data.enabled,
-			})
-			.where(eq(upiAccountsTable.id, validated.id));
-
-		revalidateTag("upi-accounts", "max");
-		revalidateTag("upi-accounts-admin", "max");
-		revalidatePath("/admin/upi");
+		await runNextAppEffect(
+			Effect.gen(function* () {
+				const database = yield* Database;
+				yield* database.attempt("update UPI account", (db) =>
+					db
+						.update(upiAccountsTable)
+						.set({
+							label: validated.data.label,
+							upiId: sanitizedUpiId,
+							enabled: validated.data.enabled,
+						})
+						.where(eq(upiAccountsTable.id, validated.id)),
+				);
+				yield* updateNextCacheEffect({
+					tags: ["upi-accounts", "upi-accounts-admin"],
+					paths: ["/admin/upi"],
+				});
+			}),
+		);
 		return { success: true };
 	} catch (error) {
 		console.error("Error updating UPI account:", error);
@@ -78,11 +83,18 @@ export async function deleteUpiAccount(id: UpiAccount["id"]) {
 	const { id: validatedId } = deleteUpiAccountSchema.parse({ id });
 
 	try {
-		await db.update(upiAccountsTable).set({ isDeleted: true }).where(eq(upiAccountsTable.id, validatedId));
-
-		revalidateTag("upi-accounts", "max");
-		revalidateTag("upi-accounts-admin", "max");
-		revalidatePath("/admin/upi");
+		await runNextAppEffect(
+			Effect.gen(function* () {
+				const database = yield* Database;
+				yield* database.attempt("delete UPI account", (db) =>
+					db.update(upiAccountsTable).set({ isDeleted: true }).where(eq(upiAccountsTable.id, validatedId)),
+				);
+				yield* updateNextCacheEffect({
+					tags: ["upi-accounts", "upi-accounts-admin"],
+					paths: ["/admin/upi"],
+				});
+			}),
+		);
 		return { success: true };
 	} catch (error) {
 		console.error("Error deleting UPI account:", error);

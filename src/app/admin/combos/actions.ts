@@ -2,24 +2,17 @@
 
 import { performance } from "node:perf_hooks";
 import { and, eq } from "drizzle-orm";
-import { revalidateTag, unstable_cache } from "next/cache";
+import { Effect } from "effect";
+import { unstable_cache } from "next/cache";
 
 import { db } from "@/db";
 import { dessertComboItemsTable, dessertCombosTable, dessertsTable } from "@/db/schema";
-import { getServerSession } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth/guards";
 import type { ComboWithDetails } from "@/lib/types";
 import { createComboSchema, deleteComboSchema, updateComboItemsSchema, updateComboSchema } from "@/lib/validation";
-
-async function requireAdmin() {
-	const session = await getServerSession();
-	if (!session?.session || !session?.user) {
-		throw new Error("Unauthorized");
-	}
-	if (session.user.role !== "admin") {
-		throw new Error("Admin access required");
-	}
-	return session.user;
-}
+import { updateTagsEffect } from "@/server/effect/cache-tags";
+import { runNextAppEffect } from "@/server/effect/next-runtime";
+import { Database } from "@/server/effect/services/db";
 
 // ============================================================================
 // Read Operations
@@ -130,20 +123,30 @@ export async function createCombo(data: {
 
 	const start = performance.now();
 
-	const [newCombo] = await db
-		.insert(dessertCombosTable)
-		.values({
-			name: validated.name,
-			baseDessertId: validated.baseDessertId,
-			overridePrice: validated.overridePrice ?? null,
-			enabled: validated.enabled,
-		})
-		.returning({ id: dessertCombosTable.id });
+	const [newCombo] = await runNextAppEffect(
+		Effect.gen(function* () {
+			const database = yield* Database;
+			const combo = yield* database.attempt(
+				"create combo",
+				async (db) =>
+					await db
+						.insert(dessertCombosTable)
+						.values({
+							name: validated.name,
+							baseDessertId: validated.baseDessertId,
+							overridePrice: validated.overridePrice ?? null,
+							enabled: validated.enabled,
+						})
+						.returning({ id: dessertCombosTable.id }),
+			);
+			yield* updateTagsEffect(["combos"]);
+
+			return combo;
+		}),
+	);
 
 	const duration = performance.now() - start;
 	console.log(`createCombo: ${duration.toFixed(2)}ms`);
-
-	revalidateTag("combos", "max");
 	return newCombo;
 }
 
@@ -162,21 +165,27 @@ export async function updateCombo(
 
 	const start = performance.now();
 
-	await db
-		.update(dessertCombosTable)
-		.set({
-			name: validated.data.name,
-			baseDessertId: validated.data.baseDessertId,
-			overridePrice: validated.data.overridePrice,
-			enabled: validated.data.enabled,
-			updatedAt: new Date(),
-		})
-		.where(eq(dessertCombosTable.id, validated.id));
+	await runNextAppEffect(
+		Effect.gen(function* () {
+			const database = yield* Database;
+			yield* database.attempt("update combo", (db) =>
+				db
+					.update(dessertCombosTable)
+					.set({
+						name: validated.data.name,
+						baseDessertId: validated.data.baseDessertId,
+						overridePrice: validated.data.overridePrice,
+						enabled: validated.data.enabled,
+						updatedAt: new Date(),
+					})
+					.where(eq(dessertCombosTable.id, validated.id)),
+			);
+			yield* updateTagsEffect(["combos"]);
+		}),
+	);
 
 	const duration = performance.now() - start;
 	console.log(`updateCombo: ${duration.toFixed(2)}ms`);
-
-	revalidateTag("combos", "max");
 }
 
 export async function deleteCombo(id: number) {
@@ -186,15 +195,21 @@ export async function deleteCombo(id: number) {
 
 	const start = performance.now();
 
-	await db
-		.update(dessertCombosTable)
-		.set({ isDeleted: true, updatedAt: new Date() })
-		.where(eq(dessertCombosTable.id, validated.id));
+	await runNextAppEffect(
+		Effect.gen(function* () {
+			const database = yield* Database;
+			yield* database.attempt("delete combo", (db) =>
+				db
+					.update(dessertCombosTable)
+					.set({ isDeleted: true, updatedAt: new Date() })
+					.where(eq(dessertCombosTable.id, validated.id)),
+			);
+			yield* updateTagsEffect(["combos"]);
+		}),
+	);
 
 	const duration = performance.now() - start;
 	console.log(`deleteCombo: ${duration.toFixed(2)}ms`);
-
-	revalidateTag("combos", "max");
 }
 
 export async function toggleCombo(id: number, enabled: boolean) {
@@ -202,12 +217,18 @@ export async function toggleCombo(id: number, enabled: boolean) {
 
 	const start = performance.now();
 
-	await db.update(dessertCombosTable).set({ enabled, updatedAt: new Date() }).where(eq(dessertCombosTable.id, id));
+	await runNextAppEffect(
+		Effect.gen(function* () {
+			const database = yield* Database;
+			yield* database.attempt("toggle combo", (db) =>
+				db.update(dessertCombosTable).set({ enabled, updatedAt: new Date() }).where(eq(dessertCombosTable.id, id)),
+			);
+			yield* updateTagsEffect(["combos"]);
+		}),
+	);
 
 	const duration = performance.now() - start;
 	console.log(`toggleCombo: ${duration.toFixed(2)}ms`);
-
-	revalidateTag("combos", "max");
 }
 
 export async function updateComboItems(comboId: number, items: Array<{ dessertId: number; quantity: number }>) {
@@ -217,32 +238,35 @@ export async function updateComboItems(comboId: number, items: Array<{ dessertId
 
 	const start = performance.now();
 
-	await db.transaction(async (tx) => {
-		// Delete existing items
-		await tx.delete(dessertComboItemsTable).where(eq(dessertComboItemsTable.comboId, validated.comboId));
+	await runNextAppEffect(
+		Effect.gen(function* () {
+			const database = yield* Database;
+			yield* database.attempt("update combo items", (db) =>
+				db.transaction(async (tx) => {
+					await tx.delete(dessertComboItemsTable).where(eq(dessertComboItemsTable.comboId, validated.comboId));
 
-		// Insert new items
-		if (validated.items.length > 0) {
-			await tx.insert(dessertComboItemsTable).values(
-				validated.items.map((item) => ({
-					comboId: validated.comboId,
-					dessertId: item.dessertId,
-					quantity: item.quantity,
-				})),
+					if (validated.items.length > 0) {
+						await tx.insert(dessertComboItemsTable).values(
+							validated.items.map((item) => ({
+								comboId: validated.comboId,
+								dessertId: item.dessertId,
+								quantity: item.quantity,
+							})),
+						);
+					}
+
+					await tx
+						.update(dessertCombosTable)
+						.set({ updatedAt: new Date() })
+						.where(eq(dessertCombosTable.id, validated.comboId));
+				}),
 			);
-		}
-
-		// Update combo timestamp
-		await tx
-			.update(dessertCombosTable)
-			.set({ updatedAt: new Date() })
-			.where(eq(dessertCombosTable.id, validated.comboId));
-	});
+			yield* updateTagsEffect(["combos"]);
+		}),
+	);
 
 	const duration = performance.now() - start;
 	console.log(`updateComboItems: ${duration.toFixed(2)}ms`);
-
-	revalidateTag("combos", "max");
 }
 
 export type BaseDessert = Awaited<ReturnType<typeof getBaseDesserts>>[number];

@@ -14,7 +14,7 @@ type Coordinates = {
 	y: number;
 } | null;
 
-export enum LongPressEventReason {
+enum LongPressEventReason {
 	// Triggered when mouse / touch was moved outside initial press area when `cancelOnMovement` is active
 	CANCELED_BY_MOVEMENT = "canceled-by-movement",
 	// Triggered when released click / tap before long press detection threshold
@@ -30,7 +30,7 @@ type LongPressCallback<Target = Element, Context = unknown> = (
 	meta: LongPressCallbackMeta<Context>,
 ) => void;
 
-export enum LongPressDetectEvents {
+enum LongPressDetectEvents {
 	BOTH = "both",
 	MOUSE = "mouse",
 	TOUCH = "touch",
@@ -78,16 +78,16 @@ interface LongPressOptions<Target = Element, Context = unknown> {
 	onCancel?: LongPressCallback<Target, Context>;
 }
 
-export function isTouchEvent<Target>(event: LongPressEvent<Target>): event is ReactTouchEvent<Target> {
+function isTouchEvent<Target>(event: LongPressEvent<Target>): event is ReactTouchEvent<Target> {
 	const { nativeEvent } = event;
 	return window.TouchEvent ? nativeEvent instanceof TouchEvent : "touches" in nativeEvent;
 }
 
-export function isMouseEvent<Target>(event: LongPressEvent<Target>): event is ReactMouseEvent<Target> {
+function isMouseEvent<Target>(event: LongPressEvent<Target>): event is ReactMouseEvent<Target> {
 	return event.nativeEvent instanceof MouseEvent;
 }
 
-export function getCurrentPosition<Target>(event: LongPressEvent<Target>): Coordinates {
+function getCurrentPosition<Target>(event: LongPressEvent<Target>): Coordinates {
 	if (isTouchEvent(event)) {
 		return {
 			x: event.touches[0].pageX,

@@ -1,7 +1,8 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
-import { getServerSession } from "@/lib/auth";
+import { requireSession } from "@/lib/auth/guards";
+import { updateTagsEffect } from "@/server/effect/cache-tags";
+import { runNextAppEffect } from "@/server/effect/next-runtime";
 
 const ALL_CACHE_TAGS = [
 	"desserts",
@@ -16,12 +17,7 @@ const ALL_CACHE_TAGS = [
 ] as const;
 
 export async function revalidateAllCaches() {
-	const session = await getServerSession();
-	if (!session?.session || !session?.user) {
-		throw new Error("Unauthorized");
-	}
+	await requireSession();
 
-	for (const tag of ALL_CACHE_TAGS) {
-		revalidateTag(tag, "max");
-	}
+	await runNextAppEffect(updateTagsEffect(ALL_CACHE_TAGS));
 }

@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { TodayInventoryRow } from "@/lib/daily-inventory";
 import type { Dessert } from "@/lib/types";
-import { type TodayInventoryRow, upsertTodayInventory } from "./actions";
+import { upsertTodayInventory } from "./actions";
 
 function toInventoryMap(rows: TodayInventoryRow[]) {
 	return new Map(rows.map((r) => [r.dessertId, r.quantity] as const));

@@ -1,16 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts } from "@/app/admin/combos/actions";
-import { getServerSession } from "@/lib/auth";
+import { adminRouteGuard } from "@/lib/auth/guards";
 
 export async function GET() {
-	const session = await getServerSession();
-	if (!session?.session || !session?.user) {
-		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-	}
-	if (session.user.role !== "admin") {
-		return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-	}
+	const authError = await adminRouteGuard();
+	if (authError) return authError;
 
 	const [combos, baseDesserts, modifierDesserts] = await Promise.all([
 		getCachedAllCombos(),

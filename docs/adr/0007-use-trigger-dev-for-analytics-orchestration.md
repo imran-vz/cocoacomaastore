@@ -10,7 +10,7 @@ Analytics compilation is moving from an operator-run CLI script to scheduled job
 
 ## Decision
 
-Use Trigger.dev as the analytics scheduler and orchestration layer. Move analytics compilation into reusable TypeScript functions called by Trigger.dev tasks. Remove the existing direct compile CLI as an operational entry point; if a CLI remains, it should trigger the relevant Trigger.dev job on demand instead of reimplementing compilation.
+Use Trigger.dev as the analytics scheduler and orchestration layer. Move analytics compilation into reusable Effect programs called by Trigger.dev tasks and backend actions. Remove the existing direct compile CLI as an operational entry point; if a CLI remains, it should trigger the relevant Trigger.dev job on demand instead of reimplementing compilation.
 
 Schedules are declared in code using Trigger.dev scheduled tasks with Trigger.dev's India timezone id, `timezone: "Asia/Calcutta"`:
 
@@ -20,5 +20,6 @@ Schedules are declared in code using Trigger.dev scheduled tasks with Trigger.de
 ## Consequences
 
 - Scheduling, retries, and observability live in Trigger.dev.
-- Analytics SQL should be centralized in reusable modules rather than split between scripts and jobs.
+- Analytics SQL should be centralized in reusable Effect-backed modules rather than split between scripts and jobs.
+- Trigger tasks should use the non-Next Effect runtime; server actions that call `next/cache` should use the Next-specific runtime.
 - Deployments need Trigger.dev configuration and credentials.

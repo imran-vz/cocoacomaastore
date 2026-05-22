@@ -4,13 +4,8 @@ export type Dessert = DBDessert & {
 	inventoryQuantity?: number;
 };
 
-// Legacy CartItem - still used for simple cases (base dessert only)
-export interface CartItem extends Dessert {
-	quantity: number;
-}
-
 // ============================================================================
-// Cart Line - new structure for variants/combos with modifiers
+// Cart Line - structure for variants/combos with modifiers
 // ============================================================================
 
 export interface CartLineModifier {

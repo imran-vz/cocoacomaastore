@@ -5,18 +5,7 @@ import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { type Dessert, type Order, type OrderItem, ordersTable } from "@/db/schema";
-import { getServerSession } from "@/lib/auth";
-
-async function requireAdmin() {
-	const session = await getServerSession();
-	if (!session?.session || !session?.user) {
-		throw new Error("Unauthorized");
-	}
-	if (session.user.role !== "admin") {
-		throw new Error("Admin access required");
-	}
-	return session.user;
-}
+import { requireAdmin } from "@/lib/auth/guards";
 
 function getStartOfDay(date: Date = new Date()) {
 	const d = new Date(date);

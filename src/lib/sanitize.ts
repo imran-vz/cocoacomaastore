@@ -5,7 +5,7 @@
 /**
  * Remove HTML tags and dangerous characters from text input
  */
-export function sanitizeText(input: string): string {
+function sanitizeText(input: string): string {
 	return (
 		input
 			// Remove HTML tags
@@ -53,26 +53,4 @@ export function sanitizeUpiId(upiId: string): string {
  */
 export function sanitizeEmail(email: string): string {
 	return email.trim().toLowerCase().slice(0, 255);
-}
-
-/**
- * Validate and sanitize numeric input
- */
-export function sanitizeNumber(value: number, min: number, max: number): number {
-	if (!Number.isFinite(value)) return min;
-	return Math.max(min, Math.min(max, Math.floor(value)));
-}
-
-/**
- * Validate and sanitize positive integer
- */
-export function sanitizePositiveInt(value: number): number {
-	return sanitizeNumber(value, 1, Number.MAX_SAFE_INTEGER);
-}
-
-/**
- * Validate and sanitize quantity (1-99)
- */
-export function sanitizeQuantity(value: number): number {
-	return sanitizeNumber(value, 1, 99);
 }
