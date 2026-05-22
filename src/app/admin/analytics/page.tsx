@@ -5,6 +5,7 @@ import {
 	getCachedMonthlyDessertRevenue,
 	getCachedMonthlyRevenue,
 } from "@/app/admin/dashboard/actions";
+import { AdminPageShell } from "@/components/admin/admin-page-shell";
 import { AnalyticsSkeleton } from "../loading-skeletons";
 import { AnalyticsContent } from "./analytics-content";
 
@@ -16,18 +17,18 @@ export const metadata: Metadata = {
 };
 
 export default async function AnalyticsPage() {
-	const [monthlyRevenue, availableMonths] = await Promise.all([
-		getCachedMonthlyRevenue(12),
-		getCachedAvailableMonths(),
-	]);
+	const monthlyRevenue = getCachedMonthlyRevenue(12);
+	const availableMonths = getCachedAvailableMonths();
 
 	// Get the most recent month for initial dessert revenue
-	const currentMonth = availableMonths.length > 0 ? availableMonths[0] : new Date().toISOString().slice(0, 7);
+	const currentMonth = availableMonths.then((months) =>
+		months.length > 0 ? months[0] : new Date().toISOString().slice(0, 7),
+	);
 
-	const monthlyDessertRevenue = await getCachedMonthlyDessertRevenue(currentMonth);
+	const monthlyDessertRevenue = currentMonth.then((month) => getCachedMonthlyDessertRevenue(month));
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-7xl mx-auto">
+		<AdminPageShell>
 			<Suspense fallback={<AnalyticsSkeleton includeMain={false} />}>
 				<AnalyticsContent
 					monthlyRevenue={monthlyRevenue}
@@ -36,6 +37,6 @@ export default async function AnalyticsPage() {
 					initialMonth={currentMonth}
 				/>
 			</Suspense>
-		</main>
+		</AdminPageShell>
 	);
 }

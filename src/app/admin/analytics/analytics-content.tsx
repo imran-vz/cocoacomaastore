@@ -1,8 +1,8 @@
 "use client";
 
-import { IconCalendar, IconChartBar, IconCookie, IconTrendingUp } from "@tabler/icons-react";
+import { IconCalendar, IconChartBar, IconTrendingUp } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { use, useCallback, useMemo, useState } from "react";
 import { Bar, CartesianGrid, Cell, ComposedChart, Line, Pie, PieChart, XAxis, YAxis } from "recharts";
 import type { MonthlyDessertRevenue, MonthlyRevenue } from "@/app/admin/dashboard/actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,33 +15,32 @@ import {
 	ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
 
 type AnalyticsContentProps = {
+	monthlyRevenue: Promise<MonthlyRevenue[]>;
+	monthlyDessertRevenue: Promise<MonthlyDessertRevenue[]>;
+	availableMonths: Promise<string[]>;
+	initialMonth: Promise<string>;
+};
+
+type AnalyticsOverview = {
 	monthlyRevenue: MonthlyRevenue[];
-	monthlyDessertRevenue: MonthlyDessertRevenue[];
 	availableMonths: string[];
 	initialMonth: string;
 };
 
 const COLORS = [
-	"var(--chart-1)",
-	"var(--chart-2)",
-	"var(--chart-3)",
-	"var(--chart-4)",
-	"var(--chart-5)",
-	"#2563eb", // blue-600
-	"#db2777", // pink-600
-	"#d97706", // amber-600
-	"#9333ea", // purple-600
-	"#059669", // emerald-600
-	"#dc2626", // red-600
-	"#ca8a04", // yellow-600
-	"#0891b2", // cyan-600
-	"#4f46e5", // indigo-600
-	"#be185d", // rose-700
+	"oklch(0.56 0.07 34)",
+	"oklch(0.58 0.09 183)",
+	"oklch(0.46 0.06 225)",
+	"oklch(0.73 0.13 82)",
+	"oklch(0.69 0.13 67)",
+	"oklch(0.55 0.11 262)",
+	"oklch(0.58 0.11 345)",
+	"oklch(0.56 0.08 136)",
+	"oklch(0.54 0.08 302)",
+	"oklch(0.57 0.1 25)",
 ];
 
 const monthlyRevenueChartConfig = {
@@ -90,12 +89,44 @@ async function fetchMonthlyDessertRevenue(month: string, signal?: AbortSignal): 
 	return response.json();
 }
 
+async function fetchAnalyticsOverview(signal?: AbortSignal): Promise<AnalyticsOverview> {
+	const response = await fetch("/api/admin/analytics/overview", {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch analytics overview (${response.status})`);
+	}
+
+	return response.json();
+}
+
 export function AnalyticsContent({
-	monthlyRevenue: initialMonthlyRevenue,
-	monthlyDessertRevenue: initialDessertRevenue,
-	availableMonths,
-	initialMonth,
+	monthlyRevenue,
+	monthlyDessertRevenue,
+	availableMonths: availableMonthsPromise,
+	initialMonth: initialMonthPromise,
 }: AnalyticsContentProps) {
+	const initialMonthlyRevenue = use(monthlyRevenue);
+	const initialDessertRevenue = use(monthlyDessertRevenue);
+	const initialAvailableMonths = use(availableMonthsPromise);
+	const initialMonth = use(initialMonthPromise);
+	const initialOverview = useMemo(
+		() => ({
+			monthlyRevenue: initialMonthlyRevenue,
+			availableMonths: initialAvailableMonths,
+			initialMonth,
+		}),
+		[initialAvailableMonths, initialMonth, initialMonthlyRevenue],
+	);
+	const { data: overview, error: overviewError } = useQuery({
+		queryKey: ["admin-analytics", "overview"],
+		queryFn: ({ signal }) => fetchAnalyticsOverview(signal),
+		initialData: initialOverview,
+		staleTime: 60 * 60 * 1000,
+		gcTime: 2 * 60 * 60 * 1000,
+	});
 	const [selectedMonth, setSelectedMonth] = useState(initialMonth);
 	const {
 		data: dessertRevenue = [],
@@ -116,15 +147,21 @@ export function AnalyticsContent({
 	if (dessertRevenueError) {
 		console.error("Failed to fetch dessert revenue:", dessertRevenueError);
 	}
+	if (overviewError) {
+		console.error("Failed to fetch analytics overview:", overviewError);
+	}
+
+	const availableMonths = overview.availableMonths;
+	const overviewMonthlyRevenue = overview.monthlyRevenue;
 
 	// Calculate totals
 	const totalRevenue = useMemo(
-		() => initialMonthlyRevenue.reduce((sum, r) => sum + r.grossRevenue, 0),
-		[initialMonthlyRevenue],
+		() => overviewMonthlyRevenue.reduce((sum, r) => sum + r.grossRevenue, 0),
+		[overviewMonthlyRevenue],
 	);
 	const totalOrders = useMemo(
-		() => initialMonthlyRevenue.reduce((sum, r) => sum + r.orderCount, 0),
-		[initialMonthlyRevenue],
+		() => overviewMonthlyRevenue.reduce((sum, r) => sum + r.orderCount, 0),
+		[overviewMonthlyRevenue],
 	);
 	const monthlyDessertTotal = useMemo(
 		() => dessertRevenue.reduce((sum, d) => sum + d.grossRevenue, 0),
@@ -132,15 +169,15 @@ export function AnalyticsContent({
 	);
 
 	const selectedMonthRevenue =
-		initialMonthlyRevenue.find((r) => r.month === selectedMonth)?.grossRevenue ?? monthlyDessertTotal;
+		overviewMonthlyRevenue.find((r) => r.month === selectedMonth)?.grossRevenue ?? monthlyDessertTotal;
 
 	// Prepare chart data for monthly revenue — show every month of the current
 	// year on the x-axis. Months without real data get `null` so Recharts skips
 	// them, making the line cut off at the last known value instead of
 	// collapsing to zero for future months.
 	const revenueByMonth = useMemo(
-		() => new Map(initialMonthlyRevenue.map((r) => [r.month, r])),
-		[initialMonthlyRevenue],
+		() => new Map(overviewMonthlyRevenue.map((r) => [r.month, r])),
+		[overviewMonthlyRevenue],
 	);
 	const currentYear = new Date().getFullYear();
 	const monthlyChartData = useMemo(
@@ -157,15 +194,18 @@ export function AnalyticsContent({
 		[currentYear, revenueByMonth],
 	);
 
-	// Prepare pie chart data for dessert revenue
-	const pieChartData = useMemo(
-		() =>
-			dessertRevenue.slice(0, 8).map((d) => ({
-				name: d.dessertName,
-				value: d.grossRevenue,
-			})),
-		[dessertRevenue],
-	);
+	// Prepare donut chart data for dessert revenue
+	const pieChartData = useMemo(() => {
+		const total = dessertRevenue.slice(0, 8).reduce((sum, d) => sum + d.grossRevenue, 0);
+
+		return dessertRevenue.slice(0, 8).map((d, index) => ({
+			name: d.dessertName,
+			value: d.grossRevenue,
+			percent: total > 0 ? d.grossRevenue / total : 0,
+			fill: COLORS[index % COLORS.length],
+		}));
+	}, [dessertRevenue]);
+	const topDessertShare = pieChartData[0]?.percent ?? 0;
 
 	return (
 		<div className="flex-1 space-y-6">
@@ -184,7 +224,7 @@ export function AnalyticsContent({
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-						<p className="text-xs text-muted-foreground">Across {initialMonthlyRevenue.length} months</p>
+						<p className="text-xs text-muted-foreground">Across {overviewMonthlyRevenue.length} months</p>
 					</CardContent>
 				</Card>
 				<Card>
@@ -221,7 +261,7 @@ export function AnalyticsContent({
 					<CardDescription>Revenue and order count by month</CardDescription>
 				</CardHeader>
 				<CardContent>
-					{initialMonthlyRevenue.length === 0 ? (
+					{overviewMonthlyRevenue.length === 0 ? (
 						<div className="h-80 flex items-center justify-center text-muted-foreground">
 							No monthly revenue data available yet. Data will appear after the analytics worker processes completed
 							months.
@@ -289,135 +329,138 @@ export function AnalyticsContent({
 				</CardContent>
 			</Card>
 
-			{/* Per-Dessert Revenue Section */}
-			<div className="grid gap-6 lg:grid-cols-2">
-				{/* Dessert Revenue Table */}
-				<Card className="lg:col-span-1">
-					<CardHeader>
-						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-							<div>
-								<CardTitle className="flex items-center gap-2">
-									<IconCookie className="size-5" />
-									Per-Dessert Revenue
-								</CardTitle>
-								<CardDescription>Revenue breakdown by dessert for selected month</CardDescription>
-							</div>
-							<Select value={selectedMonth} onValueChange={(value) => handleMonthChange(value || "")}>
-								<SelectTrigger className="w-40">
-									<SelectValue placeholder="Select month" />
-								</SelectTrigger>
-								<SelectContent>
-									{availableMonths.map((month) => (
-										<SelectItem key={month} value={month}>
-											{formatMonth(month)}
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
+			<Card>
+				<CardHeader>
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<CardTitle>Revenue Distribution</CardTitle>
+							<CardDescription>Top 8 desserts by revenue in {formatMonth(selectedMonth)}</CardDescription>
 						</div>
-					</CardHeader>
-					<CardContent>
-						{isLoadingDesserts ? (
-							<div className="space-y-2">
-								{[1, 2, 3, 4, 5].map((i) => (
-									<Skeleton key={i} className="h-12 w-full" />
+						<Select value={selectedMonth} onValueChange={(value) => handleMonthChange(value || "")}>
+							<SelectTrigger className="w-full sm:w-40">
+								<SelectValue placeholder="Select month" />
+							</SelectTrigger>
+							<SelectContent>
+								{availableMonths.map((month) => (
+									<SelectItem key={month} value={month}>
+										{formatMonth(month)}
+									</SelectItem>
 								))}
+							</SelectContent>
+						</Select>
+					</div>
+				</CardHeader>
+				<CardContent>
+					{pieChartData.length === 0 ? (
+						<div className="flex h-96 items-center justify-center text-muted-foreground">
+							No dessert revenue data for this month
+						</div>
+					) : (
+						<div
+							className={`grid gap-6 transition-opacity xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)] xl:items-center ${
+								isLoadingDesserts ? "opacity-70" : "opacity-100"
+							}`}
+						>
+							<div className="relative mx-auto aspect-square w-full max-w-96">
+								<ChartContainer config={dessertRevenueChartConfig} className="h-full w-full">
+									<PieChart>
+										<Pie
+											data={pieChartData}
+											cx="50%"
+											cy="50%"
+											innerRadius="62%"
+											outerRadius="84%"
+											cornerRadius={12}
+											paddingAngle={3}
+											dataKey="value"
+											stroke="var(--card)"
+											strokeWidth={3}
+										>
+											{pieChartData.map((entry) => (
+												<Cell key={entry.name} fill={entry.fill} />
+											))}
+										</Pie>
+										<ChartTooltip
+											shared={false}
+											wrapperStyle={{ zIndex: 30 }}
+											content={
+												<ChartTooltipContent
+													hideLabel
+													nameKey="name"
+													formatter={(value, name, item) => (
+														<div className="flex w-full items-center justify-between gap-8">
+															<span className="text-muted-foreground">{String(name)}</span>
+															<div className="text-right">
+																<div className="font-mono font-medium tabular-nums">
+																	{formatCurrency(toNumber(value))}
+																</div>
+																<div className="text-[0.7rem] text-muted-foreground">
+																	{((Number(item.payload?.percent) || 0) * 100).toFixed(1)}%
+																</div>
+															</div>
+														</div>
+													)}
+												/>
+											}
+										/>
+									</PieChart>
+								</ChartContainer>
+								<div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+									<div className="grid size-32 place-items-center rounded-full border bg-card/95 shadow-sm ring-8 ring-background/70">
+										<div className="text-center">
+											<div className="text-[0.68rem] font-medium uppercase text-muted-foreground tracking-normal">
+												Total
+											</div>
+											<div className="text-lg font-semibold tabular-nums">{formatCurrency(monthlyDessertTotal)}</div>
+										</div>
+									</div>
+								</div>
 							</div>
-						) : dessertRevenue.length === 0 ? (
-							<div className="h-64 flex items-center justify-center text-muted-foreground">
-								No dessert revenue data for this month
-							</div>
-						) : (
-							<div className="max-h-96 overflow-auto">
-								<Table>
-									<TableHeader>
-										<TableRow>
-											<TableHead>Dessert</TableHead>
-											<TableHead className="text-right">Qty</TableHead>
-											<TableHead className="text-right">Revenue</TableHead>
-										</TableRow>
-									</TableHeader>
-									<TableBody>
-										{dessertRevenue.map((d, i) => (
-											<TableRow key={d.dessertId}>
-												<TableCell className="font-medium">
-													<div className="flex items-center gap-2">
-														<div
-															className="size-3 rounded-full"
-															style={{
-																backgroundColor: COLORS[i % COLORS.length],
-															}}
-														/>
-														{d.dessertName}
+							<div className="space-y-3">
+								<div className="grid gap-3 sm:grid-cols-3">
+									<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
+										<p className="text-xs font-medium text-muted-foreground">Largest share</p>
+										<p className="mt-1 text-lg font-semibold tabular-nums">{(topDessertShare * 100).toFixed(0)}%</p>
+									</div>
+									<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
+										<p className="text-xs font-medium text-muted-foreground">Desserts shown</p>
+										<p className="mt-1 text-lg font-semibold tabular-nums">{pieChartData.length}</p>
+									</div>
+									<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
+										<p className="text-xs font-medium text-muted-foreground">Top dessert</p>
+										<p className="mt-1 truncate text-lg font-semibold">{pieChartData[0]?.name}</p>
+									</div>
+								</div>
+								<div className="grid gap-2 md:grid-cols-2">
+									{pieChartData.map((entry) => (
+										<div
+											key={entry.name}
+											className="group rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-muted/40"
+										>
+											<div className="flex items-center gap-3">
+												<span
+													className="h-9 w-1.5 shrink-0 rounded-full"
+													style={{ backgroundColor: entry.fill }}
+													aria-hidden="true"
+												/>
+												<div className="min-w-0 flex-1">
+													<div className="truncate text-sm font-medium">{entry.name}</div>
+													<div className="text-xs text-muted-foreground tabular-nums">
+														{(entry.percent * 100).toFixed(0)}% of top desserts
 													</div>
-												</TableCell>
-												<TableCell className="text-right tabular-nums">{d.quantitySold}</TableCell>
-												<TableCell className="text-right tabular-nums font-medium">
-													{formatCurrency(d.grossRevenue)}
-												</TableCell>
-											</TableRow>
-										))}
-									</TableBody>
-								</Table>
+												</div>
+												<div className="text-right text-sm font-semibold tabular-nums">
+													{formatCurrency(entry.value)}
+												</div>
+											</div>
+										</div>
+									))}
+								</div>
 							</div>
-						)}
-					</CardContent>
-				</Card>
-
-				{/* Dessert Revenue Pie Chart */}
-				<Card className="lg:col-span-1">
-					<CardHeader>
-						<CardTitle>Revenue Distribution</CardTitle>
-						<CardDescription>Top 8 desserts by revenue</CardDescription>
-					</CardHeader>
-					<CardContent>
-						{pieChartData.length === 0 ? (
-							<div className="h-80 flex items-center justify-center text-muted-foreground">No data available</div>
-						) : (
-							<ChartContainer config={dessertRevenueChartConfig} className="h-80 w-full">
-								<PieChart>
-									<Pie
-										data={pieChartData}
-										cx="50%"
-										cy="50%"
-										innerRadius={60}
-										outerRadius={100}
-										paddingAngle={2}
-										dataKey="value"
-										label={({ name, percent }: { name?: string; percent?: number }) => {
-											const label = name ?? "";
-											const displayName = label.length > 10 ? `${label.slice(0, 10)}...` : label;
-											return `${displayName} (${((percent ?? 0) * 100).toFixed(0)}%)`;
-										}}
-										labelLine={false}
-									>
-										{pieChartData.map((entry, index) => (
-											<Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
-										))}
-									</Pie>
-									<ChartTooltip
-										shared={false}
-										content={
-											<ChartTooltipContent
-												hideLabel
-												nameKey="name"
-												formatter={(value, name) => (
-													<div className="flex w-full items-center justify-between gap-8">
-														<span className="text-muted-foreground">{String(name)}</span>
-														<span className="font-mono font-medium tabular-nums">
-															{formatCurrency(toNumber(value))}
-														</span>
-													</div>
-												)}
-											/>
-										}
-									/>
-								</PieChart>
-							</ChartContainer>
-						)}
-					</CardContent>
-				</Card>
-			</div>
+						</div>
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	);
 }

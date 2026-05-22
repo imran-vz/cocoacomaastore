@@ -10,6 +10,31 @@ import { updateNextCacheEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 import { Database } from "@/server/effect/services/db";
 
+export type AdminUpiAccount = Omit<UpiAccount, "createdAt"> & {
+	createdAt: string;
+};
+
+export async function getCachedAdminUpiAccounts(): Promise<AdminUpiAccount[]> {
+	await requireAdmin();
+
+	return runNextAppEffect(
+		Effect.gen(function* () {
+			const database = yield* Database;
+			const accounts = yield* database.attempt("list admin UPI accounts", (db) =>
+				db.query.upiAccountsTable.findMany({
+					where: eq(upiAccountsTable.isDeleted, false),
+					orderBy: (accounts, { asc }) => [asc(accounts.sequence)],
+				}),
+			);
+
+			return accounts.map((account) => ({
+				...account,
+				createdAt: account.createdAt.toISOString(),
+			}));
+		}),
+	);
+}
+
 export async function createUpiAccount(data: { label: string; upiId: string; enabled?: boolean }) {
 	await requireAdmin();
 
@@ -31,7 +56,7 @@ export async function createUpiAccount(data: { label: string; upiId: string; ena
 				);
 				yield* updateNextCacheEffect({
 					tags: ["upi-accounts", "upi-accounts-admin"],
-					paths: ["/admin/upi"],
+					paths: ["/admin/settings/upi", "/admin/upi"],
 				});
 			}),
 		);
@@ -65,7 +90,7 @@ export async function updateUpiAccount(id: UpiAccount["id"], data: Pick<UpiAccou
 				);
 				yield* updateNextCacheEffect({
 					tags: ["upi-accounts", "upi-accounts-admin"],
-					paths: ["/admin/upi"],
+					paths: ["/admin/settings/upi", "/admin/upi"],
 				});
 			}),
 		);
@@ -91,7 +116,7 @@ export async function deleteUpiAccount(id: UpiAccount["id"]) {
 				);
 				yield* updateNextCacheEffect({
 					tags: ["upi-accounts", "upi-accounts-admin"],
-					paths: ["/admin/upi"],
+					paths: ["/admin/settings/upi", "/admin/upi"],
 				});
 			}),
 		);

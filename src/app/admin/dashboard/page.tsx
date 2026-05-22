@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AdminPageShell } from "@/components/admin/admin-page-shell";
 import { DashboardSkeleton } from "../loading-skeletons";
 import {
 	getCachedAuditLogs,
@@ -17,18 +18,16 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-	const [stats, stock, auditLogs, dailyRevenue] = await Promise.all([
-		getCachedDashboardStats(),
-		getCachedStockPerDessert(),
-		getCachedAuditLogs(),
-		getCachedDailyRevenue(),
-	]);
+	const stats = getCachedDashboardStats();
+	const stock = getCachedStockPerDessert();
+	const auditLogs = getCachedAuditLogs();
+	const dailyRevenue = getCachedDailyRevenue();
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-6xl mx-auto">
+		<AdminPageShell>
 			<Suspense fallback={<DashboardSkeleton includeMain={false} />}>
 				<DashboardContent stats={stats} stock={stock} auditLogs={auditLogs} dailyRevenue={dailyRevenue} />
 			</Suspense>
-		</main>
+		</AdminPageShell>
 	);
 }

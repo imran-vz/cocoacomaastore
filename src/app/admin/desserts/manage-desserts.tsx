@@ -113,7 +113,7 @@ export default function ManageDesserts({
 			inventory={inventory}
 			title="Desserts & Inventory"
 			subtitle="Manage your dessert inventory, stock, and visibility"
-			maxWidth="max-w-4xl"
+			maxWidth="max-w-none"
 		/>
 	);
 }

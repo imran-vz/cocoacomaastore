@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { headers } from "next/headers";
 import { db } from "@/db";
-import { userTable } from "@/db/schema";
+import { type User, userTable } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/auth/guards";
 import { sanitizeEmail } from "@/lib/sanitize";
@@ -13,7 +13,11 @@ import { updateNextCacheEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 import { Database } from "@/server/effect/services/db";
 
-export async function getCachedManagers() {
+export type ManagerRow = Pick<User, "id" | "name" | "email" | "role"> & {
+	createdAt: string;
+};
+
+export async function getCachedManagers(): Promise<ManagerRow[]> {
 	const managers = await db
 		.select({
 			id: userTable.id,
@@ -25,7 +29,10 @@ export async function getCachedManagers() {
 		.from(userTable)
 		.orderBy(userTable.createdAt);
 
-	return managers;
+	return managers.map((manager) => ({
+		...manager,
+		createdAt: manager.createdAt.toISOString(),
+	}));
 }
 
 export async function createManager(data: CreateManagerSchema) {
@@ -50,7 +57,7 @@ export async function createManager(data: CreateManagerSchema) {
 		await runNextAppEffect(
 			updateNextCacheEffect({
 				tags: ["managers"],
-				paths: ["/admin/managers"],
+				paths: ["/admin/settings/managers", "/admin/managers"],
 			}),
 		);
 		return { success: true };
@@ -73,7 +80,7 @@ export async function deleteManager(id: string) {
 				yield* database.attempt("delete manager", (db) => db.delete(userTable).where(eq(userTable.id, validatedId)));
 				yield* updateNextCacheEffect({
 					tags: ["managers"],
-					paths: ["/admin/managers"],
+					paths: ["/admin/settings/managers", "/admin/managers"],
 				});
 			}),
 		);

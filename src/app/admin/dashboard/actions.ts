@@ -15,7 +15,14 @@ import {
 	inventoryAuditLogTable,
 	ordersTable,
 } from "@/db/schema";
-import { getAnalyticsDay, getDayKey, getEndOfDayIST, getISTMonthKey, getStartOfDayIST, pgTimestamp } from "@/lib/ist-date";
+import {
+	getAnalyticsDay,
+	getDayKey,
+	getEndOfDayIST,
+	getISTMonthKey,
+	getStartOfDayIST,
+	pgTimestamp,
+} from "@/lib/ist-date";
 
 // biome-ignore lint/suspicious/noExplicitAny: for next unstable_cache
 type Callback = (...args: any[]) => Promise<any>;
@@ -150,7 +157,9 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 				revenue: sum(analyticsDailyRevenueTable.grossRevenue).as("revenue"),
 			})
 			.from(analyticsDailyRevenueTable)
-			.where(and(gte(analyticsDailyRevenueTable.day, weekAgoUTCParam), lt(analyticsDailyRevenueTable.day, dayStartUTCParam))),
+			.where(
+				and(gte(analyticsDailyRevenueTable.day, weekAgoUTCParam), lt(analyticsDailyRevenueTable.day, dayStartUTCParam)),
+			),
 	]);
 
 	const dayOrdersCount = todayOrders[0]?.count ?? 0;
@@ -191,7 +200,10 @@ async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
 		.from(dessertsTable)
 		.leftJoin(
 			dailyDessertInventoryTable,
-			and(eq(dailyDessertInventoryTable.dessertId, dessertsTable.id), eq(dailyDessertInventoryTable.day, dayStartParam)),
+			and(
+				eq(dailyDessertInventoryTable.dessertId, dessertsTable.id),
+				eq(dailyDessertInventoryTable.day, dayStartParam),
+			),
 		)
 		.where(eq(dessertsTable.isDeleted, false))
 		.orderBy(dessertsTable.sequence);
@@ -270,7 +282,12 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 			orders: analyticsDailyRevenueTable.orderCount,
 		})
 		.from(analyticsDailyRevenueTable)
-		.where(and(gte(analyticsDailyRevenueTable.day, startDayParam), lte(analyticsDailyRevenueTable.day, analyticsEndDayParam)))
+		.where(
+			and(
+				gte(analyticsDailyRevenueTable.day, startDayParam),
+				lte(analyticsDailyRevenueTable.day, analyticsEndDayParam),
+			),
+		)
 		.orderBy(analyticsDailyRevenueTable.day);
 
 	const dailyData: DailyRevenue[] = results.map((r) => ({

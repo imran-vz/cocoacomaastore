@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { getCachedDesserts } from "@/app/desserts/actions";
 import { getCachedTodayInventory } from "@/app/manager/inventory/actions";
+import { AdminPageShell } from "@/components/admin/admin-page-shell";
+import { DessertsSkeleton } from "../loading-skeletons";
 import ManageDesserts from "./manage-desserts";
 
 export const dynamic = "force-dynamic"; // forces dynamic rendering
@@ -18,8 +21,10 @@ export default async function page() {
 	const inventory = getCachedTodayInventory();
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-3 pb-6">
-			<ManageDesserts initialDesserts={desserts} initialInventory={inventory} />
-		</main>
+		<AdminPageShell>
+			<Suspense fallback={<DessertsSkeleton includeMain={false} />}>
+				<ManageDesserts initialDesserts={desserts} initialInventory={inventory} />
+			</Suspense>
+		</AdminPageShell>
 	);
 }

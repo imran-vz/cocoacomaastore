@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getCachedOrders } from "@/app/manager/orders/actions";
+import { AdminPageShell } from "@/components/admin/admin-page-shell";
 import { OrdersSkeleton } from "../loading-skeletons";
 import OrdersPage from "./orders-page";
 
@@ -12,13 +13,13 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminOrders() {
-	const orders = await getCachedOrders();
+	const orders = getCachedOrders();
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-4xl mx-auto">
+		<AdminPageShell>
 			<Suspense fallback={<OrdersSkeleton includeMain={false} />}>
 				<OrdersPage initialOrders={orders} />
 			</Suspense>
-		</main>
+		</AdminPageShell>
 	);
 }

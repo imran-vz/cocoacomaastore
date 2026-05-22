@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import { use, useId, useState } from "react";
 import { toast } from "sonner";
@@ -10,15 +11,38 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { UpiAccount } from "@/db/schema";
-import { createUpiAccount, deleteUpiAccount, updateUpiAccount } from "../actions";
+import { type AdminUpiAccount, createUpiAccount, deleteUpiAccount, updateUpiAccount } from "../actions";
 
-export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<UpiAccount[]> }) {
+const upiAccountsQueryKey = ["admin-upi-accounts"] as const;
+
+async function fetchUpiAccounts(signal?: AbortSignal): Promise<AdminUpiAccount[]> {
+	const response = await fetch("/api/admin/upi", {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch UPI accounts (${response.status})`);
+	}
+
+	return response.json();
+}
+
+export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<AdminUpiAccount[]> }) {
 	const labelID = useId();
 	const upiIdID = useId();
 	const enabledID = useId();
-	const accounts = use(upiAccounts);
+	const initialAccounts = use(upiAccounts);
+	const queryClient = useQueryClient();
+	const { data: accounts, error } = useQuery({
+		queryKey: upiAccountsQueryKey,
+		queryFn: ({ signal }) => fetchUpiAccounts(signal),
+		initialData: initialAccounts,
+		staleTime: 60_000,
+		gcTime: 10 * 60_000,
+	});
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const [editingAccount, setEditingAccount] = useState<UpiAccount | null>(null);
+	const [editingAccount, setEditingAccount] = useState<AdminUpiAccount | null>(null);
 	const [formData, setFormData] = useState({
 		label: "",
 		upiId: "",
@@ -37,12 +61,13 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Up
 			setIsDialogOpen(false);
 			setEditingAccount(null);
 			setFormData({ label: "", upiId: "", enabled: true });
+			await queryClient.invalidateQueries({ queryKey: upiAccountsQueryKey });
 		} else {
 			toast.error(result.error || "Failed to save UPI account");
 		}
 	};
 
-	const handleEdit = (account: UpiAccount) => {
+	const handleEdit = (account: AdminUpiAccount) => {
 		setEditingAccount(account);
 		setFormData({
 			label: account.label,
@@ -61,6 +86,7 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Up
 
 		if (result.success) {
 			toast.success("UPI account deleted successfully");
+			await queryClient.invalidateQueries({ queryKey: upiAccountsQueryKey });
 		} else {
 			toast.error(result.error || "Failed to delete UPI account");
 		}
@@ -71,6 +97,10 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Up
 		setEditingAccount(null);
 		setFormData({ label: "", upiId: "", enabled: true });
 	};
+
+	if (error) {
+		console.error("Failed to fetch UPI accounts:", error);
+	}
 
 	return (
 		<div className="space-y-4">

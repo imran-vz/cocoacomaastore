@@ -3,11 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Package, User } from "lucide-react";
 import { parseAsInteger, useQueryState } from "nuqs";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { DateSwitcher } from "@/components/date-switcher";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OrderCardsSkeleton } from "../loading-skeletons";
 import type { GetOrdersReturnType } from "./actions";
 import { OrderCard } from "./order-card";
 
@@ -16,16 +17,6 @@ function formatDateString(date: Date): string {
 	const m = String(date.getMonth() + 1).padStart(2, "0");
 	const d = String(date.getDate()).padStart(2, "0");
 	return `${y}-${m}-${d}`;
-}
-
-function OrdersSkeleton() {
-	return (
-		<div className="space-y-3">
-			{[1, 2, 3].map((i) => (
-				<Skeleton key={i} className="h-24 rounded-lg" />
-			))}
-		</div>
-	);
 }
 
 async function fetchAdminOrders(dateString: string, signal?: AbortSignal): Promise<GetOrdersReturnType> {
@@ -41,7 +32,8 @@ async function fetchAdminOrders(dateString: string, signal?: AbortSignal): Promi
 	return response.json();
 }
 
-export default function AdminOrdersPage({ initialOrders }: { initialOrders: GetOrdersReturnType }) {
+export default function AdminOrdersPage({ initialOrders }: { initialOrders: Promise<GetOrdersReturnType> }) {
+	const initialOrdersData = use(initialOrders);
 	const [initialDateString] = useState(() => formatDateString(new Date()));
 	const [selectedDate, setSelectedDate] = useState<Date>(() => {
 		const d = new Date();
@@ -56,7 +48,7 @@ export default function AdminOrdersPage({ initialOrders }: { initialOrders: GetO
 	} = useQuery({
 		queryKey: ["admin-orders", selectedDateString],
 		queryFn: ({ signal }) => fetchAdminOrders(selectedDateString, signal),
-		initialData: selectedDateString === initialDateString ? initialOrders : undefined,
+		initialData: selectedDateString === initialDateString ? initialOrdersData : undefined,
 		placeholderData: (previousData) => previousData,
 		staleTime: 60_000,
 		gcTime: 10 * 60_000,
@@ -150,7 +142,7 @@ export default function AdminOrdersPage({ initialOrders }: { initialOrders: GetO
 
 			{/* Orders list */}
 			{isLoading ? (
-				<OrdersSkeleton />
+				<OrderCardsSkeleton rows={3} />
 			) : orders.length > 0 ? (
 				<div className="space-y-3">
 					{orders.map((order) => (

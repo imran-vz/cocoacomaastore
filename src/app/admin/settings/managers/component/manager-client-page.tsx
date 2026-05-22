@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { use, useId, useState } from "react";
 import { toast } from "sonner";
@@ -10,19 +11,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { User } from "@/db/schema";
-import { createManager, deleteManager } from "../actions";
+import { createManager, deleteManager, type ManagerRow } from "../actions";
 
-export default function ManagerClientPage({
-	managers,
-}: {
-	managers: Promise<Pick<User, "id" | "name" | "email" | "role" | "createdAt">[]>;
-}) {
+const managersQueryKey = ["admin-managers"] as const;
+
+async function fetchManagers(signal?: AbortSignal): Promise<ManagerRow[]> {
+	const response = await fetch("/api/admin/managers", {
+		cache: "no-store",
+		signal,
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch managers (${response.status})`);
+	}
+
+	return response.json();
+}
+
+export default function ManagerClientPage({ managers }: { managers: Promise<ManagerRow[]> }) {
 	const nameID = useId();
 	const emailID = useId();
 	const passwordID = useId();
 	const roleID = useId();
-	const managersList = use(managers);
+	const initialManagers = use(managers);
+	const queryClient = useQueryClient();
+	const { data: managersList, error } = useQuery({
+		queryKey: managersQueryKey,
+		queryFn: ({ signal }) => fetchManagers(signal),
+		initialData: initialManagers,
+		staleTime: 60_000,
+		gcTime: 10 * 60_000,
+	});
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const [formData, setFormData] = useState({
 		name: "",
@@ -40,6 +59,7 @@ export default function ManagerClientPage({
 			toast.success("Manager created successfully");
 			setIsDialogOpen(false);
 			setFormData({ name: "", email: "", password: "", role: "user" });
+			await queryClient.invalidateQueries({ queryKey: managersQueryKey });
 		} else {
 			toast.error(result.error || "Failed to create manager");
 		}
@@ -54,10 +74,15 @@ export default function ManagerClientPage({
 
 		if (result.success) {
 			toast.success("Manager deleted successfully");
+			await queryClient.invalidateQueries({ queryKey: managersQueryKey });
 		} else {
 			toast.error(result.error || "Failed to delete manager");
 		}
 	};
+
+	if (error) {
+		console.error("Failed to fetch managers:", error);
+	}
 
 	return (
 		<div className="space-y-4">

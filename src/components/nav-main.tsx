@@ -10,18 +10,20 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarMenuSub,
+	SidebarMenuSubButton,
+	SidebarMenuSubItem,
 	useSidebar,
 } from "@/components/ui/sidebar";
 
-export function NavMain({
-	items,
-}: {
-	items: {
-		title: string;
-		url: string;
-		icon?: Icon;
-	}[];
-}) {
+type NavItem = {
+	title: string;
+	url: string;
+	icon?: Icon;
+	items?: NavItem[];
+};
+
+export function NavMain({ items }: { items: NavItem[] }) {
 	const pathname = usePathname();
 	const { setOpenMobile, isMobile } = useSidebar();
 
@@ -36,7 +38,7 @@ export function NavMain({
 			<SidebarGroupContent className="flex flex-col gap-2">
 				<SidebarMenu>
 					{items.map((item) => {
-						const isActive = pathname === item.url;
+						const isActive = pathname === item.url || item.items?.some((child) => pathname === child.url);
 
 						return (
 							<SidebarMenuItem key={item.title}>
@@ -50,6 +52,23 @@ export function NavMain({
 										</Link>
 									}
 								/>
+								{item.items && item.items.length > 0 && (
+									<SidebarMenuSub>
+										{item.items.map((child) => (
+											<SidebarMenuSubItem key={child.title}>
+												<SidebarMenuSubButton
+													isActive={pathname === child.url}
+													render={
+														<Link href={child.url} onClick={handleLinkClick}>
+															{child.icon && <child.icon />}
+															<span>{child.title}</span>
+														</Link>
+													}
+												/>
+											</SidebarMenuSubItem>
+										))}
+									</SidebarMenuSub>
+								)}
 							</SidebarMenuItem>
 						);
 					})}

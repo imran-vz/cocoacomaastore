@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
+import { AdminPageShell } from "@/components/admin/admin-page-shell";
+import { CombosSkeleton } from "../loading-skeletons";
 import { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts } from "./actions";
 import ManageCombos from "./manage-combos";
 
@@ -16,8 +19,10 @@ export default async function page() {
 	const modifierDesserts = getCachedModifierDesserts();
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-3 pb-6 max-w-7xl mx-auto">
-			<ManageCombos initialCombos={combos} baseDesserts={baseDesserts} modifierDesserts={modifierDesserts} />
-		</main>
+		<AdminPageShell>
+			<Suspense fallback={<CombosSkeleton includeMain={false} />}>
+				<ManageCombos initialCombos={combos} baseDesserts={baseDesserts} modifierDesserts={modifierDesserts} />
+			</Suspense>
+		</AdminPageShell>
 	);
 }

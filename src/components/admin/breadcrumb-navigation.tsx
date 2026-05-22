@@ -26,6 +26,7 @@ const segmentLabels: Record<string, string> = {
 	customers: "Customers",
 	users: "Users",
 	managers: "Managers",
+	upi: "UPI Accounts",
 	workshops: "Workshops",
 	"workshop-orders": "Workshop Orders",
 	"postal-brownies": "Postal Brownies",

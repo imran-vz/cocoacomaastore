@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { IndianRupee, Package, ShoppingCart, TrendingUp } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { use, useCallback, useMemo, useState } from "react";
 import AuditLogList from "@/components/admin/dashboard/audit-log-list";
 import RevenueChart from "@/components/admin/dashboard/revenue-chart";
 import StatCard from "@/components/admin/dashboard/stats-card";
@@ -12,10 +12,10 @@ import { formatCurrency } from "@/lib/utils";
 import type { AuditLogEntry, DailyRevenue, DashboardStats, DessertStock } from "./actions";
 
 type DashboardContentProps = {
-	stats: DashboardStats;
-	stock: DessertStock[];
-	auditLogs: AuditLogEntry[];
-	dailyRevenue: DailyRevenue[];
+	stats: Promise<DashboardStats>;
+	stock: Promise<DessertStock[]>;
+	auditLogs: Promise<AuditLogEntry[]>;
+	dailyRevenue: Promise<DailyRevenue[]>;
 };
 
 function formatDateString(date: Date): string {
@@ -46,11 +46,15 @@ async function fetchDashboardData(dateString: string, signal?: AbortSignal): Pro
 }
 
 export function DashboardContent({
-	stats: initialStats,
-	stock: initialStock,
-	auditLogs: initialAuditLogs,
-	dailyRevenue: initialDailyRevenue,
+	stats: statsPromise,
+	stock: stockPromise,
+	auditLogs: auditLogsPromise,
+	dailyRevenue: dailyRevenuePromise,
 }: DashboardContentProps) {
+	const initialStats = use(statsPromise);
+	const initialStock = use(stockPromise);
+	const initialAuditLogs = use(auditLogsPromise);
+	const initialDailyRevenue = use(dailyRevenuePromise);
 	const [initialDateString] = useState(() => formatDateString(new Date()));
 	const [selectedDate, setSelectedDate] = useState<Date>(() => {
 		const d = new Date();

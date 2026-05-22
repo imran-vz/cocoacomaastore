@@ -1,12 +1,5 @@
-import { getCachedUPIAccountsForAdmin } from "@/app/upi/actions";
-import UpiClientPage from "./component/upi-client-page";
+import { RedirectType, redirect } from "next/navigation";
 
-export default function UpiPage() {
-	const upiAccounts = getCachedUPIAccountsForAdmin();
-
-	return (
-		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-4xl mx-auto">
-			<UpiClientPage upiAccounts={upiAccounts} />
-		</main>
-	);
+export default function UpiRedirectPage() {
+	redirect("/admin/settings/upi", RedirectType.replace);
 }
