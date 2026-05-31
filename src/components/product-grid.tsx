@@ -50,7 +50,7 @@ export function ProductGrid({
 			<motion.div
 				initial={{ opacity: 0, y: 10 }}
 				animate={{ opacity: 1, y: 0 }}
-				className="flex flex-col items-center justify-center py-16 px-4 text-center"
+				className="flex flex-col items-center justify-center py-10 px-4 text-center"
 			>
 				<div className="size-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
 					<IconCake className="size-8 text-muted-foreground/50" />
@@ -66,18 +66,18 @@ export function ProductGrid({
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-4 md:space-y-6">
 			{/* Combos Section */}
 			{filteredCombos.length > 0 && onAddComboToCart && (
 				<section>
 					<motion.h2
 						initial={{ opacity: 0, x: -10 }}
 						animate={{ opacity: 1, x: 0 }}
-						className="text-xs font-semibold text-primary uppercase tracking-wider mb-3 px-1"
+						className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 px-1"
 					>
 						🎁 Combos
 					</motion.h2>
-					<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-fr">
+					<div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
 						<AnimatePresence mode="popLayout">
 							{filteredCombos.map((combo, index) => (
 								<motion.div
@@ -90,7 +90,7 @@ export function ProductGrid({
 									}}
 									exit={{ opacity: 0, scale: 0.95 }}
 								>
-									<ComboCard combo={combo} onAddToCart={() => onAddComboToCart(combo)} />
+									<ComboCard combo={combo} onAddToCart={() => onAddComboToCart(combo)} compact />
 								</motion.div>
 							))}
 						</AnimatePresence>
@@ -105,12 +105,12 @@ export function ProductGrid({
 						<motion.h2
 							initial={{ opacity: 0, x: -10 }}
 							animate={{ opacity: 1, x: 0 }}
-							className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1"
+							className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1"
 						>
 							All Items
 						</motion.h2>
 					)}
-					<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 auto-rows-fr">
+					<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
 						<AnimatePresence mode="popLayout">
 							{availableDesserts.map((dessert, index) => (
 								<motion.div
@@ -128,6 +128,7 @@ export function ProductGrid({
 										onAddToCart={onAddToCart}
 										onToggleStock={onToggleStock}
 										isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+										compact
 									/>
 								</motion.div>
 							))}
@@ -152,7 +153,7 @@ export function ProductGrid({
 								</div>
 							</AccordionTrigger>
 							<AccordionContent>
-								<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-3 pt-2 auto-rows-fr">
+								<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3 pt-2">
 									<AnimatePresence mode="popLayout">
 										{unavailableDesserts.map((dessert) => (
 											<ProductCard
@@ -161,6 +162,7 @@ export function ProductGrid({
 												onAddToCart={onAddToCart}
 												onToggleStock={onToggleStock}
 												isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+												compact
 											/>
 										))}
 									</AnimatePresence>

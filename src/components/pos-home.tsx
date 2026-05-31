@@ -318,9 +318,9 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos }: PO
 							<motion.div
 								initial={{ opacity: 0, y: -10 }}
 								animate={{ opacity: 1, y: 0 }}
-								className="sticky top-13 z-30 bg-background/80 backdrop-blur-lg md:relative md:top-0 md:bg-transparent md:backdrop-blur-none"
+								className={cn("sticky top-16 z-50", "md:relative md:top-0")}
 							>
-								<div className="px-4 py-3 md:px-0 md:py-4">
+								<div className="px-4 py-2 md:px-0 md:py-4">
 									<div className="relative">
 										<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
 										<input
@@ -329,7 +329,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos }: PO
 											value={searchQuery}
 											onChange={(e) => setSearchQuery(e.target.value)}
 											className={cn(
-												"w-full h-11 pl-10 pr-10 rounded-xl border-2 bg-background",
+												"w-full h-10 md:h-11 pl-10 pr-10 rounded-xl border-2 bg-background",
 												"text-sm placeholder:text-muted-foreground",
 												"focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",
 												"transition-all duration-200",

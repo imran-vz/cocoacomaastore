@@ -54,9 +54,8 @@ export default function Navbar() {
 			transition={{ duration: 0.3, ease: "easeOut" }}
 			className={cn(
 				"sticky top-0 z-50 h-13",
-				"bg-background/80 backdrop-blur-lg",
-				"border-b border-border/50",
-				"supports-backdrop-filter:bg-background/60",
+				"bg-background/95 backdrop-blur-md",
+				"md:border-b md:border-border/50",
 			)}
 		>
 			<div className="h-full flex items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">

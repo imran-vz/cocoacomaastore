@@ -109,7 +109,7 @@ export function ProductCard({
 					isUnavailable
 						? "opacity-60 cursor-not-allowed border-border"
 						: "border-border hover:border-primary/30 hover:shadow-md active:border-primary/50",
-					compact ? "p-3" : "p-4",
+					compact ? "p-2.5" : "p-4",
 				)}
 			>
 				{/* Success overlay */}
@@ -121,11 +121,11 @@ export function ProductCard({
 
 				<div className="relative z-10 flex flex-col flex-1">
 					{/* Header: Name & Price */}
-					<div className="flex items-start justify-between gap-2 mb-1.5">
+					<div className={cn("flex items-start justify-between gap-2", compact ? "mb-1" : "mb-1.5")}>
 						<h3
 							className={cn(
 								"font-semibold leading-tight",
-								compact ? "text-sm" : "text-base",
+								compact ? "text-[13px] line-clamp-2" : "text-base",
 								isUnavailable && "line-through text-muted-foreground",
 							)}
 						>
@@ -134,7 +134,7 @@ export function ProductCard({
 						<span
 							className={cn(
 								"shrink-0 font-bold tabular-nums",
-								compact ? "text-sm" : "text-base",
+								compact ? "text-[13px]" : "text-base",
 								isUnavailable ? "text-muted-foreground" : "text-primary",
 							)}
 						>
@@ -148,7 +148,12 @@ export function ProductCard({
 					)}
 
 					{/* Footer: Stock & Add Button */}
-					<div className="flex items-center justify-between gap-2 mt-auto pt-2">
+					<div
+						className={cn(
+							"flex items-center justify-between gap-2 mt-auto",
+							compact ? "pt-1.5" : "pt-2",
+						)}
+					>
 						{getStockBadge()}
 
 						{!isUnavailable && (
@@ -156,14 +161,14 @@ export function ProductCard({
 								animate={buttonControls}
 								className={cn(
 									"ml-auto flex items-center justify-center rounded-full transition-colors",
-									compact ? "size-8" : "size-9",
+									compact ? "size-7" : "size-9",
 									showAdded ? "bg-green-500 text-white" : "bg-primary/10 text-primary hover:bg-primary/20",
 								)}
 							>
 								{showAdded ? (
-									<Check className={cn(compact ? "size-4" : "size-5")} />
+									<Check className={cn(compact ? "size-3.5" : "size-5")} />
 								) : (
-									<Plus className={cn(compact ? "size-4" : "size-5")} />
+									<Plus className={cn(compact ? "size-3.5" : "size-5")} />
 								)}
 							</motion.div>
 						)}
@@ -287,7 +292,7 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 					"w-full h-full text-left rounded-2xl bg-linear-to-br from-primary/5 to-primary/10 border-2 border-primary/20 overflow-hidden transition-all duration-200",
 					"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 					"hover:border-primary/40 hover:shadow-md active:border-primary/50",
-					compact ? "p-3" : "p-4",
+					compact ? "p-2.5" : "p-4",
 				)}
 			>
 				{/* Success overlay */}
@@ -299,37 +304,54 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 
 				<div className="relative z-10 flex flex-col h-full">
 					{/* Header */}
-					<div className="flex items-start justify-between gap-2 mb-1">
+					<div className="flex items-center justify-between gap-2 mb-1">
 						<span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
 							Combo
 						</span>
-						<span className={cn("shrink-0 font-bold text-primary tabular-nums", compact ? "text-sm" : "text-base")}>
+						<span
+							className={cn(
+								"shrink-0 font-bold text-primary tabular-nums",
+								compact ? "text-[13px]" : "text-base",
+							)}
+						>
 							₹{displayPrice}
 						</span>
 					</div>
 
 					{/* Name */}
-					<h3 className={cn("font-semibold leading-tight line-clamp-2 mb-1", compact ? "text-sm" : "text-base")}>
+					<h3
+						className={cn(
+							"font-semibold leading-tight line-clamp-1 mb-0.5",
+							compact ? "text-[13px]" : "text-base",
+						)}
+					>
 						{combo.name}
 					</h3>
 
 					{/* Description */}
-					<p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed flex-1">{comboDescription}</p>
+					<p
+						className={cn(
+							"text-[11px] text-muted-foreground line-clamp-1 leading-relaxed",
+							compact ? "" : "text-xs line-clamp-2",
+						)}
+					>
+						{comboDescription}
+					</p>
 
 					{/* Add Button */}
-					<div className="flex justify-end mt-2">
+					<div className={cn("flex justify-end mt-auto", compact ? "pt-1.5" : "pt-2")}>
 						<motion.div
 							animate={buttonControls}
 							className={cn(
 								"flex items-center justify-center rounded-full transition-colors",
-								compact ? "size-8" : "size-9",
+								compact ? "size-7" : "size-9",
 								showAdded ? "bg-green-500 text-white" : "bg-primary text-primary-foreground",
 							)}
 						>
 							{showAdded ? (
-								<Check className={cn(compact ? "size-4" : "size-5")} />
+								<Check className={cn(compact ? "size-3.5" : "size-5")} />
 							) : (
-								<Plus className={cn(compact ? "size-4" : "size-5")} />
+								<Plus className={cn(compact ? "size-3.5" : "size-5")} />
 							)}
 						</motion.div>
 					</div>
