@@ -179,6 +179,10 @@ Admin analytics:
 - Admin routes require an authenticated session and `user.role === "admin"`.
 - Manager routes require authentication and redirect admins back to admin surfaces.
 - API routes that expose admin data should repeat auth/role checks; do not rely only on layout protection.
+- Role-aware action module:
+  - The module that configures repeated Admin and Manager mutation actions with the correct role guard.
+  - Admin variants use `requireAdmin`; Manager variants use `requireManagerAccess`.
+  - _Avoid_: hiding role checks inside unconfigured shared helpers.
 
 ## Engineering Conventions
 

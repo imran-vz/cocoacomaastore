@@ -1,63 +1,12 @@
 "use server";
 
-import { requireManagerAccess as requireManager } from "@/lib/auth/guards";
-import {
-	createCombo as createComboCore,
-	deleteCombo as deleteComboCore,
-	getCachedAllCombos as getCachedAllCombosCore,
-	getCachedBaseDesserts as getCachedBaseDessertsCore,
-	getCachedModifierDesserts as getCachedModifierDessertsCore,
-	toggleCombo as toggleComboCore,
-	updateCombo as updateComboCore,
-	updateComboItems as updateComboItemsCore,
-} from "@/lib/combo-service";
-
-export async function getCachedAllCombos() {
-	return getCachedAllCombosCore();
-}
-
-export async function getCachedBaseDesserts() {
-	return getCachedBaseDessertsCore();
-}
-
-export async function getCachedModifierDesserts() {
-	return getCachedModifierDessertsCore();
-}
-
-export async function createCombo(data: {
-	name: string;
-	baseDessertId: number;
-	overridePrice?: number | null;
-	enabled?: boolean;
-}) {
-	await requireManager();
-	return createComboCore(data);
-}
-
-export async function updateCombo(
-	id: number,
-	data: {
-		name: string;
-		baseDessertId: number;
-		overridePrice: number | null;
-		enabled: boolean;
-	},
-) {
-	await requireManager();
-	return updateComboCore(id, data);
-}
-
-export async function deleteCombo(id: number) {
-	await requireManager();
-	return deleteComboCore(id);
-}
-
-export async function toggleCombo(id: number, enabled: boolean) {
-	await requireManager();
-	return toggleComboCore(id, enabled);
-}
-
-export async function updateComboItems(comboId: number, items: Array<{ dessertId: number; quantity: number }>) {
-	await requireManager();
-	return updateComboItemsCore(comboId, items);
-}
+export {
+	createCombo,
+	deleteCombo,
+	getCachedAllCombos,
+	getCachedBaseDesserts,
+	getCachedModifierDesserts,
+	toggleCombo,
+	updateCombo,
+	updateComboItems,
+} from "@/lib/role-actions/manager-combos";
