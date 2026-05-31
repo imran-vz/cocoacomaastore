@@ -318,7 +318,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos }: PO
 							<motion.div
 								initial={{ opacity: 0, y: -10 }}
 								animate={{ opacity: 1, y: 0 }}
-								className={cn("sticky top-16 z-50", "md:relative md:top-0")}
+								className={"sticky top-16 z-50 md:relative md:top-0 mb-1"}
 							>
 								<div className="px-4 py-2 md:px-0 md:py-4">
 									<div className="relative">
