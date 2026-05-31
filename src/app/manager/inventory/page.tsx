@@ -18,7 +18,7 @@ export default async function Inventory() {
 	const inventory = getCachedTodayInventory();
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-3 pb-6 max-w-2xl mx-auto">
+		<main className="min-h-app p-3 pb-6 max-w-2xl mx-auto">
 			<Suspense
 				fallback={
 					<div className="flex flex-col gap-4">

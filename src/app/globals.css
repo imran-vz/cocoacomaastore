@@ -173,6 +173,10 @@
 
 /* Custom scrollbar for webkit browsers */
 @layer utilities {
+	.min-h-app {
+		min-height: calc(100vh - 52px);
+	}
+
 	.scrollbar-thin {
 		scrollbar-width: thin;
 		scrollbar-color: var(--muted) transparent;

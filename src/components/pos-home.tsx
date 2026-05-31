@@ -44,13 +44,15 @@ interface POSHomeProps {
 	upiAccounts: Promise<UpiAccount[]>;
 	inventory: Promise<Array<{ dessertId: number; quantity: number }>>;
 	combos: Promise<ComboWithDetails[]>;
+	variant?: "manager" | "admin";
 }
 
-export default function POSHome({ desserts, upiAccounts, inventory, combos }: POSHomeProps) {
+export default function POSHome({ desserts, upiAccounts, inventory, combos, variant = "manager" }: POSHomeProps) {
 	const items = use(desserts);
 	const upiAccountsList = use(upiAccounts);
 	const initialInventory = use(inventory);
 	const combosList = use(combos);
+	const searchStickyTopClass = variant === "admin" ? "top-16" : "top-13";
 	const {
 		data: inventoryRows,
 		error: inventoryError,
@@ -311,14 +313,14 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos }: PO
 				const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, deliveryCostAmount);
 
 				return (
-					<div className="min-h-[calc(100vh-52px)] flex flex-col md:flex-row md:gap-4 lg:gap-6">
+					<div className="min-h-app flex flex-col md:flex-row md:gap-4 lg:gap-6">
 						{/* Main Content - Products */}
 						<div className="flex-1 flex flex-col min-w-0">
 							{/* Search Header */}
 							<motion.div
 								initial={{ opacity: 0, y: -10 }}
 								animate={{ opacity: 1, y: 0 }}
-								className={"sticky top-16 z-50 md:relative md:top-0 mb-1"}
+								className={cn("sticky z-50 md:relative md:top-0 mb-1", searchStickyTopClass)}
 							>
 								<div className="px-4 py-2 md:px-0 md:py-4">
 									<div className="relative">

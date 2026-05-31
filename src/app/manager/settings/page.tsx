@@ -16,7 +16,7 @@ export default async function SettingsPage() {
 	}
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-lg mx-auto">
+		<main className="min-h-app p-4 pb-8 w-full max-w-lg mx-auto">
 			<SettingsClient
 				user={{
 					id: session.user.id,

@@ -9,7 +9,6 @@
 		"db:clone:supabase": "bash scripts/clone-supabase-db.sh",
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",
-
 		"lint": "biome check src",
 		"lint:fix": "biome check --write src",
 		"format": "biome format --write src",

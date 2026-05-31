@@ -15,7 +15,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
 	const isDbDown = isDatabaseUnavailableError(error);
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] flex items-center justify-center p-4 md:p-6 lg:p-8">
+		<main className="min-h-app flex items-center justify-center p-4 md:p-6 lg:p-8">
 			<Card className="w-full max-w-lg">
 				<CardHeader>
 					<CardTitle>{isDbDown ? "Database unavailable" : "Something went wrong"}</CardTitle>

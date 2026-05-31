@@ -13,5 +13,5 @@ export default async function ManagerLayout({ children }: { children: React.Reac
 		redirect("/admin", RedirectType.replace);
 	}
 
-	return <div className="min-h-[calc(100vh-52px)] bg-linear-to-b from-background to-muted/20">{children}</div>;
+	return <div className="min-h-app bg-linear-to-b from-background to-muted/20">{children}</div>;
 }

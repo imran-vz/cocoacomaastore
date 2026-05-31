@@ -11,7 +11,7 @@ export default async function ManagerCombosPage() {
 	const modifierDesserts = getCachedModifierDesserts();
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+		<main className="min-h-app p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
 			<Suspense
 				fallback={
 					<div className="space-y-6">

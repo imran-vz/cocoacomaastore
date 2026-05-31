@@ -16,7 +16,7 @@ export default function AdminPage() {
 	return (
 		<AdminPageShell className="p-0 pb-0">
 			<Suspense fallback={<AdminHomeSkeleton includeMain={false} />}>
-				<POSHome desserts={desserts} upiAccounts={upiAccounts} inventory={inventory} combos={combos} />
+				<POSHome desserts={desserts} upiAccounts={upiAccounts} inventory={inventory} combos={combos} variant="admin" />
 			</Suspense>
 		</AdminPageShell>
 	);

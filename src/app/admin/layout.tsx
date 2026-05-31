@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 	}
 
 	return (
-		<div className="flex min-h-[calc(100vh-52px)] flex-col">
+		<div className="flex min-h-app flex-col">
 			<SidebarProvider
 				style={
 					{

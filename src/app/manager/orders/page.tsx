@@ -42,7 +42,7 @@ export default async function Orders() {
 	const orders = await getCachedOrders();
 
 	return (
-		<main className="min-h-[calc(100vh-52px)] p-4 pb-8 w-full max-w-2xl mx-auto">
+		<main className="min-h-app p-4 pb-8 w-full max-w-2xl mx-auto">
 			<Suspense fallback={<OrdersSkeleton />}>
 				<OrdersPage initialOrders={orders} />
 			</Suspense>
