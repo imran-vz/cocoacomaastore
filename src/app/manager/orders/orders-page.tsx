@@ -86,7 +86,7 @@ function OrderCard({
 	return (
 		<Card
 			className={cn(
-				"transition-all duration-200 border-l-4",
+				"transition-all duration-200 border-l-4 py-0",
 				isCancelled
 					? "border-l-destructive/50 opacity-60"
 					: isExpanded
@@ -97,7 +97,7 @@ function OrderCard({
 			<div className="flex flex-col">
 				{/** biome-ignore lint/a11y/useSemanticElements: for accessibility */}
 				<div
-					className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+					className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
 					onClick={() => setIsExpanded(!isExpanded)}
 					onKeyUp={(e) => {
 						if (e.key === "Enter" || e.key === " ") {
@@ -107,9 +107,9 @@ function OrderCard({
 					tabIndex={0}
 					role="button"
 				>
-					<div className="flex items-start justify-between gap-3">
+					<div className="flex items-start justify-between gap-2">
 						<div className="flex-1 min-w-0">
-							<div className="flex items-center gap-2 mb-1">
+							<div className="flex items-center gap-1.5 mb-1">
 								<Badge variant="outline" className="font-mono text-xs">
 									#{order.id}
 								</Badge>
@@ -124,13 +124,13 @@ function OrderCard({
 								</span>
 							</div>
 
-							<h3 className="font-semibold text-lg truncate">{order.customerName || "Walk-in Customer"}</h3>
+							<h3 className="font-semibold text-base truncate">{order.customerName || "Walk-in Customer"}</h3>
 
-							{!isExpanded && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{itemsSummary}</p>}
+							{!isExpanded && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{itemsSummary}</p>}
 						</div>
 
-						<div className="flex flex-col items-end gap-1">
-							<span className={cn("font-bold text-lg", isCancelled && "line-through")}>₹{order.total}</span>
+						<div className="flex flex-col items-end gap-1 shrink-0">
+							<span className={cn("font-bold text-base", isCancelled && "line-through")}>₹{order.total}</span>
 							<Badge variant="secondary" className="text-xs">
 								{totalItems} item{totalItems !== 1 ? "s" : ""}
 							</Badge>
@@ -139,16 +139,16 @@ function OrderCard({
 				</div>
 
 				{isExpanded && (
-					<div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-200">
-						<Separator className="my-3" />
+					<div className="px-3 pb-3 animate-in slide-in-from-top-2 duration-200">
+						<Separator className="my-2" />
 
-						<div className="space-y-3">
+						<div className="space-y-2">
 							<div className="rounded-md border bg-card">
 								<Table>
 									<TableHeader>
 										<TableRow className="hover:bg-transparent">
-											<TableHead className="h-9">Item</TableHead>
-											<TableHead className="h-9 text-right w-20">Qty</TableHead>
+											<TableHead className="h-8">Item</TableHead>
+											<TableHead className="h-8 text-right w-16">Qty</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -157,7 +157,7 @@ function OrderCard({
 												key={`${order.id}-${item.id}`} // Using composite key for safety
 												className="hover:bg-transparent"
 											>
-												<TableCell className="py-2">
+												<TableCell className="py-1.5">
 													<div className="font-medium">
 														{item.comboName ? (
 															<span className="text-primary">{item.comboName}</span>
@@ -183,7 +183,7 @@ function OrderCard({
 														</div>
 													)}
 												</TableCell>
-												<TableCell className="text-right py-2 font-mono">×{item.quantity}</TableCell>
+												<TableCell className="text-right py-1.5 font-mono">×{item.quantity}</TableCell>
 											</TableRow>
 										))}
 									</TableBody>
@@ -191,7 +191,7 @@ function OrderCard({
 							</div>
 
 							{order.deliveryCost && Number(order.deliveryCost) > 0 && (
-								<div className="flex items-center justify-between text-sm px-2">
+								<div className="flex items-center justify-between text-sm px-1">
 									<span className="text-muted-foreground">Delivery Cost</span>
 									<span className="font-medium">₹{order.deliveryCost}</span>
 								</div>
@@ -199,7 +199,7 @@ function OrderCard({
 
 							{/* Cancel Order Button */}
 							{!isCancelled && (
-								<div className="pt-3 border-t mt-3">
+								<div className="pt-2 mt-2">
 									<Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
 										<DialogTrigger
 											render={
@@ -335,52 +335,54 @@ export default function OrdersPage({ initialOrders }: { initialOrders: GetOrders
 	);
 
 	return (
-		<div className="space-y-6 max-w-3xl mx-auto">
+		<div className="space-y-3 max-w-3xl mx-auto">
 			{/* Header */}
-			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Orders</h1>
-					<p className="text-muted-foreground mt-1">{todayLabel ? todayLabel : <Skeleton className="w-32 h-5" />}</p>
+			<div>
+				<div className="flex items-center justify-between gap-3">
+					<h1 className="text-2xl font-bold tracking-tight">Orders</h1>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={refreshOrders}
+						disabled={isLoading}
+						className={cn("h-8", isLoading && "animate-pulse")}
+					>
+						{isLoading ? "Refreshing..." : "Refresh Orders"}
+					</Button>
 				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={refreshOrders}
-					disabled={isLoading}
-					className={isLoading ? "animate-pulse" : ""}
-				>
-					{isLoading ? "Refreshing..." : "Refresh Orders"}
-				</Button>
+				<p className="text-sm text-muted-foreground mt-0.5">
+					{todayLabel ? todayLabel : <Skeleton className="w-32 h-4" />}
+				</p>
 			</div>
 
 			{/* Stats Cards */}
-			<div className="grid grid-cols-2 gap-4">
-				<Card className="p-0 gap-1">
-					<CardHeader className="p-4 pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle>
+			<div className="grid grid-cols-2 gap-2">
+				<Card className="p-0 gap-0">
+					<CardHeader className="p-3 pb-1">
+						<CardTitle className="text-xs font-medium text-muted-foreground">Total Orders</CardTitle>
 					</CardHeader>
-					<CardContent className="p-4 pt-0">
-						<div className="text-2xl font-bold">{orders.length}</div>
+					<CardContent className="p-3 pt-0">
+						<div className="text-xl font-bold">{orders.length}</div>
 					</CardContent>
 				</Card>
-				<Card className="p-0 gap-1">
-					<CardHeader className="p-4 pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">Items Sold</CardTitle>
+				<Card className="p-0 gap-0">
+					<CardHeader className="p-3 pb-1">
+						<CardTitle className="text-xs font-medium text-muted-foreground">Items Sold</CardTitle>
 					</CardHeader>
-					<CardContent className="p-4 pt-0">
-						<div className="text-2xl font-bold">{totalItems}</div>
+					<CardContent className="p-3 pt-0">
+						<div className="text-xl font-bold">{totalItems}</div>
 					</CardContent>
 				</Card>
 			</div>
 
 			{/* Orders List */}
-			<div className="space-y-4">
+			<div className="space-y-2.5">
 				{orders.length > 0 ? (
 					orders.map((order) => <OrderCard key={order.id} order={order} onCancelOrder={cancelOrderWithInvalidation} />)
 				) : (
-					<Card className="py-12 border-dashed">
+					<Card className="py-8 border-dashed">
 						<div className="flex flex-col items-center justify-center text-center text-muted-foreground">
-							<div className="bg-muted rounded-full p-4 mb-4">
+							<div className="bg-muted rounded-full p-3 mb-3">
 								<Package className="size-8 opacity-50" />
 							</div>
 							<h3 className="font-semibold text-lg text-foreground">No orders yet</h3>

@@ -58,6 +58,10 @@ The application should make day-to-day store work fast and clear:
 - Analytics:
   - Precomputed dashboard/reporting tables under `analytics_*`.
   - Live order tables remain the source of truth; analytics tables are derived.
+- Admin reporting module:
+  - The module that prepares Admin dashboard and Admin analytics reporting views.
+  - It owns IST reporting boundaries, live-current-day reads, closed-day analytics reads, Business Week buckets, and chart-ready reporting shapes.
+  - _Avoid_: Dashboard service, analytics API layer.
 - Business Week:
   - A reporting week that runs Tuesday through Sunday in Asia/Kolkata.
   - Monday is not included in weekly revenue reporting.

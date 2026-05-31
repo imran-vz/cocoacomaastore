@@ -2,12 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
 import { DashboardSkeleton } from "../loading-skeletons";
-import {
-	getCachedAuditLogs,
-	getCachedDailyRevenue,
-	getCachedDashboardStats,
-	getCachedStockPerDessert,
-} from "./actions";
+import { getAdminDashboardReport } from "./actions";
 import { DashboardContent } from "./dashboard-content";
 
 export const dynamic = "force-dynamic";
@@ -18,10 +13,11 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-	const stats = getCachedDashboardStats();
-	const stock = getCachedStockPerDessert();
-	const auditLogs = getCachedAuditLogs();
-	const dailyRevenue = getCachedDailyRevenue();
+	const report = getAdminDashboardReport();
+	const stats = report.then((data) => data.stats);
+	const stock = report.then((data) => data.stock);
+	const auditLogs = report.then((data) => data.auditLogs);
+	const dailyRevenue = report.then((data) => data.dailyRevenue);
 
 	return (
 		<AdminPageShell>

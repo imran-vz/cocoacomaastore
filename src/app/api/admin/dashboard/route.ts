@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-	getCachedAuditLogs,
-	getCachedDailyRevenue,
-	getCachedDashboardStats,
-	getCachedStockPerDessert,
-} from "@/app/admin/dashboard/actions";
+import { getAdminDashboardReport } from "@/app/admin/dashboard/actions";
 import { adminRouteGuard } from "@/lib/auth/guards";
 
 function isValidDateString(value: string | null): value is string {
@@ -32,21 +27,11 @@ export async function GET(request: Request) {
 		return NextResponse.json({ error: "Request aborted" }, { status: 499 });
 	}
 
-	const [stats, stock, auditLogs, dailyRevenue] = await Promise.all([
-		getCachedDashboardStats(dateString),
-		getCachedStockPerDessert(dateString),
-		getCachedAuditLogs(dateString),
-		getCachedDailyRevenue(dateString),
-	]);
+	const report = await getAdminDashboardReport(dateString);
 
 	if (request.signal.aborted) {
 		return NextResponse.json({ error: "Request aborted" }, { status: 499 });
 	}
 
-	return NextResponse.json({
-		stats,
-		stock,
-		auditLogs,
-		dailyRevenue,
-	});
+	return NextResponse.json(report);
 }

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 function OrdersSkeleton() {
 	return (
-		<div className="space-y-4">
+		<div className="space-y-3">
 			{/* Header skeleton */}
 			<div>
 				<Skeleton className="h-8 w-24" />
@@ -22,17 +22,16 @@ function OrdersSkeleton() {
 			</div>
 
 			{/* Stats skeleton */}
-			<div className="grid grid-cols-3 gap-3">
-				<Skeleton className="h-20 rounded-lg" />
-				<Skeleton className="h-20 rounded-lg" />
-				<Skeleton className="h-20 rounded-lg" />
+			<div className="grid grid-cols-2 gap-2">
+				<Skeleton className="h-16 rounded-lg" />
+				<Skeleton className="h-16 rounded-lg" />
 			</div>
 
 			{/* Orders skeleton */}
-			<div className="space-y-3">
-				<Skeleton className="h-24 rounded-lg" />
-				<Skeleton className="h-24 rounded-lg" />
-				<Skeleton className="h-24 rounded-lg" />
+			<div className="space-y-2">
+				<Skeleton className="h-20 rounded-lg" />
+				<Skeleton className="h-20 rounded-lg" />
+				<Skeleton className="h-20 rounded-lg" />
 			</div>
 		</div>
 	);
@@ -42,7 +41,7 @@ export default async function Orders() {
 	const orders = await getCachedOrders();
 
 	return (
-		<main className="min-h-app p-4 pb-8 w-full max-w-2xl mx-auto">
+		<main className="min-h-app p-3 pb-4 w-full max-w-2xl mx-auto">
 			<Suspense fallback={<OrdersSkeleton />}>
 				<OrdersPage initialOrders={orders} />
 			</Suspense>
