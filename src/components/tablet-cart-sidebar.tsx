@@ -2,27 +2,17 @@
 
 import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-	Check,
-	ChevronDown,
-	Copy,
-	Loader2,
-	Minus,
-	Plus,
-	ReceiptIndianRupee,
-	ShoppingBag,
-	Trash2,
-	X,
-} from "lucide-react";
+import { Check, ChevronDown, Copy, Loader2, ReceiptIndianRupee, ShoppingBag, Trash2 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createOrderWithLines } from "@/app/manager/orders/actions";
 import type { UpiAccount } from "@/db/schema";
-import { useLongPress } from "@/hooks/use-long-press";
+import { getOrderCopyText, getUpiPaymentText, saveCartOrder } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useUpiStore } from "@/store/upi-store";
+import { CartLinePresenter } from "./cart-line-presenter";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -40,156 +30,6 @@ interface TabletCartSidebarProps {
 	clearCart: () => void;
 	customerName: string;
 	deliveryCost: number;
-}
-
-function capitalize(str: string) {
-	return str
-		.split(" ")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-}
-
-function getUPIString(total: number, lines: CartLine[], upiId: string): string {
-	const transactionNote = `${lines
-		.map((line) => line.comboName ?? line.baseDessertName)
-		.join(", ")
-		.slice(0, 60)}...`;
-
-	const params = new URLSearchParams();
-	params.set("am", total.toString());
-	params.set("pn", "Cocoa Comaa");
-	params.set("tn", transactionNote);
-
-	return `upi://pay?pa=${upiId}&${params.toString()}`;
-}
-
-function SidebarCartItem({
-	line,
-	updateQuantity,
-	removeFromCart,
-}: {
-	line: CartLine;
-	updateQuantity: (cartLineId: string, quantity: number) => void;
-	removeFromCart: (cartLineId: string) => void;
-}) {
-	const intervalRef = useRef<NodeJS.Timeout | null>(null);
-	const quantityRef = useRef(line.quantity);
-
-	useEffect(() => {
-		quantityRef.current = line.quantity;
-	}, [line.quantity]);
-
-	useEffect(() => {
-		return () => {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
-			}
-		};
-	}, []);
-
-	const createQuantityHandler = (delta: number) => ({
-		threshold: 300,
-		onCancel: () => {
-			const newQty = quantityRef.current + delta;
-			quantityRef.current = newQty;
-			updateQuantity(line.cartLineId, newQty);
-		},
-		onFinish: () => {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
-			}
-		},
-	});
-
-	const decrementLongPress = useLongPress(() => {
-		intervalRef.current = setInterval(() => {
-			const nextQty = quantityRef.current - 1;
-			quantityRef.current = nextQty;
-			updateQuantity(line.cartLineId, nextQty);
-			if (nextQty <= 0 && intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
-			}
-		}, 100);
-	}, createQuantityHandler(-1));
-
-	const incrementLongPress = useLongPress(() => {
-		intervalRef.current = setInterval(() => {
-			const nextQty = quantityRef.current + 1;
-			quantityRef.current = nextQty;
-			updateQuantity(line.cartLineId, nextQty);
-		}, 100);
-	}, createQuantityHandler(1));
-
-	const displayName = line.comboName ?? line.baseDessertName;
-	const hasModifiers = line.modifiers.length > 0 && !line.comboName;
-
-	return (
-		<motion.div
-			layout
-			initial={{ opacity: 0, y: -10 }}
-			animate={{ opacity: 1, y: 0 }}
-			exit={{ opacity: 0, x: 20, height: 0, marginBottom: 0 }}
-			transition={{ type: "spring", stiffness: 500, damping: 40 }}
-			className="group relative bg-card rounded-xl p-3 border hover:border-primary/20 transition-colors"
-		>
-			{/* Delete button - appears on hover */}
-			<motion.button
-				type="button"
-				onClick={() => removeFromCart(line.cartLineId)}
-				whileTap={{ scale: 0.9 }}
-				className={cn(
-					"absolute -top-2 -right-2 size-6 rounded-full",
-					"bg-destructive text-white shadow-md",
-					"flex items-center justify-center",
-					"opacity-0 group-hover:opacity-100 transition-opacity",
-					"hover:bg-destructive/90",
-				)}
-			>
-				<X className="size-3.5" />
-			</motion.button>
-
-			<div className="flex items-start justify-between gap-2 mb-2">
-				<div className="flex-1 min-w-0">
-					<h4 className="font-semibold text-sm leading-tight capitalize truncate">{displayName}</h4>
-					{hasModifiers && (
-						<p className="text-[10px] text-muted-foreground mt-0.5 truncate">
-							+ {line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")}
-						</p>
-					)}
-				</div>
-				<p className="font-bold text-sm text-primary shrink-0">₹{(line.unitPrice * line.quantity).toFixed(0)}</p>
-			</div>
-
-			<div className="flex items-center justify-between">
-				<p className="text-[10px] text-muted-foreground font-mono">
-					₹{line.unitPrice} × {line.quantity}
-				</p>
-
-				<div className="flex items-center bg-muted rounded-lg overflow-hidden">
-					<motion.button
-						whileTap={{ scale: 0.85 }}
-						type="button"
-						className="h-7 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-						{...decrementLongPress()}
-					>
-						<Minus className="size-3" />
-					</motion.button>
-					<span className="w-7 text-center text-xs font-semibold tabular-nums">{line.quantity}</span>
-					<motion.button
-						whileTap={{ scale: 0.85 }}
-						type="button"
-						className="h-7 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-						{...incrementLongPress()}
-					>
-						<Plus className="size-3" />
-					</motion.button>
-				</div>
-			</div>
-		</motion.div>
-	);
 }
 
 export function TabletCartSidebar({
@@ -213,7 +53,6 @@ export function TabletCartSidebar({
 
 	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
 
-	// Initialize with first available account
 	useEffect(() => {
 		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
 		if (!isValid && upiAccounts.length > 0) {
@@ -222,24 +61,28 @@ export function TabletCartSidebar({
 	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
 
 	const selectedAccount = upiAccounts.find((account) => account.id.toString() === selectedUpiId);
-
-	const UPI_STRING = getUPIString(total, cart, selectedAccount?.upiId || upiAccounts[0]?.upiId || "");
+	const upiId = selectedAccount?.upiId || upiAccounts[0]?.upiId || "";
+	const upiPaymentText = getUpiPaymentText(total, cart, upiId);
 
 	const handleSaveOrder = async () => {
 		if (cart.length === 0 || isSaving) return;
 
 		try {
 			setIsSaving(true);
-			await createOrderWithLines({
-				customerName: customerName.trim(),
-				lines: cart,
-				deliveryCost: deliveryCost.toFixed(2),
+			const result = await saveCartOrder(createOrderWithLines, {
+				cart,
+				customerName,
+				deliveryCost,
 			});
+			if (!result.ok) {
+				toast.error(result.error);
+				return;
+			}
 			toast.success("Order saved!");
 			await onOrderSaved();
 			clearCart();
 		} catch (err) {
-			console.error("Failed to create order:", err);
+			console.error("Failed to complete order save flow:", err);
 			toast.error(err instanceof Error ? err.message : "Failed to save order");
 		} finally {
 			setIsSaving(false);
@@ -249,19 +92,7 @@ export function TabletCartSidebar({
 	const copyOrderDetails = async () => {
 		if (cart.length === 0) return;
 
-		const orderItemsText = cart
-			.map((line) => {
-				const displayName = line.comboName ?? line.baseDessertName;
-				const modifierText =
-					line.modifiers.length > 0 && !line.comboName
-						? ` (+ ${line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")})`
-						: "";
-				return `${capitalize(displayName.trim())}${modifierText} × ${line.quantity} = ₹${(line.unitPrice * line.quantity).toFixed(2)}`;
-			})
-			.join("\n");
-
-		const deliveryLine = deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
-		const orderText = `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
+		const orderText = getOrderCopyText(cart, total, deliveryCost);
 
 		await navigator.clipboard.writeText(orderText);
 		setCopiedOrder(true);
@@ -282,24 +113,27 @@ export function TabletCartSidebar({
 		const ctx = canvas.getContext("2d");
 		const img = new Image(400, 400);
 
-		await new Promise((resolve, reject) => {
-			img.onload = resolve;
-			img.onerror = reject;
-			img.src = url;
-		});
+		try {
+			await new Promise((resolve, reject) => {
+				img.onload = resolve;
+				img.onerror = reject;
+				img.src = url;
+			});
 
-		const padding = 48;
-		canvas.width = img.width + padding * 2;
-		canvas.height = img.height + padding * 2;
+			const padding = 48;
+			canvas.width = img.width + padding * 2;
+			canvas.height = img.height + padding * 2;
 
-		if (ctx) {
-			ctx.fillStyle = "white";
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.drawImage(img, padding, padding);
+			if (ctx) {
+				ctx.fillStyle = "white";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.drawImage(img, padding, padding);
+			}
+
+			return canvas.toDataURL("image/png");
+		} finally {
+			URL.revokeObjectURL(url);
 		}
-
-		URL.revokeObjectURL(url);
-		return canvas.toDataURL("image/png");
 	};
 
 	const copyQrCode = async () => {
@@ -323,7 +157,6 @@ export function TabletCartSidebar({
 
 	return (
 		<div className="h-full flex flex-col bg-muted/30 rounded-2xl border-2 overflow-hidden">
-			{/* Header */}
 			<div className="shrink-0 px-4 py-3 bg-background border-b">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
@@ -359,7 +192,6 @@ export function TabletCartSidebar({
 				</div>
 			</div>
 
-			{/* Form Fields */}
 			<div className="shrink-0 px-4 py-3 bg-background/50 border-b">
 				<div className="grid grid-cols-2 gap-2">
 					<form.Field name="name">
@@ -411,7 +243,6 @@ export function TabletCartSidebar({
 				</div>
 			</div>
 
-			{/* Cart Items */}
 			<ScrollArea className="flex-1">
 				<div className="p-3 space-y-2">
 					<AnimatePresence mode="popLayout">
@@ -427,7 +258,8 @@ export function TabletCartSidebar({
 							</motion.div>
 						) : (
 							cart.map((line) => (
-								<SidebarCartItem
+								<CartLinePresenter
+									variant="tablet"
 									key={line.cartLineId}
 									line={line}
 									updateQuantity={updateQuantity}
@@ -439,9 +271,7 @@ export function TabletCartSidebar({
 				</div>
 			</ScrollArea>
 
-			{/* Footer with Total and Actions */}
 			<div className="shrink-0 p-3 bg-background border-t space-y-3">
-				{/* Total */}
 				<div className="flex items-center justify-between px-1">
 					<span className="text-sm text-muted-foreground">Total</span>
 					<motion.span
@@ -454,7 +284,6 @@ export function TabletCartSidebar({
 					</motion.span>
 				</div>
 
-				{/* Online Order Section - Collapsed by default */}
 				{cart.length > 0 && (
 					<CollapsiblePrimitive.Root open={isOnlineOrderOpen} onOpenChange={setIsOnlineOrderOpen}>
 						<CollapsiblePrimitive.Trigger className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors">
@@ -465,7 +294,6 @@ export function TabletCartSidebar({
 						</CollapsiblePrimitive.Trigger>
 						<CollapsiblePrimitive.Panel className="overflow-hidden h-(--collapsible-panel-height) data-ending-style:h-0 data-starting-style:h-0 transition-all duration-200 ease-out">
 							<div className="space-y-2 pt-2">
-								{/* UPI Account Selector */}
 								{upiAccounts.length > 1 && (
 									<div className="px-1">
 										<select
@@ -482,7 +310,6 @@ export function TabletCartSidebar({
 									</div>
 								)}
 
-								{/* Copy Buttons */}
 								<div className="grid grid-cols-2 gap-2">
 									<motion.button
 										type="button"
@@ -511,14 +338,12 @@ export function TabletCartSidebar({
 									</motion.button>
 								</div>
 
-								{/* Hidden QR Code for copying */}
-								<QRCodeSVG ref={qrCodeRef} value={UPI_STRING} size={400} className="hidden" />
+								<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />
 							</div>
 						</CollapsiblePrimitive.Panel>
 					</CollapsiblePrimitive.Root>
 				)}
 
-				{/* Save Order Button */}
 				<Button
 					onClick={handleSaveOrder}
 					disabled={cart.length === 0 || isSaving}

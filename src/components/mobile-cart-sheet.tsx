@@ -1,29 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import {
-	Check,
-	ChevronDown,
-	ChevronUp,
-	Copy,
-	Loader2,
-	Minus,
-	Plus,
-	ReceiptIndianRupee,
-	ShoppingBag,
-	Trash2,
-	X,
-} from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, Loader2, ReceiptIndianRupee, ShoppingBag, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { createOrderWithLines } from "@/app/manager/orders/actions";
 import type { UpiAccount } from "@/db/schema";
-import { useLongPress } from "@/hooks/use-long-press";
+import { getOrderCopyText, getUpiPaymentText, saveCartOrder } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useUpiStore } from "@/store/upi-store";
+import { CartLinePresenter } from "./cart-line-presenter";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -39,149 +28,6 @@ interface MobileCartSheetProps {
 	customerName: string;
 	onOrderSaved: () => void | Promise<void>;
 	clearCart: () => void;
-}
-
-function capitalize(str: string) {
-	return str
-		.split(" ")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-}
-
-function getUPIString(total: number, lines: CartLine[], upiId: string): string {
-	const transactionNote = `${lines
-		.map((line) => line.comboName ?? line.baseDessertName)
-		.join(", ")
-		.slice(0, 60)}...`;
-
-	const params = new URLSearchParams();
-	params.set("am", total.toString());
-	params.set("pn", "Cocoa Comaa");
-	params.set("tn", transactionNote);
-
-	return `upi://pay?pa=${upiId}&${params.toString()}`;
-}
-
-function CartLineItem({
-	line,
-	updateQuantity,
-	removeFromCart,
-}: {
-	line: CartLine;
-	updateQuantity: (cartLineId: string, quantity: number) => void;
-	removeFromCart: (cartLineId: string) => void;
-}) {
-	const intervalRef = useRef<NodeJS.Timeout | null>(null);
-	const quantityRef = useRef(line.quantity);
-
-	useEffect(() => {
-		quantityRef.current = line.quantity;
-	}, [line.quantity]);
-
-	useEffect(() => {
-		return () => {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
-			}
-		};
-	}, []);
-
-	const createQuantityHandler = (delta: number) => ({
-		threshold: 300,
-		onCancel: () => {
-			const newQty = quantityRef.current + delta;
-			quantityRef.current = newQty;
-			updateQuantity(line.cartLineId, newQty);
-		},
-		onFinish: () => {
-			if (intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
-			}
-		},
-	});
-
-	const decrementLongPress = useLongPress(() => {
-		intervalRef.current = setInterval(() => {
-			const nextQty = quantityRef.current - 1;
-			quantityRef.current = nextQty;
-			updateQuantity(line.cartLineId, nextQty);
-			if (nextQty <= 0 && intervalRef.current) {
-				clearInterval(intervalRef.current);
-				intervalRef.current = null;
-			}
-		}, 100);
-	}, createQuantityHandler(-1));
-
-	const incrementLongPress = useLongPress(() => {
-		intervalRef.current = setInterval(() => {
-			const nextQty = quantityRef.current + 1;
-			quantityRef.current = nextQty;
-			updateQuantity(line.cartLineId, nextQty);
-		}, 100);
-	}, createQuantityHandler(1));
-
-	const displayName = line.comboName ?? line.baseDessertName;
-	const hasModifiers = line.modifiers.length > 0 && !line.comboName;
-
-	return (
-		<motion.div
-			layout
-			initial={{ opacity: 0, x: -20 }}
-			animate={{ opacity: 1, x: 0 }}
-			exit={{ opacity: 0, x: 20, height: 0, marginBottom: 0 }}
-			transition={{ type: "spring", stiffness: 500, damping: 40 }}
-			className="bg-card rounded-xl p-3 shadow-sm border"
-		>
-			<div className="flex items-start justify-between gap-3">
-				<div className="flex-1 min-w-0">
-					<h4 className="font-semibold text-sm leading-tight capitalize truncate">{displayName}</h4>
-					{hasModifiers && (
-						<p className="text-xs text-muted-foreground mt-0.5 truncate">
-							+ {line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")}
-						</p>
-					)}
-					<p className="text-xs text-muted-foreground mt-1 font-mono">
-						₹{line.unitPrice} × {line.quantity}
-					</p>
-				</div>
-				<div className="text-right shrink-0">
-					<p className="font-bold text-sm text-primary">₹{(line.unitPrice * line.quantity).toFixed(0)}</p>
-				</div>
-			</div>
-
-			<div className="flex items-center justify-between mt-3 gap-2">
-				<div className="flex items-center bg-muted rounded-lg overflow-hidden">
-					<motion.button
-						whileTap={{ scale: 0.9 }}
-						type="button"
-						className="h-9 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-						{...decrementLongPress()}
-					>
-						<Minus className="size-4" />
-					</motion.button>
-					<span className="w-10 text-center text-sm font-semibold tabular-nums">{line.quantity}</span>
-					<motion.button
-						whileTap={{ scale: 0.9 }}
-						type="button"
-						className="h-9 w-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-						{...incrementLongPress()}
-					>
-						<Plus className="size-4" />
-					</motion.button>
-				</div>
-				<motion.button
-					whileTap={{ scale: 0.9 }}
-					type="button"
-					onClick={() => removeFromCart(line.cartLineId)}
-					className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-				>
-					<Trash2 className="size-4" />
-				</motion.button>
-			</div>
-		</motion.div>
-	);
 }
 
 export function MobileCartSheet({
@@ -208,7 +54,6 @@ export function MobileCartSheet({
 
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
 
-	// Initialize with first available account
 	useEffect(() => {
 		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
 		if (!isValid && upiAccounts.length > 0) {
@@ -217,8 +62,8 @@ export function MobileCartSheet({
 	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
 
 	const selectedAccount = upiAccounts.find((account) => account.id.toString() === selectedUpiId);
-
-	const UPI_STRING = getUPIString(total, cart, selectedAccount?.upiId || upiAccounts[0]?.upiId || "");
+	const upiId = selectedAccount?.upiId || upiAccounts[0]?.upiId || "";
+	const upiPaymentText = getUpiPaymentText(total, cart, upiId);
 
 	const handleToggle = useCallback(() => {
 		setIsOpen((prev) => {
@@ -240,17 +85,21 @@ export function MobileCartSheet({
 
 		try {
 			setIsSaving(true);
-			await createOrderWithLines({
-				customerName: customerName.trim(),
-				lines: cart,
+			const result = await saveCartOrder(createOrderWithLines, {
+				cart,
+				customerName,
 				deliveryCost: form.state.values.deliveryCost || "0",
 			});
+			if (!result.ok) {
+				toast.error(result.error);
+				return;
+			}
 			toast.success("Order saved!");
 			await onOrderSaved();
 			clearCart();
 			setIsOpen(false);
 		} catch (err) {
-			console.error("Failed to create order:", err);
+			console.error("Failed to complete order save flow:", err);
 			toast.error(err instanceof Error ? err.message : "Failed to save order");
 		} finally {
 			setIsSaving(false);
@@ -261,19 +110,7 @@ export function MobileCartSheet({
 		if (cart.length === 0) return;
 
 		const deliveryCost = Number.parseFloat(form.state.values.deliveryCost || "0");
-		const orderItemsText = cart
-			.map((line) => {
-				const displayName = line.comboName ?? line.baseDessertName;
-				const modifierText =
-					line.modifiers.length > 0 && !line.comboName
-						? ` (+ ${line.modifiers.map((m) => (m.quantity > 1 ? `${m.quantity}× ${m.name}` : m.name)).join(", ")})`
-						: "";
-				return `${capitalize(displayName.trim())}${modifierText} × ${line.quantity} = ₹${(line.unitPrice * line.quantity).toFixed(2)}`;
-			})
-			.join("\n");
-
-		const deliveryLine = deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
-		const orderText = `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
+		const orderText = getOrderCopyText(cart, total, deliveryCost);
 
 		await navigator.clipboard.writeText(orderText);
 		setCopiedOrder(true);
@@ -294,24 +131,27 @@ export function MobileCartSheet({
 		const ctx = canvas.getContext("2d");
 		const img = new Image(400, 400);
 
-		await new Promise((resolve, reject) => {
-			img.onload = resolve;
-			img.onerror = reject;
-			img.src = url;
-		});
+		try {
+			await new Promise((resolve, reject) => {
+				img.onload = resolve;
+				img.onerror = reject;
+				img.src = url;
+			});
 
-		const padding = 48;
-		canvas.width = img.width + padding * 2;
-		canvas.height = img.height + padding * 2;
+			const padding = 48;
+			canvas.width = img.width + padding * 2;
+			canvas.height = img.height + padding * 2;
 
-		if (ctx) {
-			ctx.fillStyle = "white";
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.drawImage(img, padding, padding);
+			if (ctx) {
+				ctx.fillStyle = "white";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.drawImage(img, padding, padding);
+			}
+
+			return canvas.toDataURL("image/png");
+		} finally {
+			URL.revokeObjectURL(url);
 		}
-
-		URL.revokeObjectURL(url);
-		return canvas.toDataURL("image/png");
 	};
 
 	const copyQrCode = async () => {
@@ -333,7 +173,6 @@ export function MobileCartSheet({
 		}
 	};
 
-	// Close sheet when cart becomes empty
 	useEffect(() => {
 		if (cart.length === 0 && isOpen) {
 			setIsOpen(false);
@@ -347,10 +186,8 @@ export function MobileCartSheet({
 
 	return (
 		<>
-			{/* Hidden QR Code for copying */}
-			<QRCodeSVG ref={qrCodeRef} value={UPI_STRING} size={400} className="hidden" />
+			<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />
 
-			{/* Backdrop - blocks interactions while sheet is open or animating out */}
 			<AnimatePresence onExitComplete={handleExitComplete}>
 				{isOpen && (
 					<motion.div
@@ -364,10 +201,8 @@ export function MobileCartSheet({
 				)}
 			</AnimatePresence>
 
-			{/* Invisible blocker during exit animation to prevent click-through */}
 			{shouldRender && !isOpen && <div className="fixed inset-0 z-40 md:hidden" />}
 
-			{/* Collapsed Bar - Fixed at bottom */}
 			<AnimatePresence>
 				{!isOpen && (
 					<motion.div
@@ -405,7 +240,6 @@ export function MobileCartSheet({
 				)}
 			</AnimatePresence>
 
-			{/* Full Sheet - Slides up from bottom */}
 			<AnimatePresence>
 				{isOpen && (
 					<motion.div
@@ -417,12 +251,10 @@ export function MobileCartSheet({
 						style={{ maxHeight: "85vh" }}
 					>
 						<div className="bg-background rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col max-h-[85vh]">
-							{/* Handle Bar */}
 							<button type="button" onClick={handleToggle} className="shrink-0 w-full pt-3 pb-2">
 								<div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto" />
 							</button>
 
-							{/* Header */}
 							<div className="shrink-0 px-4 pb-3">
 								<div className="flex items-center justify-between">
 									<div className="flex items-center gap-3">
@@ -448,12 +280,8 @@ export function MobileCartSheet({
 								</div>
 							</div>
 
-							{/* Divider */}
 							<div className="h-px bg-border mx-4 shrink-0" />
-
-							{/* Cart Content - Scrollable */}
 							<div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 min-h-0">
-								{/* Form Fields */}
 								<AnimatePresence>
 									{showForm && (
 										<motion.div
@@ -508,10 +336,9 @@ export function MobileCartSheet({
 									)}
 								</AnimatePresence>
 
-								{/* Toggle Form Button */}
 								<button
 									type="button"
-									onClick={() => setShowForm(!showForm)}
+									onClick={() => setShowForm((current) => !current)}
 									className="w-full text-xs text-primary font-medium mb-4 flex items-center justify-center gap-1"
 								>
 									{showForm ? (
@@ -524,11 +351,11 @@ export function MobileCartSheet({
 									)}
 								</button>
 
-								{/* Cart Items */}
 								<div className="space-y-3">
 									<AnimatePresence mode="popLayout">
 										{cart.map((line) => (
-											<CartLineItem
+											<CartLinePresenter
+												variant="mobile"
 												key={line.cartLineId}
 												line={line}
 												updateQuantity={updateQuantity}
@@ -538,11 +365,10 @@ export function MobileCartSheet({
 									</AnimatePresence>
 								</div>
 
-								{/* Online Order Options - Collapsed by default */}
 								<div className="mt-4 pt-4 border-t">
 									<button
 										type="button"
-										onClick={() => setShowOnlineOptions(!showOnlineOptions)}
+										onClick={() => setShowOnlineOptions((current) => !current)}
 										className="w-full flex items-center justify-between py-2 text-sm text-muted-foreground"
 									>
 										<span>Online Order Options</span>
@@ -558,7 +384,6 @@ export function MobileCartSheet({
 												className="overflow-hidden"
 											>
 												<div className="pt-3 space-y-3">
-													{/* UPI Account Selector */}
 													{upiAccounts.length > 1 && (
 														<div className="flex items-center justify-between">
 															<span className="text-xs text-muted-foreground">UPI Account</span>
@@ -576,7 +401,6 @@ export function MobileCartSheet({
 														</div>
 													)}
 
-													{/* Copy Buttons */}
 													<div className="grid grid-cols-2 gap-3">
 														<motion.button
 															type="button"
@@ -613,7 +437,6 @@ export function MobileCartSheet({
 								</div>
 							</div>
 
-							{/* Save Order Button - Fixed at bottom */}
 							<div className="shrink-0 p-4 border-t bg-background">
 								<Button
 									onClick={handleSaveOrder}

@@ -4,22 +4,19 @@ import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, X } from "lucide-react";
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 
 import { toggleOutOfStock } from "@/app/desserts/actions";
 import type { UpiAccount } from "@/db/schema";
-import type { CartLine, ComboWithDetails, Dessert } from "@/lib/types";
+import { applyPosCartEvent, initialPosCartState } from "@/lib/pos-cart-behaviour";
+import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDessertStore } from "@/store/dessert-store";
 import { cartFormSchema } from "./form-schema/cart";
 import { MobileCartSheet } from "./mobile-cart-sheet";
 import { ProductGrid } from "./product-grid";
 import { TabletCartSidebar } from "./tablet-cart-sidebar";
-
-function generateCartLineId(): string {
-	return `cl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-}
 
 type InventoryRow = {
 	dessertId: number;
@@ -42,7 +39,7 @@ async function fetchTodayInventory(signal?: AbortSignal): Promise<InventoryRow[]
 interface POSHomeProps {
 	desserts: Promise<Dessert[]>;
 	upiAccounts: Promise<UpiAccount[]>;
-	inventory: Promise<Array<{ dessertId: number; quantity: number }>>;
+	inventory: Promise<InventoryRow[]>;
 	combos: Promise<ComboWithDetails[]>;
 	variant?: "manager" | "admin";
 }
@@ -65,7 +62,8 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		gcTime: 5 * 60_000,
 	});
 
-	const [cart, setCart] = useState<CartLine[]>([]);
+	const [cartState, dispatchCart] = useReducer(applyPosCartEvent, initialPosCartState);
+	const cart = cartState.cart;
 	const inventoryByDessertId = useMemo(() => {
 		const next: Record<number, number> = {};
 		for (const row of inventoryRows) {
@@ -89,19 +87,17 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		updateDessert,
 	} = useDessertStore();
 
-	// Sync local desserts with prop
 	useEffect(() => {
 		setLocalDesserts(items);
 	}, [items, setLocalDesserts]);
 
-	const availableCombos = useMemo(() => {
-		return combosList.filter((combo) => {
-			const baseDessert = localDesserts.find((d) => d.id === combo.baseDessertId);
-			if (!baseDessert) return false;
-			if (baseDessert.isOutOfStock) return false;
-			return true;
-		});
-	}, [combosList, localDesserts]);
+	const availableCombos = useMemo(
+		() =>
+			combosList.filter((combo) =>
+				localDesserts.some((dessert) => dessert.id === combo.baseDessertId && !dessert.isOutOfStock),
+			),
+		[combosList, localDesserts],
+	);
 
 	const form = useForm({
 		defaultValues: { name: "", deliveryCost: "" },
@@ -123,164 +119,37 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		await refetchInventory();
 	};
 
-	const cartInventoryUsage = useMemo(() => {
-		const usage = new Map<number, number>();
-		for (const line of cart) {
-			const current = usage.get(line.baseDessertId) ?? 0;
-			usage.set(line.baseDessertId, current + line.quantity);
-		}
-		return usage;
-	}, [cart]);
+	useEffect(() => {
+		if (cartState.lastError) toast.error(cartState.lastError.message);
+	}, [cartState.lastError]);
 
 	const addToCart = useCallback(
 		(dessert: Dessert) => {
-			const available = dessert.hasUnlimitedStock ? Number.POSITIVE_INFINITY : (inventoryByDessertId[dessert.id] ?? 0);
-			const usedInCart = cartInventoryUsage.get(dessert.id) ?? 0;
-			const remaining = available - usedInCart;
-
-			if (remaining <= 0) {
-				toast.error("Out of stock — set today's inventory");
-				return;
-			}
-
-			const existingLine = cart.find((line) => line.baseDessertId === dessert.id && line.modifiers.length === 0);
-
-			if (existingLine) {
-				if (existingLine.quantity >= available) {
-					toast.error(`Only ${available} left`);
-					return;
-				}
-
-				setCart((cart) =>
-					cart.map((line) =>
-						line.cartLineId === existingLine.cartLineId && line.quantity < 199
-							? { ...line, quantity: line.quantity + 1 }
-							: line,
-					),
-				);
-			} else {
-				const newLine: CartLine = {
-					cartLineId: generateCartLineId(),
-					baseDessertId: dessert.id,
-					baseDessertName: dessert.name,
-					baseDessertPrice: dessert.price,
-					hasUnlimitedStock: dessert.hasUnlimitedStock,
-					modifiers: [],
-					unitPrice: dessert.price,
-					quantity: 1,
-				};
-				setCart((cart) => [...cart, newLine]);
-			}
+			dispatchCart({ type: "add-dessert", dessert, inventoryByDessertId });
 		},
-		[cart, cartInventoryUsage, inventoryByDessertId],
+		[inventoryByDessertId],
 	);
 
-	const addComboToCart = useCallback(
+	const addCombo = useCallback(
 		(combo: ComboWithDetails) => {
-			const available = combo.baseDessert.hasUnlimitedStock
-				? Number.POSITIVE_INFINITY
-				: (inventoryByDessertId[combo.baseDessertId] ?? 0);
-			const usedInCart = cartInventoryUsage.get(combo.baseDessertId) ?? 0;
-			const remaining = available - usedInCart;
-
-			if (remaining <= 0) {
-				toast.error("Out of stock — set today's inventory");
-				return;
-			}
-
-			const existingLine = cart.find((line) => line.comboId === combo.id);
-
-			if (existingLine) {
-				if (existingLine.quantity >= available) {
-					toast.error(`Only ${available} left`);
-					return;
-				}
-
-				setCart((cart) =>
-					cart.map((line) =>
-						line.cartLineId === existingLine.cartLineId && line.quantity < 199
-							? { ...line, quantity: line.quantity + 1 }
-							: line,
-					),
-				);
-			} else {
-				const modifiers = combo.items.map((item) => ({
-					dessertId: item.dessert.id,
-					name: item.dessert.name,
-					price: item.dessert.price,
-					quantity: item.quantity,
-				}));
-
-				const modifierTotal = modifiers.reduce((sum, mod) => sum + mod.price * mod.quantity, 0);
-				const unitPrice = combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
-
-				const newLine: CartLine = {
-					cartLineId: generateCartLineId(),
-					baseDessertId: combo.baseDessertId,
-					baseDessertName: combo.baseDessert.name,
-					baseDessertPrice: combo.baseDessert.price,
-					hasUnlimitedStock: combo.baseDessert.hasUnlimitedStock,
-					modifiers,
-					unitPrice,
-					quantity: 1,
-					comboId: combo.id,
-					comboName: combo.name,
-				};
-
-				setCart((cart) => [...cart, newLine]);
-			}
+			dispatchCart({ type: "add-combo", combo, inventoryByDessertId });
 		},
-		[cart, cartInventoryUsage, inventoryByDessertId],
+		[inventoryByDessertId],
 	);
 
 	const removeFromCart = useCallback((cartLineId: string) => {
-		setCart((cart) => cart.filter((line) => line.cartLineId !== cartLineId));
+		dispatchCart({ type: "remove-line", cartLineId });
 	}, []);
 
 	const updateQuantity = useCallback(
 		(cartLineId: string, quantity: number) => {
-			if (quantity <= 0) {
-				removeFromCart(cartLineId);
-				return;
-			}
-
-			const line = cart.find((l) => l.cartLineId === cartLineId);
-			if (!line) return;
-
-			const available = line.hasUnlimitedStock
-				? Number.POSITIVE_INFINITY
-				: (inventoryByDessertId[line.baseDessertId] ?? 0);
-
-			const usedByOthers = cart
-				.filter((l) => l.baseDessertId === line.baseDessertId && l.cartLineId !== cartLineId)
-				.reduce((sum, l) => sum + l.quantity, 0);
-
-			const maxAllowed = available - usedByOthers;
-
-			if (maxAllowed <= 0) {
-				toast.error("Out of stock — set today's inventory");
-				removeFromCart(cartLineId);
-				return;
-			}
-
-			if (quantity > maxAllowed) {
-				setCart((cart) => cart.map((l) => (l.cartLineId === cartLineId ? { ...l, quantity: maxAllowed } : l)));
-				toast.error(`Only ${maxAllowed} available`);
-				return;
-			}
-
-			if (quantity > 199) {
-				toast.error("Quantity cannot be greater than 199");
-				return;
-			}
-
-			setCart((cart) => cart.map((l) => (l.cartLineId === cartLineId ? { ...l, quantity } : l)));
+			dispatchCart({ type: "update-quantity", cartLineId, quantity, inventoryByDessertId });
 		},
-		[cart, inventoryByDessertId, removeFromCart],
+		[inventoryByDessertId],
 	);
 
 	const clearCart = useCallback(() => {
-		setCart([]);
+		dispatchCart({ type: "clear" });
 		form.reset();
 	}, [form]);
 
@@ -288,13 +157,13 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		async (e: React.MouseEvent, dessert: Dessert) => {
 			e.stopPropagation();
 
-			const newOutOfStockState = !dessert.isOutOfStock;
+			const nextIsOutOfStock = !dessert.isOutOfStock;
 			addStockToggleLoadingId(dessert.id);
-			updateDessert(dessert.id, { isOutOfStock: newOutOfStockState });
+			updateDessert(dessert.id, { isOutOfStock: nextIsOutOfStock });
 
 			try {
-				await toggleOutOfStock(dessert.id, newOutOfStockState);
-				toast.success(`Marked as ${newOutOfStockState ? "out of stock" : "back in stock"}`);
+				await toggleOutOfStock(dessert.id, nextIsOutOfStock);
+				toast.success(`Marked as ${nextIsOutOfStock ? "out of stock" : "back in stock"}`);
 			} catch (error) {
 				toast.error("Failed to update stock status");
 				console.error("Failed to toggle stock status:", error);
@@ -361,7 +230,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 									desserts={dessertsWithInventory}
 									combos={availableCombos}
 									onAddToCart={addToCart}
-									onAddComboToCart={addComboToCart}
+									onAddComboToCart={addCombo}
 									onToggleStock={handleToggleStock}
 									stockToggleLoadingIds={stockToggleLoadingIds}
 									searchQuery={searchQuery}

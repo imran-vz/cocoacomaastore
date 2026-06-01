@@ -142,6 +142,7 @@ export default function LoginPage() {
 						<div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-white shadow-lg shadow-[#2c1810]/5">
 							<Image
 								src="/logo.png"
+								loading="eager"
 								alt="Cocoa Comaa"
 								width={36}
 								height={36}

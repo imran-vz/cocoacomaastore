@@ -52,11 +52,7 @@ export default function Navbar() {
 			initial={{ y: -20, opacity: 0 }}
 			animate={{ y: 0, opacity: 1 }}
 			transition={{ duration: 0.3, ease: "easeOut" }}
-			className={cn(
-				"sticky top-0 z-50 h-13",
-				"bg-background/95 backdrop-blur-md",
-				"md:border-b md:border-border/50",
-			)}
+			className={cn("sticky top-0 z-50 h-13", "bg-background/95 backdrop-blur-md", "md:border-b md:border-border/50")}
 		>
 			<div className="h-full flex items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">
 				{/* Logo */}
@@ -69,6 +65,7 @@ export default function Navbar() {
 						<Image
 							src="/logo.png"
 							alt="Cocoa Comaa"
+							loading="eager"
 							width={32}
 							height={32}
 							className="size-8 rounded-md object-contain"

@@ -183,6 +183,10 @@ Admin analytics:
   - The module that configures repeated Admin and Manager mutation actions with the correct role guard.
   - Admin variants use `requireAdmin`; Manager variants use `requireManagerAccess`.
   - _Avoid_: hiding role checks inside unconfigured shared helpers.
+- POS cart behaviour:
+  - The module that owns Cart line mutations, display/copy text, UPI payment text, and Order-save behaviour for POS cart adapters.
+  - Mobile and Tablet cart surfaces should stay as visual adapters over this behaviour.
+  - _Avoid_: duplicating Cart line text, UPI note generation, or save-order ordering inside visual adapters.
 
 ## Engineering Conventions
 

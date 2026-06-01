@@ -63,7 +63,7 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en">
+		<html lang="en" data-scroll-behavior="smooth">
 			<body className={cn(nunitoSans.variable, geistMono.variable, "antialiased bg-[url(/bg-grid.svg)] select-none")}>
 				<NuqsAdapter>
 					<QueryProvider>
