@@ -2,9 +2,9 @@
 
 import { requireSession as requireAuth } from "@/lib/auth/guards";
 import { isDatabaseUnavailableError } from "@/lib/errors";
-import { createCompletedOrder } from "@/lib/order-intake";
 import {
 	cancelOrderAsNormalPath,
+	createCompletedOrder,
 	type GetOrdersReturnType,
 	getCachedOrders,
 	softDeleteOrder,
@@ -20,6 +20,17 @@ interface CreateOrderWithLinesData {
 
 export { getCachedOrders, type GetOrdersReturnType };
 
+async function mapDatabaseUnavailable<T>(fn: () => Promise<T>): Promise<T> {
+	try {
+		return await fn();
+	} catch (error) {
+		if (isDatabaseUnavailableError(error)) {
+			throw new Error("Database is unavailable. Please try again.", { cause: error });
+		}
+		throw error;
+	}
+}
+
 /**
  * Creates an order from cart lines (supports modifiers).
  * - Aggregates inventory deduction by base dessert
@@ -27,29 +38,9 @@ export { getCachedOrders, type GetOrdersReturnType };
  * - Persists order_item_modifiers
  */
 export async function createOrderWithLines(data: CreateOrderWithLinesData) {
-	let user: Awaited<ReturnType<typeof requireAuth>>;
-	try {
-		user = await requireAuth();
-	} catch (error) {
-		if (isDatabaseUnavailableError(error)) {
-			throw new Error("Database is unavailable. Please try again.", {
-				cause: error,
-			});
-		}
-		throw error;
-	}
-
+	const user = await mapDatabaseUnavailable(() => requireAuth());
 	const validated = createOrderWithLinesSchema.parse(data);
-	try {
-		await createCompletedOrder(validated, user.id);
-	} catch (error) {
-		if (isDatabaseUnavailableError(error)) {
-			throw new Error("Database is unavailable. Please try again.", {
-				cause: error,
-			});
-		}
-		throw error;
-	}
+	await mapDatabaseUnavailable(() => createCompletedOrder(validated, user.id));
 }
 
 export async function deleteOrder(orderId: number) {
@@ -61,14 +52,5 @@ export async function deleteOrder(orderId: number) {
 export async function cancelOrder(orderId: number, reason?: string) {
 	const user = await requireAuth();
 	const validated = cancelOrderSchema.parse({ orderId, reason });
-	try {
-		await cancelOrderAsNormalPath(validated.orderId, user.id, validated.reason);
-	} catch (error) {
-		if (isDatabaseUnavailableError(error)) {
-			throw new Error("Database is unavailable. Please try again.", {
-				cause: error,
-			});
-		}
-		throw error;
-	}
+	await mapDatabaseUnavailable(() => cancelOrderAsNormalPath(validated.orderId, user.id, validated.reason));
 }

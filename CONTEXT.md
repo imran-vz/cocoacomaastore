@@ -40,7 +40,7 @@ The application should make day-to-day store work fast and clear:
   - Completed, non-deleted orders are the source of truth for revenue analytics.
   - Order lifecycle covers reading manager Orders, creating completed Orders, cancelling Orders, and the soft-delete cleanup path.
   - Cancellation is the normal operational path for reversing an Order.
-  - Orders are expected to be finalized within the same operating day; changing an order after its day has passed is not a normal workflow.
+  - Orders are expected to be finalized within the same operating day; cancellation is only allowed on the same operating day.
 - Order item:
   - A line in `order_items`, with snapshotted `unitPrice`.
   - Optional combo fields preserve combo identity after order creation.
@@ -48,9 +48,9 @@ The application should make day-to-day store work fast and clear:
   - A persisted modifier selection in `order_item_modifiers`.
   - Modifier revenue is currently attributed as zero in dessert-level analytics unless sold as a base order item; modifier quantity is still counted.
 - Cart line:
-  - The canonical Order intake shape for POS carts.
+  - The canonical POS cart shape before an Order crosses the Order lifecycle module interface.
   - Represents one base Dessert, optional modifier selections, optional Combo identity, snapshotted unit price, and line quantity.
-  - Legacy base-only cart items should be adapted into cart lines before crossing the Order intake module interface.
+  - Legacy base-only cart items should be adapted into cart lines before crossing the Order lifecycle module interface.
 - Daily inventory:
   - `daily_dessert_inventory` stores stock per dessert per day.
 - Inventory audit log:
