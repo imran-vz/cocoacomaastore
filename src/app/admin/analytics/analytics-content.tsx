@@ -2,22 +2,29 @@
 
 import { IconCalendar, IconChartBar, IconLoader2, IconTrendingUp, IconX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import type { ComponentProps } from "react";
-import { use, useCallback, useEffect, useMemo, useState } from "react";
-import { Bar, CartesianGrid, Cell, ComposedChart, Line, Pie, PieChart, XAxis, YAxis } from "recharts";
+import type { ReactNode } from "react";
+import { lazy, Suspense, use, useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { MonthlyDessertRevenue, MonthlyRevenue, WeeklyRevenue } from "@/app/admin/dashboard/actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	type ChartConfig,
-	ChartContainer,
-	ChartLegend,
-	ChartLegendContent,
-	ChartTooltip,
-	ChartTooltipContent,
-} from "@/components/ui/chart";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn, formatCurrency } from "@/lib/utils";
+import {
+	displayedTrendMonth,
+	getTrendTransition,
+	initialTrendState,
+	isReturningToMonthly,
+	selectedTrendMonth,
+	type TrendState,
+	trendReducer,
+} from "@/lib/analytics-trend-machine";
+import { formatCurrency } from "@/lib/utils";
+
+const TrendDesktopChart = lazy(() =>
+	import("./analytics-charts").then((module) => ({ default: module.TrendDesktopChart })),
+);
+const DessertRevenueDesktopPanel = lazy(() =>
+	import("./analytics-charts").then((module) => ({ default: module.DessertRevenueDesktopPanel })),
+);
 
 type AnalyticsContentProps = {
 	monthlyRevenue: Promise<MonthlyRevenue[]>;
@@ -32,14 +39,14 @@ type AnalyticsOverview = {
 	initialMonth: string;
 };
 
-type MonthlyChartRow = {
+export type MonthlyChartRow = {
 	month: string;
 	monthKey: string;
 	revenue: number | null;
 	orders: number | null;
 };
 
-type TrendChartRow = {
+export type TrendChartRow = {
 	key: string;
 	label: string;
 	subtitle: string;
@@ -48,10 +55,11 @@ type TrendChartRow = {
 	monthKey?: string;
 };
 
-type PieChartRow = {
+export type PieChartRow = {
 	name: string;
 	value: number;
 	percent: number;
+	quantitySold: number;
 	fill: string;
 };
 
@@ -68,75 +76,10 @@ const COLORS = [
 	"oklch(0.57 0.1 25)",
 ];
 
-const monthlyRevenueChartConfig = {
-	revenue: {
-		label: "Revenue",
-		color: "#f2b38d",
-	},
-	orders: {
-		label: "Orders",
-		color: "#12877f",
-	},
-} satisfies ChartConfig;
-
-const dessertRevenueChartConfig = {
-	value: {
-		label: "Revenue",
-		color: "var(--chart-1)",
-	},
-} satisfies ChartConfig;
-
-type DelayedChartTooltipContentProps = ComponentProps<typeof ChartTooltipContent> & {
-	delayMs?: number;
-};
-
-function DelayedChartTooltipContent({
-	active,
-	label,
-	delayMs = 430,
-	className,
-	...props
-}: DelayedChartTooltipContentProps) {
-	const [isVisible, setIsVisible] = useState(false);
-	const tooltipIdentity = active ? String(label ?? "") : "__inactive__";
-
-	useEffect(() => {
-		setIsVisible(false);
-
-		if (tooltipIdentity === "__inactive__") return;
-
-		const timeout = window.setTimeout(() => {
-			setIsVisible(true);
-		}, delayMs);
-
-		return () => window.clearTimeout(timeout);
-	}, [delayMs, tooltipIdentity]);
-
-	if (!active) return null;
-
-	return (
-		<ChartTooltipContent
-			active={active}
-			className={cn("transition-opacity duration-100", isVisible ? "opacity-100" : "opacity-0", className)}
-			label={label}
-			{...props}
-		/>
-	);
-}
-
 function formatMonth(month: string): string {
 	const [year, monthNum] = month.split("-");
 	const date = new Date(Number(year), Number(monthNum) - 1);
 	return date.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
-}
-
-function toNumber(value: unknown): number {
-	return typeof value === "number" ? value : Number(value ?? 0);
-}
-
-function formatChartValue(value: unknown, name: unknown) {
-	const metricName = String(name);
-	return metricName === "Revenue" || metricName === "revenue" ? formatCurrency(toNumber(value)) : toNumber(value);
 }
 
 async function fetchMonthlyDessertRevenue(month: string, signal?: AbortSignal): Promise<MonthlyDessertRevenue[]> {
@@ -202,8 +145,33 @@ function buildPieChartData(dessertRevenue: MonthlyDessertRevenue[]): PieChartRow
 		name: dessert.dessertName,
 		value: dessert.grossRevenue,
 		percent: total > 0 ? dessert.grossRevenue / total : 0,
+		quantitySold: dessert.quantitySold,
 		fill: COLORS[index % COLORS.length],
 	}));
+}
+
+function useIsDesktop() {
+	const [isDesktop, setIsDesktop] = useState(false);
+
+	useEffect(() => {
+		const mediaQuery = window.matchMedia("(min-width: 768px)");
+		const updateIsDesktop = () => setIsDesktop(mediaQuery.matches);
+
+		updateIsDesktop();
+		mediaQuery.addEventListener("change", updateIsDesktop);
+
+		return () => mediaQuery.removeEventListener("change", updateIsDesktop);
+	}, []);
+
+	return isDesktop;
+}
+
+function DesktopChartSlot({ children, fallbackClassName }: { children: ReactNode; fallbackClassName: string }) {
+	const isDesktop = useIsDesktop();
+
+	if (!isDesktop) return null;
+
+	return <Suspense fallback={<div className={fallbackClassName} aria-hidden="true" />}>{children}</Suspense>;
 }
 
 function SummaryCards({
@@ -365,97 +333,6 @@ function TrendMobileRows({
 	);
 }
 
-function TrendDesktopChart({
-	rows,
-	isWeeklyTrend,
-	isTrendTransitioning,
-	onMonthSelect,
-}: {
-	rows: TrendChartRow[];
-	isWeeklyTrend: boolean;
-	isTrendTransitioning: boolean;
-	onMonthSelect: (month: string) => void;
-}) {
-	return (
-		<div className="relative hidden md:block">
-			<ChartContainer config={monthlyRevenueChartConfig} className="h-80 w-full transition-opacity md:flex">
-				<ComposedChart data={rows} margin={{ top: 12, right: 18, left: 0, bottom: 0 }}>
-					<CartesianGrid strokeDasharray="3 8" vertical={false} stroke="var(--border)" strokeOpacity={0.75} />
-					<XAxis dataKey="label" axisLine={false} tickLine={false} tickMargin={12} />
-					<YAxis
-						yAxisId="revenue"
-						axisLine={false}
-						tickLine={false}
-						tickMargin={12}
-						tickFormatter={(value) => (value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`)}
-						width={58}
-					/>
-					<YAxis yAxisId="orders" orientation="right" axisLine={false} tickLine={false} tickMargin={12} width={34} />
-					<ChartTooltip
-						content={
-							<DelayedChartTooltipContent
-								formatter={(value, name) => (
-									<div className="flex w-full items-center justify-between gap-8">
-										<span className="text-muted-foreground">{String(name)}</span>
-										<span className="font-mono font-medium tabular-nums">{formatChartValue(value, name)}</span>
-									</div>
-								)}
-							/>
-						}
-					/>
-					<ChartLegend content={<ChartLegendContent />} />
-					<Bar
-						yAxisId="revenue"
-						dataKey="revenue"
-						fill="var(--color-revenue)"
-						name="Revenue"
-						radius={[4, 4, 0, 0]}
-						barSize={isWeeklyTrend ? 44 : 26}
-						activeBar={false}
-						animationDuration={750}
-						animationEasing="ease-in-out"
-						onClick={(entry: unknown) => {
-							if (isWeeklyTrend) return;
-							const monthKey = (entry as { payload?: { monthKey?: string } }).payload?.monthKey;
-							if (monthKey && !isTrendTransitioning) onMonthSelect(monthKey);
-						}}
-					>
-						{rows.map((entry) => (
-							<Cell
-								key={`trend-bar-${entry.key}`}
-								cursor={
-									!isWeeklyTrend && !isTrendTransitioning && entry.monthKey && entry.revenue !== null
-										? "pointer"
-										: "default"
-								}
-								fill="var(--color-revenue)"
-								opacity={entry.revenue === null ? 0.28 : 1}
-							/>
-						))}
-					</Bar>
-					<Line
-						yAxisId="orders"
-						type="monotone"
-						dataKey="orders"
-						stroke="var(--color-orders)"
-						strokeWidth={3}
-						name="Orders"
-						dot={isWeeklyTrend}
-						animationDuration={650}
-						animationEasing="ease-in-out"
-						activeDot={{
-							r: 4,
-							strokeWidth: 2,
-							stroke: "var(--background)",
-							fill: "var(--color-orders)",
-						}}
-					/>
-				</ComposedChart>
-			</ChartContainer>
-		</div>
-	);
-}
-
 function RevenueTrendCard({
 	hasRevenue,
 	isWeeklyTrend,
@@ -536,12 +413,14 @@ function RevenueTrendCard({
 							selectedTrendMonth={selectedTrendMonth}
 							onMonthSelect={onMonthSelect}
 						/>
-						<TrendDesktopChart
-							rows={trendChartData}
-							isWeeklyTrend={isWeeklyTrend}
-							isTrendTransitioning={isTrendTransitioning}
-							onMonthSelect={onMonthSelect}
-						/>
+						<DesktopChartSlot fallbackClassName="hidden h-80 md:block">
+							<TrendDesktopChart
+								rows={trendChartData}
+								isWeeklyTrend={isWeeklyTrend}
+								isTrendTransitioning={isTrendTransitioning}
+								onMonthSelect={onMonthSelect}
+							/>
+						</DesktopChartSlot>
 					</>
 				) : (
 					<div className="h-80 flex items-center justify-center text-muted-foreground">
@@ -597,7 +476,7 @@ function DessertRevenueMobileList({
 								<div className="min-w-0 flex-1">
 									<p className="truncate text-sm font-medium">{entry.name}</p>
 									<p className="text-xs text-muted-foreground tabular-nums">
-										{(entry.percent * 100).toFixed(0)}% of top desserts
+										{(entry.percent * 100).toFixed(0)}% of top desserts ({entry.quantitySold.toLocaleString()} Nos)
 									</p>
 								</div>
 								<p className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(entry.value)}</p>
@@ -608,111 +487,6 @@ function DessertRevenueMobileList({
 						</div>
 					);
 				})}
-			</div>
-		</div>
-	);
-}
-
-function DessertRevenueDesktopPanel({
-	rows,
-	topDessertShare,
-	total,
-}: {
-	rows: PieChartRow[];
-	topDessertShare: number;
-	total: number;
-}) {
-	return (
-		<div className="hidden gap-6 md:grid xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.35fr)] xl:items-center">
-			<div className="relative mx-auto aspect-square w-full max-w-96">
-				<ChartContainer config={dessertRevenueChartConfig} className="h-full w-full">
-					<PieChart>
-						<Pie
-							data={rows}
-							cx="50%"
-							cy="50%"
-							innerRadius="62%"
-							outerRadius="84%"
-							cornerRadius={12}
-							paddingAngle={3}
-							dataKey="value"
-							stroke="var(--card)"
-							strokeWidth={3}
-						>
-							{rows.map((entry) => (
-								<Cell key={entry.name} fill={entry.fill} />
-							))}
-						</Pie>
-						<ChartTooltip
-							shared={false}
-							wrapperStyle={{ zIndex: 30 }}
-							content={
-								<ChartTooltipContent
-									hideLabel
-									nameKey="name"
-									formatter={(value, name, item) => (
-										<div className="flex w-full items-center justify-between gap-8">
-											<span className="text-muted-foreground">{String(name)}</span>
-											<div className="text-right">
-												<div className="font-mono font-medium tabular-nums">{formatCurrency(toNumber(value))}</div>
-												<div className="text-[0.7rem] text-muted-foreground">
-													{((Number(item.payload?.percent) || 0) * 100).toFixed(1)}%
-												</div>
-											</div>
-										</div>
-									)}
-								/>
-							}
-						/>
-					</PieChart>
-				</ChartContainer>
-				<div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
-					<div className="grid size-32 place-items-center rounded-full border bg-card/95 shadow-sm ring-8 ring-background/70">
-						<div className="text-center">
-							<div className="text-[0.68rem] font-medium uppercase text-muted-foreground tracking-normal">Total</div>
-							<div className="text-lg font-semibold tabular-nums">{formatCurrency(total)}</div>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div className="space-y-3">
-				<div className="grid gap-3 sm:grid-cols-3">
-					<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
-						<p className="text-xs font-medium text-muted-foreground">Largest share</p>
-						<p className="mt-1 text-lg font-semibold tabular-nums">{(topDessertShare * 100).toFixed(0)}%</p>
-					</div>
-					<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
-						<p className="text-xs font-medium text-muted-foreground">Desserts shown</p>
-						<p className="mt-1 text-lg font-semibold tabular-nums">{rows.length}</p>
-					</div>
-					<div className="rounded-lg border bg-muted/35 px-3 py-2.5">
-						<p className="text-xs font-medium text-muted-foreground">Top dessert</p>
-						<p className="mt-1 truncate text-lg font-semibold">{rows[0]?.name}</p>
-					</div>
-				</div>
-				<div className="grid gap-2 md:grid-cols-2">
-					{rows.map((entry) => (
-						<div
-							key={entry.name}
-							className="group rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-muted/40"
-						>
-							<div className="flex items-center gap-3">
-								<span
-									className="h-9 w-1.5 shrink-0 rounded-full"
-									style={{ backgroundColor: entry.fill }}
-									aria-hidden="true"
-								/>
-								<div className="min-w-0 flex-1">
-									<div className="truncate text-sm font-medium">{entry.name}</div>
-									<div className="text-xs text-muted-foreground tabular-nums">
-										{(entry.percent * 100).toFixed(0)}% of top desserts
-									</div>
-								</div>
-								<div className="text-right text-sm font-semibold tabular-nums">{formatCurrency(entry.value)}</div>
-							</div>
-						</div>
-					))}
-				</div>
 			</div>
 		</div>
 	);
@@ -771,7 +545,9 @@ function DessertRevenueCard({
 							total={total}
 							maxDessertRevenue={maxDessertRevenue}
 						/>
-						<DessertRevenueDesktopPanel rows={rows} topDessertShare={topDessertShare} total={total} />
+						<DesktopChartSlot fallbackClassName="hidden min-h-96 md:block">
+							<DessertRevenueDesktopPanel rows={rows} topDessertShare={topDessertShare} total={total} />
+						</DesktopChartSlot>
 					</div>
 				)}
 			</CardContent>
@@ -842,38 +618,34 @@ function useWeeklyRevenueQuery(selectedTrendMonth: string | null) {
 	});
 }
 
+const TREND_EXIT_DURATION_MS = 160;
+
 function useTrendController() {
-	const [selectedTrendMonth, setSelectedTrendMonth] = useState<string | null>(null);
-	const [displayedTrendMonth, setDisplayedTrendMonth] = useState<string | null>(null);
-	const [isReturningToMonthly, setIsReturningToMonthly] = useState(false);
-	const weeklyRevenueQuery = useWeeklyRevenueQuery(selectedTrendMonth);
+	const [trendState, dispatchTrend] = useReducer(trendReducer, initialTrendState);
+	const selectedMonth = selectedTrendMonth(trendState);
+	const displayedMonth = displayedTrendMonth(trendState);
+	const weeklyRevenueQuery = useWeeklyRevenueQuery(selectedMonth);
+	const { isWeeklyTrend, isTrendTransitioning } = getTrendTransition(trendState, weeklyRevenueQuery.isFetching);
 	const handleTrendMonthSelect = useCallback((month: string) => {
-		setIsReturningToMonthly(false);
-		setSelectedTrendMonth(month);
+		dispatchTrend({ type: "select", month });
 	}, []);
 	const handleTrendMonthClear = useCallback(() => {
-		if (!displayedTrendMonth) return;
-		setIsReturningToMonthly(true);
-	}, [displayedTrendMonth]);
+		dispatchTrend({ type: "clear" });
+	}, []);
 
 	useEffect(() => {
-		if (!selectedTrendMonth || weeklyRevenueQuery.dataUpdatedAt === 0 || weeklyRevenueQuery.isFetching) return;
+		if (!selectedMonth || weeklyRevenueQuery.dataUpdatedAt === 0 || weeklyRevenueQuery.isFetching) return;
 
-		setDisplayedTrendMonth(selectedTrendMonth);
-	}, [selectedTrendMonth, weeklyRevenueQuery.dataUpdatedAt, weeklyRevenueQuery.isFetching]);
+		dispatchTrend({ type: "loaded" });
+	}, [selectedMonth, weeklyRevenueQuery.dataUpdatedAt, weeklyRevenueQuery.isFetching]);
 	useEffect(() => {
-		if (!isReturningToMonthly) return;
+		if (trendState.status !== "exiting") return;
 
-		const timeout = window.setTimeout(() => {
-			setDisplayedTrendMonth(null);
-			setSelectedTrendMonth(null);
-			setIsReturningToMonthly(false);
-		}, 160);
-
+		const timeout = window.setTimeout(() => dispatchTrend({ type: "exitComplete" }), TREND_EXIT_DURATION_MS);
 		return () => window.clearTimeout(timeout);
-	}, [isReturningToMonthly]);
+	}, [trendState.status]);
 	useEffect(() => {
-		if (!displayedTrendMonth) return;
+		if (!displayedMonth) return;
 
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (event.key === "Escape") {
@@ -883,12 +655,15 @@ function useTrendController() {
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [displayedTrendMonth, handleTrendMonthClear]);
+	}, [displayedMonth, handleTrendMonthClear]);
 
 	return {
-		selectedTrendMonth,
-		displayedTrendMonth,
-		isReturningToMonthly,
+		selectedTrendMonth: selectedMonth,
+		displayedTrendMonth: displayedMonth,
+		isReturningToMonthly: isReturningToMonthly(trendState),
+		isWeeklyTrend,
+		isTrendTransitioning,
+		trendLoadingLabel: getTrendLoadingLabel(trendState),
 		handleTrendMonthSelect,
 		handleTrendMonthClear,
 		weeklyRevenueQuery,
@@ -918,17 +693,13 @@ function useAnalyticsMetrics({
 
 function useTrendRows({
 	displayedTrendMonth,
-	isLoadingWeeklyRevenue,
-	isReturningToMonthly,
+	isWeeklyTrend,
 	monthlyRevenue,
-	selectedTrendMonth,
 	weeklyRevenue,
 }: {
 	displayedTrendMonth: string | null;
-	isLoadingWeeklyRevenue: boolean;
-	isReturningToMonthly: boolean;
+	isWeeklyTrend: boolean;
 	monthlyRevenue: MonthlyRevenue[];
-	selectedTrendMonth: string | null;
 	weeklyRevenue: WeeklyRevenue[];
 }) {
 	const currentYear = new Date().getFullYear();
@@ -963,11 +734,6 @@ function useTrendRows({
 			})),
 		[monthlyChartData],
 	);
-	const isWeeklyTrend = !!displayedTrendMonth;
-	const isLoadingTrendMonth =
-		!!selectedTrendMonth && selectedTrendMonth !== displayedTrendMonth && isLoadingWeeklyRevenue;
-	const isTrendTransitioning = isLoadingTrendMonth || isReturningToMonthly;
-	const trendLoadingLabel = getTrendLoadingLabel({ isReturningToMonthly, selectedTrendMonth });
 	const trendChartData = useMemo(
 		() => (isWeeklyTrend ? weeklyChartData : monthlyTrendData),
 		[isWeeklyTrend, monthlyTrendData, weeklyChartData],
@@ -986,12 +752,9 @@ function useTrendRows({
 	return {
 		bestTrendRow,
 		displayedTrendMonthLabel,
-		isTrendTransitioning,
-		isWeeklyTrend,
 		maxTrendRevenue,
 		mobileTrendRows,
 		trendChartData,
-		trendLoadingLabel,
 	};
 }
 
@@ -1013,15 +776,10 @@ function findBestTrendRow(rows: TrendChartRow[]) {
 	);
 }
 
-function getTrendLoadingLabel({
-	isReturningToMonthly,
-	selectedTrendMonth,
-}: {
-	isReturningToMonthly: boolean;
-	selectedTrendMonth: string | null;
-}) {
-	if (isReturningToMonthly) return "Loading monthly";
-	return selectedTrendMonth ? `Loading ${formatMonth(selectedTrendMonth)}` : "Loading";
+function getTrendLoadingLabel(state: TrendState): string {
+	if (state.status === "exiting") return "Loading monthly";
+	const month = selectedTrendMonth(state);
+	return month ? `Loading ${formatMonth(month)}` : "Loading";
 }
 
 function useQueryErrorLogs({
@@ -1056,36 +814,32 @@ export function AnalyticsContent({
 	availableMonths: availableMonthsPromise,
 	initialMonth: initialMonthPromise,
 }: AnalyticsContentProps) {
-	const initialData = useInitialAnalyticsData({
+	const { initialDessertRevenue, initialMonth, initialOverview } = useInitialAnalyticsData({
 		monthlyRevenue,
 		monthlyDessertRevenue,
 		availableMonths: availableMonthsPromise,
 		initialMonth: initialMonthPromise,
 	});
-	const { initialDessertRevenue, initialMonth, initialOverview } = initialData;
 	const [selectedMonth, setSelectedMonth] = useState(initialMonth);
-	const handleMonthChange = useCallback((month: string) => {
-		setSelectedMonth(month);
-	}, []);
 	const { dessertRevenueQuery, overviewQuery } = useAnalyticsQueries({
 		initialDessertRevenue,
 		initialMonth,
 		initialOverview,
 		selectedMonth,
 	});
+	const dessertRevenue = dessertRevenueQuery.data ?? [];
+	const overviewMonthlyRevenue = overviewQuery.data.monthlyRevenue;
 	const trendSelection = useTrendController();
 	const { weeklyRevenueQuery } = trendSelection;
 	const trendRows = useTrendRows({
 		displayedTrendMonth: trendSelection.displayedTrendMonth,
-		isLoadingWeeklyRevenue: weeklyRevenueQuery.isFetching,
-		isReturningToMonthly: trendSelection.isReturningToMonthly,
-		monthlyRevenue: overviewQuery.data.monthlyRevenue,
-		selectedTrendMonth: trendSelection.selectedTrendMonth,
+		isWeeklyTrend: trendSelection.isWeeklyTrend,
+		monthlyRevenue: overviewMonthlyRevenue,
 		weeklyRevenue: weeklyRevenueQuery.data ?? [],
 	});
 	const metrics = useAnalyticsMetrics({
-		dessertRevenue: dessertRevenueQuery.data ?? [],
-		monthlyRevenue: overviewQuery.data.monthlyRevenue,
+		dessertRevenue,
+		monthlyRevenue: overviewMonthlyRevenue,
 		selectedMonth,
 	});
 	useQueryErrorLogs({
@@ -1094,10 +848,8 @@ export function AnalyticsContent({
 		weeklyRevenueError: weeklyRevenueQuery.error,
 	});
 
-	const dessertRevenue = dessertRevenueQuery.data ?? [];
 	const pieChartData = useMemo(() => buildPieChartData(dessertRevenue), [dessertRevenue]);
 	const availableMonths = overviewQuery.data.availableMonths;
-	const overviewMonthlyRevenue = overviewQuery.data.monthlyRevenue;
 
 	return (
 		<div className="flex-1 space-y-6">
@@ -1116,10 +868,10 @@ export function AnalyticsContent({
 			/>
 			<RevenueTrendCard
 				hasRevenue={overviewMonthlyRevenue.length > 0}
-				isWeeklyTrend={trendRows.isWeeklyTrend}
+				isWeeklyTrend={trendSelection.isWeeklyTrend}
 				displayedMonthLabel={trendRows.displayedTrendMonthLabel}
-				isTrendTransitioning={trendRows.isTrendTransitioning}
-				trendLoadingLabel={trendRows.trendLoadingLabel}
+				isTrendTransitioning={trendSelection.isTrendTransitioning}
+				trendLoadingLabel={trendSelection.trendLoadingLabel}
 				isReturningToMonthly={trendSelection.isReturningToMonthly}
 				mobileRows={trendRows.mobileTrendRows}
 				bestRow={trendRows.bestTrendRow}
@@ -1135,7 +887,7 @@ export function AnalyticsContent({
 				selectedMonth={selectedMonth}
 				availableMonths={availableMonths}
 				isLoading={dessertRevenueQuery.isFetching}
-				onMonthChange={handleMonthChange}
+				onMonthChange={setSelectedMonth}
 			/>
 		</div>
 	);
