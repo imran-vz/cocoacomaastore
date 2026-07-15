@@ -30,7 +30,7 @@ weaken a STOP condition merely to keep moving.
 | 007 | [Add disposable PostgreSQL lifecycle/reporting tests](007-add-database-lifecycle-reporting-tests.md) | P1 | M | MED | 005, 006 | DONE |
 | 008 | [Establish versioned database migrations](008-establish-versioned-database-migrations.md) | P1 | M | HIGH | 006, 007 | SKIPPED |
 | 009 | [Create server-owned order snapshots](009-create-server-owned-order-snapshots.md) | P1 | L | HIGH | 007, 008 | SKIPPED |
-| 010 | [Make inventory writes audited and concurrency-safe](010-make-inventory-writes-audited-and-concurrency-safe.md) | P1 | M | HIGH | 007 | TODO |
+| 010 | [Make inventory writes audited and concurrency-safe](010-make-inventory-writes-audited-and-concurrency-safe.md) | P1 | M | HIGH | 007 | DONE |
 | 011 | [Make order submission idempotent](011-make-order-submission-idempotent.md) | P1 | M | HIGH | 007, 008, 009 | SKIPPED |
 | 012 | [Upgrade vulnerable production dependencies](012-upgrade-vulnerable-production-dependencies.md) | P1 | M | HIGH | 001, 004, 006, 007, 008 | SKIPPED |
 | 013 | [Remove inline full-day analytics compilation](013-remove-synchronous-full-day-analytics-from-order-mutations.md) | P2 | S | MED | 007, 011 | SKIPPED |
