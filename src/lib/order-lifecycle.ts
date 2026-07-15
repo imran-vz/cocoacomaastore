@@ -49,7 +49,7 @@ export type SerializedOrderDetails = Omit<OrderDetails, "createdAt"> & {
 
 export type SerializedOrders = SerializedOrderDetails[];
 
-type OrderMutationTag = (typeof OrderTags.mutation)[number] | (typeof OrderTags.delete)[number];
+type OrderMutationTag = (typeof OrderTags.mutation)[number];
 
 export type InventoryDeductionRequest = {
 	dessertId: number;
@@ -91,10 +91,6 @@ function refreshOrderMutationViewsEffect(date: Date, tags: readonly OrderMutatio
 
 function refreshOrderMutationViewsAfterMutation(date: Date) {
 	return refreshOrderMutationViewsEffect(date, OrderTags.mutation);
-}
-
-function refreshOrderMutationViewsAfterDelete(date: Date) {
-	return refreshOrderMutationViewsEffect(date, OrderTags.delete);
 }
 
 function computeCartLineOrderTotal(lines: readonly CartLine[], deliveryCost: string) {
@@ -425,27 +421,6 @@ export async function createCompletedOrder(data: CreateCompletedOrderInput, user
 	);
 }
 
-function softDeleteOrderEffect(orderId: number) {
-	return Effect.gen(function* () {
-		const database = yield* Database;
-
-		const [order] = yield* database.attempt("soft delete order", (db) =>
-			db
-				.update(ordersTable)
-				.set({ isDeleted: true })
-				.where(eq(ordersTable.id, orderId))
-				.returning({ createdAt: ordersTable.createdAt }),
-		);
-
-		if (order) {
-			yield* refreshOrderMutationViewsAfterDelete(order.createdAt);
-			return;
-		}
-
-		yield* updateTagsEffect(OrderTags.delete);
-	});
-}
-
 function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?: string, now = new Date()) {
 	const day = getAnalyticsDay(now);
 
@@ -528,10 +503,6 @@ function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?:
 
 		yield* refreshOrderMutationViewsAfterMutation(order.createdAt);
 	});
-}
-
-export async function softDeleteOrder(orderId: number) {
-	await runOrderLifecycleOperation("deleteOrder", () => runNextAppEffect(softDeleteOrderEffect(orderId)));
 }
 
 export async function cancelOrderAsNormalPath(orderId: number, userId: string, reason?: string) {

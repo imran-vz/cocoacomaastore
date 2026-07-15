@@ -41,10 +41,6 @@ export const createOrderWithLinesSchema = z.object({
 		}, "Delivery cost must be between 0 and 10000"),
 });
 
-export const deleteOrderSchema = z.object({
-	orderId: z.number().int().positive(),
-});
-
 export const cancelOrderSchema = z.object({
 	orderId: z.number().int().positive(),
 	reason: z.string().trim().min(1).max(500).optional(),

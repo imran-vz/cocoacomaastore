@@ -25,7 +25,6 @@ export type CacheTag = (typeof CacheTag)[keyof typeof CacheTag];
 
 export const OrderTags = {
 	mutation: [CacheTag.orders, CacheTag.inventory, CacheTag.dashboard, CacheTag.analytics] as const,
-	delete: [CacheTag.orders, CacheTag.dashboard, CacheTag.analytics] as const,
 } as const;
 
 export const ComboTags = {
@@ -111,10 +110,6 @@ export function updateNextCacheEffect({
 
 export function updateOrderTagsEffect() {
 	return updateTagsEffect(OrderTags.mutation);
-}
-
-export function updateOrderDeleteTagsEffect() {
-	return updateTagsEffect(OrderTags.delete);
 }
 
 export function updateComboTagsEffect() {

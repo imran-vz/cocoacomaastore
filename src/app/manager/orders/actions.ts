@@ -7,10 +7,9 @@ import {
 	createCompletedOrder,
 	getCachedOrders as getCachedOrdersCore,
 	serializeOrders,
-	softDeleteOrder,
 } from "@/lib/order-lifecycle";
 import type { CartLine } from "@/lib/types";
-import { cancelOrderSchema, createOrderWithLinesSchema, deleteOrderSchema } from "@/lib/validation";
+import { cancelOrderSchema, createOrderWithLinesSchema } from "@/lib/validation";
 
 interface CreateOrderWithLinesData {
 	customerName: string;
@@ -44,12 +43,6 @@ export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 	const user = await mapDatabaseUnavailable(() => requireAuth());
 	const validated = createOrderWithLinesSchema.parse(data);
 	await mapDatabaseUnavailable(() => createCompletedOrder(validated, user.id));
-}
-
-export async function deleteOrder(orderId: number) {
-	await requireAuth();
-	const { orderId: validatedOrderId } = deleteOrderSchema.parse({ orderId });
-	await softDeleteOrder(validatedOrderId);
 }
 
 export async function cancelOrder(orderId: number, reason?: string) {

@@ -38,8 +38,8 @@ The application should make day-to-day store work fast and clear:
   - A customer transaction in `orders`.
   - Relevant statuses are `pending`, `completed`, and `cancelled`.
   - Completed, non-deleted orders are the source of truth for revenue analytics.
-  - Order lifecycle covers reading manager Orders, creating completed Orders, cancelling Orders, and the soft-delete cleanup path.
-  - Cancellation is the normal operational path for reversing an Order.
+  - Order lifecycle covers reading manager Orders, creating completed Orders, and cancelling Orders.
+  - Cancellation is the sole operational path for reversing an Order.
   - Orders are expected to be finalized within the same operating day; cancellation is only allowed on the same operating day.
 - Order item:
   - A line in `order_items`, with snapshotted `unitPrice`.

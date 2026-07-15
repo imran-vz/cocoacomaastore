@@ -24,7 +24,7 @@ weaken a STOP condition merely to keep moving.
 | 002 | [Guard exported server-action readers](002-guard-server-action-readers.md) | P1 | S | LOW | — | DONE |
 | 003 | [Redact database query parameters](003-redact-database-query-parameters.md) | P1 | S | LOW | — | DONE |
 | 004 | [Protect current and final administrators](004-protect-admin-account-deletion.md) | P1 | M | MED | 001, 002 | DONE |
-| 005 | [Remove unsafe order soft deletion](005-remove-unsafe-order-soft-delete.md) | P1 | S | LOW | — | TODO |
+| 005 | [Remove unsafe order soft deletion](005-remove-unsafe-order-soft-delete.md) | P1 | S | LOW | — | DONE |
 | 006 | [Establish a green quality gate](006-establish-green-quality-gate.md) | P1 | S | LOW | — | TODO |
 | 007 | [Add disposable PostgreSQL lifecycle/reporting tests](007-add-database-lifecycle-reporting-tests.md) | P1 | M | MED | 005, 006 | TODO |
 | 008 | [Establish versioned database migrations](008-establish-versioned-database-migrations.md) | P1 | M | HIGH | 006, 007 | TODO |

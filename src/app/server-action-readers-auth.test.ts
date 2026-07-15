@@ -24,7 +24,6 @@ vi.mock("@/lib/order-lifecycle", () => ({
 	createCompletedOrder: vi.fn(),
 	getCachedOrders: spies.getCachedOrdersCore,
 	serializeOrders: spies.serializeOrders,
-	softDeleteOrder: vi.fn(),
 }));
 
 vi.mock("@/lib/daily-inventory", () => ({
