@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { authClient } from "@/lib/auth-client";
 import { createManager, deleteManager, type ManagerRow } from "../actions";
 
 const managersQueryKey = ["admin-managers"] as const;
@@ -34,6 +35,7 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 	const passwordID = useId();
 	const roleID = useId();
 	const initialManagers = use(managers);
+	const { data: session, isPending: isSessionPending } = authClient.useSession();
 	const queryClient = useQueryClient();
 	const { data: managersList, error } = useQuery({
 		queryKey: managersQueryKey,
@@ -65,8 +67,8 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 		}
 	};
 
-	const handleDelete = async (id: string) => {
-		if (!confirm("Are you sure you want to delete this manager?")) {
+	const handleDelete = async (id: string, name: string) => {
+		if (!confirm(`Are you sure you want to delete ${name}?`)) {
 			return;
 		}
 
@@ -171,21 +173,42 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{managersList.map((manager) => (
-							<TableRow key={manager.id}>
-								<TableCell className="font-medium">{manager.name}</TableCell>
-								<TableCell>{manager.email}</TableCell>
-								<TableCell className="capitalize">
-									<Badge variant={manager.role === "admin" ? "default" : "secondary"}>{manager.role}</Badge>
-								</TableCell>
-								<TableCell>{new Date(manager.createdAt).toLocaleDateString()}</TableCell>
-								<TableCell className="text-right">
-									<Button variant="ghost" size="sm" onClick={() => handleDelete(manager.id)}>
-										<Trash2 className="h-4 w-4" />
-									</Button>
-								</TableCell>
-							</TableRow>
-						))}
+						{managersList.map((manager) => {
+							const isSelf = session?.user.id === manager.id;
+							const isLastAdmin =
+								manager.role === "admin" && managersList.filter(({ role }) => role === "admin").length === 1;
+							const deleteBlockedReason =
+								isSessionPending || !session
+									? "Delete unavailable until your session is available"
+									: isSelf
+										? "You cannot delete your own account"
+										: isLastAdmin
+											? "You cannot delete the sole administrator"
+											: undefined;
+
+							return (
+								<TableRow key={manager.id}>
+									<TableCell className="font-medium">{manager.name}</TableCell>
+									<TableCell>{manager.email}</TableCell>
+									<TableCell className="capitalize">
+										<Badge variant={manager.role === "admin" ? "default" : "secondary"}>{manager.role}</Badge>
+									</TableCell>
+									<TableCell>{new Date(manager.createdAt).toLocaleDateString()}</TableCell>
+									<TableCell className="text-right">
+										<Button
+											variant="ghost"
+											size="sm"
+											disabled={Boolean(deleteBlockedReason)}
+											title={deleteBlockedReason}
+											aria-label={deleteBlockedReason ?? `Delete ${manager.name}`}
+											onClick={() => handleDelete(manager.id, manager.name)}
+										>
+											<Trash2 className="h-4 w-4" />
+										</Button>
+									</TableCell>
+								</TableRow>
+							);
+						})}
 					</TableBody>
 				</Table>
 			</div>

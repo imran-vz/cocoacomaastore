@@ -1,10 +1,10 @@
 "use server";
 
-import { eq } from "drizzle-orm";
 import { Effect } from "effect";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import { type User, userTable } from "@/db/schema";
+import { deleteManagerAccount } from "@/lib/admin-account-deletion";
 import { auth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/auth/guards";
 import { sanitizeEmail } from "@/lib/sanitize";
@@ -69,23 +69,26 @@ export async function createManager(data: CreateManagerSchema) {
 }
 
 export async function deleteManager(id: string) {
-	await requireAdmin();
+	const actor = await requireAdmin();
 
 	// Validate input
 	const { id: validatedId } = deleteManagerSchema.parse({ id });
 
 	try {
-		await runNextAppEffect(
+		return await runNextAppEffect(
 			Effect.gen(function* () {
 				const database = yield* Database;
-				yield* database.attempt("delete manager", (db) => db.delete(userTable).where(eq(userTable.id, validatedId)));
+				const result = yield* database.attempt("delete manager", (db) =>
+					deleteManagerAccount(db, actor.id, validatedId),
+				);
+				if (!result.success) return result;
 				yield* updateNextCacheEffect({
 					tags: [CacheTag.managers],
 					paths: ["/admin/settings/managers", "/admin/managers"],
 				});
+				return result;
 			}),
 		);
-		return { success: true };
 	} catch (error) {
 		console.error("Error deleting manager:", error);
 		return { success: false, error: "Failed to delete manager" };
