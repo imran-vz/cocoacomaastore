@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { InventoryUpdate, InventoryWriteResult } from "@/lib/daily-inventory";
 import type { Dessert } from "@/lib/types";
 
 type TodayInventoryRow = {
@@ -16,12 +17,35 @@ function toInventoryMap(rows: TodayInventoryRow[]) {
 type UseInventoryOptions = {
 	desserts: Dessert[];
 	initialInventory: TodayInventoryRow[];
-	onSave: (updates: Array<{ dessertId: number; quantity: number }>) => Promise<void>;
+	onSave: (updates: InventoryUpdate[]) => Promise<InventoryWriteResult>;
 	onRefetch: () => Promise<{
 		desserts: Dessert[];
 		inventory: TodayInventoryRow[];
 	}>;
 };
+
+type InventoryDessert = Pick<Dessert, "id" | "enabled" | "hasUnlimitedStock">;
+
+function parseInventoryQuantity(value: string | undefined) {
+	if (value === undefined || value.trim() === "") return Number.NaN;
+	return Number(value);
+}
+
+export function buildDirtyInventoryUpdates(
+	desserts: InventoryDessert[],
+	quantities: Record<number, string>,
+	serverQuantities: Map<number, number>,
+): InventoryUpdate[] {
+	return desserts.flatMap((dessert) => {
+		if (!dessert.enabled || dessert.hasUnlimitedStock) return [];
+
+		const expectedQuantity = serverQuantities.get(dessert.id) ?? 0;
+		const quantity = parseInventoryQuantity(quantities[dessert.id]);
+		if (quantity === expectedQuantity) return [];
+
+		return [{ dessertId: dessert.id, expectedQuantity, quantity }];
+	});
+}
 
 export function useInventory({ desserts, initialInventory, onSave, onRefetch }: UseInventoryOptions) {
 	const initialInventoryMap = useMemo(() => toInventoryMap(initialInventory), [initialInventory]);
@@ -39,19 +63,11 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 
 	const [isSaving, setIsSaving] = useState(false);
 
-	// Track which quantities have changed from the server state
-	const changedDessertIds = useMemo(() => {
-		const changed = new Set<number>();
-		for (const dessert of desserts) {
-			if (!dessert.enabled || dessert.hasUnlimitedStock) continue;
-			const currentQty = Number.parseInt(quantities[dessert.id] ?? "0", 10);
-			const serverQty = serverQuantities.get(dessert.id) ?? 0;
-			if (currentQty !== serverQty) {
-				changed.add(dessert.id);
-			}
-		}
-		return changed;
-	}, [desserts, quantities, serverQuantities]);
+	const dirtyUpdates = useMemo(
+		() => buildDirtyInventoryUpdates(desserts, quantities, serverQuantities),
+		[desserts, quantities, serverQuantities],
+	);
+	const changedDessertIds = useMemo(() => new Set(dirtyUpdates.map(({ dessertId }) => dessertId)), [dirtyUpdates]);
 
 	const hasChanges = changedDessertIds.size > 0;
 
@@ -90,32 +106,39 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 			return;
 		}
 
+		setIsSaving(true);
 		try {
-			setIsSaving(true);
-
-			// Only send desserts that have changed quantities
-			const updates = desserts
-				.filter((d) => d.enabled && !d.hasUnlimitedStock && changedDessertIds.has(d.id))
-				.map((d) => ({
-					dessertId: d.id,
-					quantity: Number.parseInt(quantities[d.id] ?? "0", 10),
-				}));
-
-			if (updates.length > 0) {
-				await onSave(updates);
+			let result: InventoryWriteResult;
+			try {
+				result = await onSave(dirtyUpdates);
+			} catch (error) {
+				console.error(error);
+				toast.error("Failed to save inventory");
+				return;
 			}
 
-			const { desserts: newDesserts, inventory: newInventory } = await onRefetch();
-			refreshInventoryState(newDesserts, newInventory);
+			try {
+				const { desserts: newDesserts, inventory: newInventory } = await onRefetch();
+				refreshInventoryState(newDesserts, newInventory);
+			} catch (error) {
+				console.error(error);
+				toast.error(
+					result.ok
+						? "Inventory saved, but the latest stock could not be loaded. Refresh to verify current inventory."
+						: "Inventory conflict detected. Refresh to load the latest stock, then review and save again.",
+				);
+				return;
+			}
 
-			toast.success(`Inventory saved (${updates.length} item${updates.length !== 1 ? "s" : ""} updated)`);
-		} catch (error) {
-			console.error(error);
-			toast.error("Failed to save inventory");
+			if (result.ok) {
+				toast.success(`Inventory saved (${dirtyUpdates.length} item${dirtyUpdates.length !== 1 ? "s" : ""} updated)`);
+			} else {
+				toast.error("Inventory changed while you were editing. Latest stock was loaded; review and save again.");
+			}
 		} finally {
 			setIsSaving(false);
 		}
-	}, [hasChanges, desserts, changedDessertIds, quantities, onSave, onRefetch, refreshInventoryState]);
+	}, [hasChanges, dirtyUpdates, onSave, onRefetch, refreshInventoryState]);
 
 	return {
 		quantities,

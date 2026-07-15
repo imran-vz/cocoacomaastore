@@ -1,19 +1,11 @@
 "use server";
 
-import { performance } from "node:perf_hooks";
-import { Effect } from "effect";
 import { unstable_cache } from "next/cache";
 
-import { requireSession as requireAuth, requireManagerAccess } from "@/lib/auth/guards";
-import {
-	getDailyInventoryDay,
-	getDailyInventoryDayKey,
-	getInventoryForDay,
-	upsertInventoryForDayEffect,
-} from "@/lib/daily-inventory";
-import { upsertInventorySchema } from "@/lib/validation";
-import { CacheTag, updateInventoryTagsEffect } from "@/server/effect/cache-tags";
-import { runNextAppEffect } from "@/server/effect/next-runtime";
+import { requireManagerAccess } from "@/lib/auth/guards";
+import { getDailyInventoryDay, getDailyInventoryDayKey, getInventoryForDay } from "@/lib/daily-inventory";
+import { upsertInventoryWithAudit as upsertManagerInventoryWithAudit } from "@/lib/role-actions/manager-inventory";
+import { CacheTag } from "@/server/effect/cache-tags";
 
 export async function getCachedTodayInventory() {
 	await requireManagerAccess();
@@ -26,24 +18,6 @@ export async function getCachedTodayInventory() {
 	})();
 }
 
-export async function upsertTodayInventory(updates: Array<{ dessertId: number; quantity: number }>) {
-	await requireAuth();
-
-	// Validate input
-	const { updates: validatedUpdates } = upsertInventorySchema.parse({
-		updates,
-	});
-
-	const start = performance.now();
-	const day = getDailyInventoryDay();
-
-	await runNextAppEffect(
-		Effect.gen(function* () {
-			yield* upsertInventoryForDayEffect({ day, updates: validatedUpdates });
-			yield* updateInventoryTagsEffect();
-		}),
-	);
-
-	const duration = performance.now() - start;
-	console.log(`upsertTodayInventory: ${duration.toFixed(2)}ms`);
+export async function upsertTodayInventory(updates: Parameters<typeof upsertManagerInventoryWithAudit>[0]) {
+	return upsertManagerInventoryWithAudit(updates);
 }

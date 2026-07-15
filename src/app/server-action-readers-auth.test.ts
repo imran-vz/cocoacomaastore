@@ -30,7 +30,6 @@ vi.mock("@/lib/daily-inventory", () => ({
 	getDailyInventoryDay: spies.getDailyInventoryDay,
 	getDailyInventoryDayKey: spies.getDailyInventoryDayKey,
 	getInventoryForDay: spies.getInventoryForDay,
-	upsertInventoryForDayEffect: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ unstable_cache: spies.unstableCache }));

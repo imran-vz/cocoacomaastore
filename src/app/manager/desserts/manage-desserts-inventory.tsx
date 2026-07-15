@@ -84,10 +84,13 @@ export default function ManageDessertsInventory({
 
 	const refetchAll = useCallback(async () => {
 		const [dessertsResult, inventoryResult] = await Promise.all([refetchDesserts(), refetchInventory()]);
-		const newDesserts = dessertsResult.data ?? desserts;
-		const newInventory = inventoryResult.data ?? inventoryRows;
-		return { desserts: newDesserts, inventory: newInventory };
-	}, [desserts, inventoryRows, refetchDesserts, refetchInventory]);
+		if (dessertsResult.error) throw dessertsResult.error;
+		if (inventoryResult.error) throw inventoryResult.error;
+		if (!dessertsResult.data || !inventoryResult.data) {
+			throw new Error("Refetch completed without fresh inventory data");
+		}
+		return { desserts: dessertsResult.data, inventory: inventoryResult.data };
+	}, [refetchDesserts, refetchInventory]);
 
 	const refetch = useCallback(async () => {
 		await refetchAll();

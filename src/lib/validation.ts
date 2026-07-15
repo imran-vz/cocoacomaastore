@@ -126,11 +126,18 @@ export const deleteManagerSchema = z.object({
 
 const inventoryUpdateSchema = z.object({
 	dessertId: z.number().int().positive(),
+	expectedQuantity: z.number().int().min(-2147483648).max(2147483647),
 	quantity: z.number().int().min(0).max(10000),
 });
 
 export const upsertInventorySchema = z.object({
-	updates: z.array(inventoryUpdateSchema).min(1).max(1000),
+	updates: z
+		.array(inventoryUpdateSchema)
+		.min(1)
+		.max(1000)
+		.refine((updates) => new Set(updates.map(({ dessertId }) => dessertId)).size === updates.length, {
+			message: "Duplicate dessert IDs are not allowed",
+		}),
 });
 
 // ============================================================================
