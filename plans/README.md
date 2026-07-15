@@ -10,6 +10,7 @@ remains untouched in this planning phase.
 - `TODO`: not started
 - `IN PROGRESS`: implementation is active
 - `DONE`: every plan gate passed and the scoped commits are complete
+- `SKIPPED`: intentionally removed from the active roadmap by an operator decision
 - `BLOCKED`: a documented STOP condition needs an operator or product decision
 
 An executor updates only its plan row. Before implementation, run the plan's
@@ -27,15 +28,24 @@ weaken a STOP condition merely to keep moving.
 | 005 | [Remove unsafe order soft deletion](005-remove-unsafe-order-soft-delete.md) | P1 | S | LOW | — | DONE |
 | 006 | [Establish a green quality gate](006-establish-green-quality-gate.md) | P1 | S | LOW | — | DONE |
 | 007 | [Add disposable PostgreSQL lifecycle/reporting tests](007-add-database-lifecycle-reporting-tests.md) | P1 | M | MED | 005, 006 | DONE |
-| 008 | [Establish versioned database migrations](008-establish-versioned-database-migrations.md) | P1 | M | HIGH | 006, 007 | TODO |
-| 009 | [Create server-owned order snapshots](009-create-server-owned-order-snapshots.md) | P1 | L | HIGH | 007, 008 | TODO |
+| 008 | [Establish versioned database migrations](008-establish-versioned-database-migrations.md) | P1 | M | HIGH | 006, 007 | SKIPPED |
+| 009 | [Create server-owned order snapshots](009-create-server-owned-order-snapshots.md) | P1 | L | HIGH | 007, 008 | SKIPPED |
 | 010 | [Make inventory writes audited and concurrency-safe](010-make-inventory-writes-audited-and-concurrency-safe.md) | P1 | M | HIGH | 007 | TODO |
-| 011 | [Make order submission idempotent](011-make-order-submission-idempotent.md) | P1 | M | HIGH | 007, 008, 009 | TODO |
-| 012 | [Upgrade vulnerable production dependencies](012-upgrade-vulnerable-production-dependencies.md) | P1 | M | HIGH | 001, 004, 006, 007, 008 | TODO |
-| 013 | [Remove inline full-day analytics compilation](013-remove-synchronous-full-day-analytics-from-order-mutations.md) | P2 | S | MED | 007, 011 | TODO |
+| 011 | [Make order submission idempotent](011-make-order-submission-idempotent.md) | P1 | M | HIGH | 007, 008, 009 | SKIPPED |
+| 012 | [Upgrade vulnerable production dependencies](012-upgrade-vulnerable-production-dependencies.md) | P1 | M | HIGH | 001, 004, 006, 007, 008 | SKIPPED |
+| 013 | [Remove inline full-day analytics compilation](013-remove-synchronous-full-day-analytics-from-order-mutations.md) | P2 | S | MED | 007, 011 | SKIPPED |
 | 014 | [Exclude cancelled orders from sales summaries](014-exclude-cancelled-orders-from-sales-summaries.md) | P2 | S | LOW | 006 | TODO |
-| 015 | [Align order validation boundaries](015-align-order-validation-boundaries.md) | P2 | S | LOW | 006, 009 | TODO |
-| 016 | [Make setup and first-admin bootstrap reproducible](016-make-setup-and-admin-bootstrap-reproducible.md) | P2 | M | MED | 001, 003, 006, 008, 012 | TODO |
+| 015 | [Align order validation boundaries](015-align-order-validation-boundaries.md) | P2 | S | LOW | 006, 009 | SKIPPED |
+| 016 | [Make setup and first-admin bootstrap reproducible](016-make-setup-and-admin-bootstrap-reproducible.md) | P2 | M | MED | 001, 003, 006, 008, 012 | SKIPPED |
+
+## Roadmap revision
+
+On 2026-07-16, the operator chose not to establish versioned migrations while the application remains in its
+internal flow and production schema changes continue through `drizzle-kit push`. Plan 008 and every plan that
+transitively depends on it are therefore skipped. Their plan files remain available for reconsideration; their
+dependency metadata is unchanged.
+
+The remaining implementation order is Plan 010 followed by Plan 014.
 
 ## Recommended execution waves
 
