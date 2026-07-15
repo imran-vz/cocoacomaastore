@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { SerializedOrderDetails, SerializedOrders } from "@/lib/order-lifecycle";
+import { summarizeOrderSales } from "@/lib/order-sales-summary";
 import { cn } from "@/lib/utils";
 import { cancelOrder } from "./actions";
 
@@ -332,10 +333,7 @@ export default function OrdersPage({ initialOrders }: { initialOrders: Serialize
 		setTodayLabel(date);
 	}, []);
 
-	const totalItems = orders.reduce(
-		(acc, order) => acc + order.orderItems.reduce((sum, item) => sum + item.quantity, 0),
-		0,
-	);
+	const salesSummary = summarizeOrderSales(orders);
 
 	return (
 		<div className="space-y-3 max-w-3xl mx-auto">
@@ -373,7 +371,7 @@ export default function OrdersPage({ initialOrders }: { initialOrders: Serialize
 						<CardTitle className="text-xs font-medium text-muted-foreground">Items Sold</CardTitle>
 					</CardHeader>
 					<CardContent className="p-3 pt-0">
-						<div className="text-xl font-bold">{totalItems}</div>
+						<div className="text-xl font-bold">{salesSummary.itemsSold}</div>
 					</CardContent>
 				</Card>
 			</div>

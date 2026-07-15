@@ -9,6 +9,7 @@ import { DateSwitcher } from "@/components/date-switcher";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SerializedOrders } from "@/lib/order-lifecycle";
+import { summarizeOrderSales } from "@/lib/order-sales-summary";
 import { OrderCardsSkeleton } from "../loading-skeletons";
 import { OrderCard } from "./order-card";
 
@@ -85,12 +86,7 @@ export default function AdminOrdersPage({ initialOrders }: { initialOrders: Prom
 		}
 	}, [targetOrderId, isLoading, orders]);
 
-	const totalItems = orders.reduce(
-		(acc, order) => acc + order.orderItems.reduce((sum, item) => sum + item.quantity, 0),
-		0,
-	);
-
-	const totalRevenue = orders.reduce((acc, order) => acc + Number(order.total), 0);
+	const salesSummary = summarizeOrderSales(orders);
 
 	return (
 		<div className="space-y-4">
@@ -122,7 +118,7 @@ export default function AdminOrdersPage({ initialOrders }: { initialOrders: Prom
 						{isLoading ? (
 							<Skeleton className="h-7 w-8 mb-1" />
 						) : (
-							<p className="text-xl font-bold tabular-nums">{totalItems}</p>
+							<p className="text-xl font-bold tabular-nums">{salesSummary.itemsSold}</p>
 						)}
 						<p className="text-xs text-muted-foreground">Items</p>
 					</div>
@@ -133,7 +129,7 @@ export default function AdminOrdersPage({ initialOrders }: { initialOrders: Prom
 						{isLoading ? (
 							<Skeleton className="h-7 w-12 mb-1" />
 						) : (
-							<p className="text-xl font-bold tabular-nums">{totalRevenue.toFixed(0)}</p>
+							<p className="text-xl font-bold tabular-nums">{salesSummary.revenue.toFixed(0)}</p>
 						)}
 						<p className="text-xs text-muted-foreground">Revenue</p>
 					</div>
