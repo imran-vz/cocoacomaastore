@@ -5,6 +5,7 @@ import { admin } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { adminPluginOptions } from "@/lib/auth/admin-access";
 import { DatabaseUnavailableError, isDatabaseUnavailableError } from "@/lib/errors";
 
 export const auth = betterAuth({
@@ -26,7 +27,7 @@ export const auth = betterAuth({
 			verify: async ({ password, hash }) => bcrypt.compare(password, hash),
 		},
 	},
-	plugins: [admin({ defaultRole: "user", adminRoles: ["admin"] })],
+	plugins: [admin(adminPluginOptions)],
 	trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
 	baseURL: process.env.BETTER_AUTH_BASE_URL,
 });
