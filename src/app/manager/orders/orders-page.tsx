@@ -5,6 +5,7 @@ import { Clock, Package, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { OrderInvoiceButton } from "@/components/order-invoice-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,12 +25,12 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { SerializedOrderDetails, SerializedOrders } from "@/lib/order-lifecycle";
 import { cn } from "@/lib/utils";
-import { cancelOrder, type GetOrdersReturnType } from "./actions";
+import { cancelOrder } from "./actions";
 
-function formatTime(date: Date | string) {
-	const d = typeof date === "string" ? new Date(date) : date;
-	return d.toLocaleTimeString("en-IN", {
+function formatTime(date: string) {
+	return new Date(date).toLocaleTimeString("en-IN", {
 		hour: "2-digit",
 		minute: "2-digit",
 		hour12: true,
@@ -48,7 +49,7 @@ function OrderCard({
 	order,
 	onCancelOrder,
 }: {
-	order: GetOrdersReturnType[number];
+	order: SerializedOrderDetails;
 	onCancelOrder: (orderId: number, reason?: string) => Promise<void>;
 }) {
 	const [isExpanded, setIsExpanded] = useState(false);
@@ -197,6 +198,8 @@ function OrderCard({
 								</div>
 							)}
 
+							<OrderInvoiceButton order={order} />
+
 							{/* Cancel Order Button */}
 							{!isCancelled && (
 								<div className="pt-2 mt-2">
@@ -266,7 +269,7 @@ function OrderCard({
 	);
 }
 
-async function fetchManagerOrders(signal?: AbortSignal): Promise<GetOrdersReturnType> {
+async function fetchManagerOrders(signal?: AbortSignal): Promise<SerializedOrders> {
 	const response = await fetch("/api/manager/orders", {
 		cache: "no-store",
 		signal,
@@ -279,7 +282,7 @@ async function fetchManagerOrders(signal?: AbortSignal): Promise<GetOrdersReturn
 	return response.json();
 }
 
-export default function OrdersPage({ initialOrders }: { initialOrders: GetOrdersReturnType }) {
+export default function OrdersPage({ initialOrders }: { initialOrders: SerializedOrders }) {
 	const queryClient = useQueryClient();
 	const {
 		data: orders,

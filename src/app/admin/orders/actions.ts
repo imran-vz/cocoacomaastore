@@ -1,7 +1,7 @@
 "use server";
 
-import { getCachedOrders as getCachedOrdersCore } from "@/lib/order-lifecycle";
+import { getCachedOrders as getCachedOrdersCore, serializeOrders } from "@/lib/order-lifecycle";
 
 export async function getCachedOrders() {
-	return getCachedOrdersCore();
+	return serializeOrders(await getCachedOrdersCore());
 }

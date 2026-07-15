@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { canCancelOrderOnOperatingDay, getCartLineInventoryDeductions } from "@/lib/order-lifecycle";
+import { canCancelOrderOnOperatingDay, getCartLineInventoryDeductions, serializeOrders } from "@/lib/order-lifecycle";
 
 describe("order-lifecycle", () => {
 	describe("inventory deductions", () => {
@@ -48,5 +48,31 @@ describe("order-lifecycle", () => {
 		expect(
 			canCancelOrderOnOperatingDay(new Date("2026-05-20T12:00:00.000Z"), new Date("2026-05-21T12:00:00.000Z")),
 		).toBe(false);
+	});
+
+	test("serializes order dates at the client boundary", () => {
+		const [serialized] = serializeOrders([
+			{
+				id: 42,
+				customerName: "Aarav",
+				createdAt: new Date("2026-07-15T09:30:00.000Z"),
+				deliveryCost: "0.00",
+				total: "250.00",
+				status: "completed",
+				orderItems: [
+					{
+						id: 1,
+						quantity: 1,
+						unitPrice: "250.00",
+						comboId: null,
+						comboName: null,
+						dessert: { id: 1, name: "Brownie" },
+						modifiers: [],
+					},
+				],
+			},
+		]);
+
+		expect(serialized.createdAt).toBe("2026-07-15T09:30:00.000Z");
 	});
 });

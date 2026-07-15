@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminRouteGuard } from "@/lib/auth/guards";
-import { getCachedOrders } from "@/lib/order-lifecycle";
+import { getCachedOrders, serializeOrders } from "@/lib/order-lifecycle";
 
 function isValidDateString(value: string | null): value is string {
 	if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -24,6 +24,6 @@ export async function GET(request: Request) {
 	}
 
 	const date = new Date(dateString);
-	const data = await getCachedOrders(date);
+	const data = serializeOrders(await getCachedOrders(date));
 	return NextResponse.json(data);
 }

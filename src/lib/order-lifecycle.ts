@@ -37,9 +37,17 @@ type OrderItemWithDessert = Omit<OrderItem, "dessertId" | "orderId"> & {
 	modifiers: OrderItemModifierWithDessert[];
 };
 
-export type GetOrdersReturnType = (Omit<Order, "isDeleted"> & {
+export type OrderDetails = Omit<Order, "isDeleted"> & {
 	orderItems: OrderItemWithDessert[];
-})[];
+};
+
+export type GetOrdersReturnType = OrderDetails[];
+
+export type SerializedOrderDetails = Omit<OrderDetails, "createdAt"> & {
+	createdAt: string;
+};
+
+export type SerializedOrders = SerializedOrderDetails[];
 
 type OrderMutationTag = (typeof OrderTags.mutation)[number] | (typeof OrderTags.delete)[number];
 
@@ -388,6 +396,13 @@ export async function getCachedOrders(date?: Date) {
 		revalidate: 60 * 60 * 24,
 		tags: [CacheTag.orders],
 	})();
+}
+
+export function serializeOrders(orders: GetOrdersReturnType): SerializedOrders {
+	return orders.map((order) => ({
+		...order,
+		createdAt: order.createdAt.toISOString(),
+	}));
 }
 
 async function runOrderLifecycleOperation<T>(label: string, run: () => Promise<T>): Promise<T> {

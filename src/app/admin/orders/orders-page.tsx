@@ -8,7 +8,7 @@ import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DateSwitcher } from "@/components/date-switcher";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { GetOrdersReturnType } from "@/lib/order-lifecycle";
+import type { SerializedOrders } from "@/lib/order-lifecycle";
 import { OrderCardsSkeleton } from "../loading-skeletons";
 import { OrderCard } from "./order-card";
 
@@ -19,7 +19,7 @@ function formatDateString(date: Date): string {
 	return `${y}-${m}-${d}`;
 }
 
-async function fetchAdminOrders(dateString: string, signal?: AbortSignal): Promise<GetOrdersReturnType> {
+async function fetchAdminOrders(dateString: string, signal?: AbortSignal): Promise<SerializedOrders> {
 	const response = await fetch(`/api/admin/orders?date=${encodeURIComponent(dateString)}`, {
 		cache: "no-store",
 		signal,
@@ -32,7 +32,7 @@ async function fetchAdminOrders(dateString: string, signal?: AbortSignal): Promi
 	return response.json();
 }
 
-export default function AdminOrdersPage({ initialOrders }: { initialOrders: Promise<GetOrdersReturnType> }) {
+export default function AdminOrdersPage({ initialOrders }: { initialOrders: Promise<SerializedOrders> }) {
 	const initialOrdersData = use(initialOrders);
 	const [initialDateString] = useState(() => formatDateString(new Date()));
 	const [selectedDate, setSelectedDate] = useState<Date>(() => {

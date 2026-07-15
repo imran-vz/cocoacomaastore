@@ -5,8 +5,8 @@ import { isDatabaseUnavailableError } from "@/lib/errors";
 import {
 	cancelOrderAsNormalPath,
 	createCompletedOrder,
-	type GetOrdersReturnType,
-	getCachedOrders,
+	getCachedOrders as getCachedOrdersCore,
+	serializeOrders,
 	softDeleteOrder,
 } from "@/lib/order-lifecycle";
 import type { CartLine } from "@/lib/types";
@@ -18,7 +18,9 @@ interface CreateOrderWithLinesData {
 	deliveryCost: string;
 }
 
-export { getCachedOrders, type GetOrdersReturnType };
+export async function getCachedOrders() {
+	return serializeOrders(await getCachedOrdersCore());
+}
 
 async function mapDatabaseUnavailable<T>(fn: () => Promise<T>): Promise<T> {
 	try {

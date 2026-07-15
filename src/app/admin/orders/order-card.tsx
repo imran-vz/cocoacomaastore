@@ -3,16 +3,16 @@
 import { Clock } from "lucide-react";
 import { useState } from "react";
 
+import { OrderInvoiceButton } from "@/components/order-invoice-button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { GetOrdersReturnType } from "@/lib/order-lifecycle";
+import type { SerializedOrderDetails } from "@/lib/order-lifecycle";
 import { cn } from "@/lib/utils";
 
-function formatTime(date: Date | string) {
-	const d = typeof date === "string" ? new Date(date) : date;
-	return d.toLocaleTimeString("en-IN", {
+function formatTime(date: string) {
+	return new Date(date).toLocaleTimeString("en-IN", {
 		hour: "2-digit",
 		minute: "2-digit",
 		hour12: true,
@@ -24,7 +24,7 @@ export function OrderCard({
 	order,
 	initialExpanded = false,
 }: {
-	order: GetOrdersReturnType[number];
+	order: SerializedOrderDetails;
 	initialExpanded?: boolean;
 }) {
 	const [isExpanded, setIsExpanded] = useState(initialExpanded);
@@ -155,6 +155,8 @@ export function OrderCard({
 									<span className="font-medium">₹{order.deliveryCost}</span>
 								</div>
 							)}
+
+							<OrderInvoiceButton order={order} />
 						</div>
 					</div>
 				)}
