@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { withQueryTiming } from "@/db/query-logger";
+import { isQueryTimingEnabled, withQueryTiming } from "@/db/query-logger";
 import * as schema from "./schema";
 
 const connectionString = process.env.DATABASE_URL || "";
@@ -12,5 +12,5 @@ if (!process.env.DATABASE_URL) {
 const client = withQueryTiming(postgres(connectionString, { prepare: false }));
 export const db = drizzle(client, {
 	schema,
-	logger: process.env.NODE_ENV === "development" && process.env.DB_QUERY_TIMING !== "1",
+	logger: process.env.NODE_ENV === "development" && !isQueryTimingEnabled(),
 });

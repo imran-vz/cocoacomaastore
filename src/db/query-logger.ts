@@ -19,7 +19,7 @@ type QueryLogStatus = "ok" | "error";
 const DEFAULT_SLOW_QUERY_MS = 100;
 const timedClients = new WeakSet<object>();
 
-function isQueryTimingEnabled() {
+export function isQueryTimingEnabled() {
 	return process.env.DB_QUERY_TIMING === "1" || process.env.DB_QUERY_TIMING === "true";
 }
 
@@ -54,7 +54,6 @@ function logQueryTiming({
 	const message = `[db] ${status} ${durationMs.toFixed(1)}ms ${normalizeQuery(query)}`;
 	const details = {
 		paramsCount: params.length,
-		params,
 	};
 
 	if (status === "error") {
