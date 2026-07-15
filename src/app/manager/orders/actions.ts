@@ -1,6 +1,6 @@
 "use server";
 
-import { requireSession as requireAuth } from "@/lib/auth/guards";
+import { requireSession as requireAuth, requireManagerAccess } from "@/lib/auth/guards";
 import { isDatabaseUnavailableError } from "@/lib/errors";
 import {
 	cancelOrderAsNormalPath,
@@ -19,6 +19,7 @@ interface CreateOrderWithLinesData {
 }
 
 export async function getCachedOrders() {
+	await requireManagerAccess();
 	return serializeOrders(await getCachedOrdersCore());
 }
 

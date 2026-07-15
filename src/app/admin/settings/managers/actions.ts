@@ -18,6 +18,7 @@ export type ManagerRow = Pick<User, "id" | "name" | "email" | "role"> & {
 };
 
 export async function getCachedManagers(): Promise<ManagerRow[]> {
+	await requireAdmin();
 	const managers = await db
 		.select({
 			id: userTable.id,

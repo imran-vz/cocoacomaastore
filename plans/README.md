@@ -21,7 +21,7 @@ weaken a STOP condition merely to keep moving.
 | Order | Plan | Priority | Effort | Risk | Depends on | Status |
 |---:|---|:---:|:---:|:---:|---|:---:|
 | 001 | [Disable public email self-registration](001-disable-public-self-registration.md) | P1 | S | LOW | — | DONE |
-| 002 | [Guard exported server-action readers](002-guard-server-action-readers.md) | P1 | S | LOW | — | TODO |
+| 002 | [Guard exported server-action readers](002-guard-server-action-readers.md) | P1 | S | LOW | — | DONE |
 | 003 | [Redact database query parameters](003-redact-database-query-parameters.md) | P1 | S | LOW | — | TODO |
 | 004 | [Protect current and final administrators](004-protect-admin-account-deletion.md) | P1 | M | MED | 001, 002 | TODO |
 | 005 | [Remove unsafe order soft deletion](005-remove-unsafe-order-soft-delete.md) | P1 | S | LOW | — | TODO |

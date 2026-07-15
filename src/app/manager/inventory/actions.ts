@@ -4,7 +4,7 @@ import { performance } from "node:perf_hooks";
 import { Effect } from "effect";
 import { unstable_cache } from "next/cache";
 
-import { requireSession as requireAuth } from "@/lib/auth/guards";
+import { requireSession as requireAuth, requireManagerAccess } from "@/lib/auth/guards";
 import {
 	getDailyInventoryDay,
 	getDailyInventoryDayKey,
@@ -16,6 +16,7 @@ import { CacheTag, updateInventoryTagsEffect } from "@/server/effect/cache-tags"
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 
 export async function getCachedTodayInventory() {
+	await requireManagerAccess();
 	const day = getDailyInventoryDay();
 	const dayKey = getDailyInventoryDayKey();
 
