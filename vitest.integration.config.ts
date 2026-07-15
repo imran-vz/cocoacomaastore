@@ -9,7 +9,12 @@ export default defineConfig({
 	},
 	test: {
 		environment: "node",
-		include: ["src/**/*.test.ts"],
-		exclude: ["src/**/*.integration.test.ts"],
+		include: ["src/**/*.integration.test.ts"],
+		fileParallelism: false,
+		maxWorkers: 1,
+		testTimeout: 15_000,
+		hookTimeout: 30_000,
+		teardownTimeout: 30_000,
+		isolate: true,
 	},
 });
