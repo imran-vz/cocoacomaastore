@@ -26,7 +26,7 @@ weaken a STOP condition merely to keep moving.
 | 004 | [Protect current and final administrators](004-protect-admin-account-deletion.md) | P1 | M | MED | 001, 002 | DONE |
 | 005 | [Remove unsafe order soft deletion](005-remove-unsafe-order-soft-delete.md) | P1 | S | LOW | — | DONE |
 | 006 | [Establish a green quality gate](006-establish-green-quality-gate.md) | P1 | S | LOW | — | DONE |
-| 007 | [Add disposable PostgreSQL lifecycle/reporting tests](007-add-database-lifecycle-reporting-tests.md) | P1 | M | MED | 005, 006 | TODO |
+| 007 | [Add disposable PostgreSQL lifecycle/reporting tests](007-add-database-lifecycle-reporting-tests.md) | P1 | M | MED | 005, 006 | DONE |
 | 008 | [Establish versioned database migrations](008-establish-versioned-database-migrations.md) | P1 | M | HIGH | 006, 007 | TODO |
 | 009 | [Create server-owned order snapshots](009-create-server-owned-order-snapshots.md) | P1 | L | HIGH | 007, 008 | TODO |
 | 010 | [Make inventory writes audited and concurrency-safe](010-make-inventory-writes-audited-and-concurrency-safe.md) | P1 | M | HIGH | 007 | TODO |
