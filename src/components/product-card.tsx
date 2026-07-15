@@ -148,12 +148,7 @@ export function ProductCard({
 					)}
 
 					{/* Footer: Stock & Add Button */}
-					<div
-						className={cn(
-							"flex items-center justify-between gap-2 mt-auto",
-							compact ? "pt-1.5" : "pt-2",
-						)}
-					>
+					<div className={cn("flex items-center justify-between gap-2 mt-auto", compact ? "pt-1.5" : "pt-2")}>
 						{getStockBadge()}
 
 						{!isUnavailable && (
@@ -308,23 +303,13 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 						<span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
 							Combo
 						</span>
-						<span
-							className={cn(
-								"shrink-0 font-bold text-primary tabular-nums",
-								compact ? "text-[13px]" : "text-base",
-							)}
-						>
+						<span className={cn("shrink-0 font-bold text-primary tabular-nums", compact ? "text-[13px]" : "text-base")}>
 							₹{displayPrice}
 						</span>
 					</div>
 
 					{/* Name */}
-					<h3
-						className={cn(
-							"font-semibold leading-tight line-clamp-1 mb-0.5",
-							compact ? "text-[13px]" : "text-base",
-						)}
-					>
+					<h3 className={cn("font-semibold leading-tight line-clamp-1 mb-0.5", compact ? "text-[13px]" : "text-base")}>
 						{combo.name}
 					</h3>
 
