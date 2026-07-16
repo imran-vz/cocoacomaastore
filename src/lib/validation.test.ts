@@ -63,6 +63,44 @@ describe("order request validation", () => {
 			}).success,
 		).toBe(false);
 	});
+
+	it("accepts the maximum order line quantity and delivery cost", () => {
+		const input = {
+			submissionId,
+			customerName: "Customer",
+			lines: [{ baseDessertId: 1, quantity: 99 }],
+			deliveryCost: "999.99",
+		};
+
+		expect(createOrderWithLinesSchema.parse(input)).toEqual(input);
+	});
+
+	it("rejects an order line quantity above the maximum", () => {
+		expect(
+			createOrderWithLinesSchema.safeParse({
+				submissionId,
+				customerName: "Customer",
+				lines: [{ baseDessertId: 1, quantity: 100 }],
+				deliveryCost: "0.00",
+			}).success,
+		).toBe(false);
+	});
+
+	it("rejects a delivery cost above the persistence maximum", () => {
+		const result = createOrderWithLinesSchema.safeParse({
+			submissionId,
+			customerName: "Customer",
+			lines: [{ baseDessertId: 1, quantity: 1 }],
+			deliveryCost: "1000.00",
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues).toContainEqual(
+				expect.objectContaining({ message: "Delivery cost must be between 0 and 999.99" }),
+			);
+		}
+	});
 });
 
 describe("inventory validation", () => {

@@ -84,6 +84,42 @@ describe("POS cart behaviour", () => {
 		expect(result.cart[0]?.quantity).toBe(3);
 	});
 
+	it("accepts quantity 99 and rejects quantity 100 without changing the cart", () => {
+		const accepted = updateCartLineQuantity([cartLine], "line-1", 99, { 1: 100 });
+		expect(accepted.ok).toBe(true);
+		expect(accepted.cart[0]?.quantity).toBe(99);
+
+		const rejected = updateCartLineQuantity(accepted.cart, "line-1", 100, { 1: 100 });
+		expect(rejected).toEqual({
+			ok: false,
+			cart: accepted.cart,
+			error: "Quantity cannot be greater than 99",
+		});
+	});
+
+	it("rejects adding a direct Dessert or Combo already at quantity 99", () => {
+		const directLine: CartLine = { ...cartLine, modifiers: [], quantity: 99 };
+		const comboLine: CartLine = {
+			...cartLine,
+			cartLineId: "combo-line",
+			comboId: combo.id,
+			comboName: combo.name,
+			quantity: 99,
+		};
+		const cases = [
+			() => addDessertToCart([directLine], baseDessert, { 1: 500 }),
+			() => addComboToCart([comboLine], combo, { 1: 99 }),
+		];
+
+		for (const mutate of cases) {
+			const result = mutate();
+			expect(result.ok).toBe(false);
+			if (result.ok) throw new Error("Expected the quantity limit to reject the cart mutation");
+			expect(result.error).toBe("Quantity cannot be greater than 99");
+			expect(result.cart[0]?.quantity).toBe(99);
+		}
+	});
+
 	it("builds shared Cart line, UPI, and copy text", () => {
 		expect(getCartLineView(cartLine)).toMatchObject({
 			displayName: "brownie",
