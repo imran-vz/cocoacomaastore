@@ -1,6 +1,9 @@
 import { asc, eq, sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	analyticsDailyDessertRevenueTable,
+	analyticsDailyEodStockTable,
+	analyticsDailyRevenueTable,
 	dailyDessertInventoryTable,
 	dessertComboItemsTable,
 	dessertCombosTable,
@@ -22,6 +25,9 @@ const MANAGER_ID = "integration-manager";
 
 vi.doMock("@/db", () => ({ db: integrationDb }));
 const nextCacheMocks = vi.hoisted(() => ({ updateTag: vi.fn() }));
+const analyticsCompilerMocks = vi.hoisted(() => ({ recomputeDayAnalyticsEffect: vi.fn() }));
+
+vi.doMock("@/lib/recompute-day-analytics", () => analyticsCompilerMocks);
 
 vi.doMock("next/cache", () => ({
 	unstable_cache: (callback: () => unknown) => callback,
@@ -36,6 +42,7 @@ const {
 	getOrders,
 	serializeOrders,
 } = await import("@/lib/order-lifecycle");
+const { OrderTags } = await import("@/server/effect/cache-tags");
 
 let submissionSequence = 0;
 
@@ -114,6 +121,7 @@ describe("order lifecycle persistence", () => {
 	beforeEach(async () => {
 		await resetIntegrationData();
 		nextCacheMocks.updateTag.mockReset();
+		analyticsCompilerMocks.recomputeDayAnalyticsEffect.mockReset();
 		vi.useFakeTimers({ toFake: ["Date"], now: FIXED_NOW });
 	});
 
@@ -504,7 +512,7 @@ describe("order lifecycle persistence", () => {
 		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
 	});
 
-	it("returns a refresh warning after commit and cleanly replays on retry", async () => {
+	it("returns a refresh warning after cache invalidation fails and cleanly replays on retry", async () => {
 		const dessert = await seedInventory(2);
 		const data: CreateCompletedOrderInput = {
 			submissionId: "10000000-0000-4000-8000-000000000005",
@@ -512,7 +520,7 @@ describe("order lifecycle persistence", () => {
 			lines: [cartLine(dessert, 1)],
 			deliveryCost: "0.00",
 		};
-		const refreshError = new Error("refresh unavailable");
+		const refreshError = new Error("cache invalidation unavailable");
 		nextCacheMocks.updateTag.mockImplementationOnce(() => {
 			throw refreshError;
 		});
@@ -523,10 +531,61 @@ describe("order lifecycle persistence", () => {
 
 		expect(saved).toMatchObject({ replayed: false, refreshWarning: true });
 		expect(replay).toMatchObject({ orderId: saved.orderId, replayed: true, refreshWarning: false });
-		expect(errorLog).toHaveBeenCalledWith("Order was saved, but order views could not be refreshed", expect.anything());
+		expect(errorLog).toHaveBeenCalledWith(
+			"Order was saved, but order caches could not be invalidated",
+			expect.anything(),
+		);
 		expect(await integrationDb.select().from(ordersTable)).toHaveLength(1);
 		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
+		expect((await integrationDb.select().from(dailyDessertInventoryTable))[0]?.quantity).toBe(1);
 		errorLog.mockRestore();
+	});
+
+	it("awaits mutation tags in catalog order without compiling analytics", async () => {
+		const dessert = await seedInventory(2);
+		await createCompletedOrder(
+			{ customerName: "Invalidate create", lines: [cartLine(dessert, 1)], deliveryCost: "0.00" },
+			MANAGER_ID,
+		);
+
+		expect(nextCacheMocks.updateTag.mock.calls.map(([tag]) => tag)).toEqual(OrderTags.mutation);
+		nextCacheMocks.updateTag.mockClear();
+
+		const [order] = await integrationDb.select({ id: ordersTable.id }).from(ordersTable);
+		await cancelOrderAsNormalPath(order.id, MANAGER_ID);
+
+		expect(nextCacheMocks.updateTag.mock.calls.map(([tag]) => tag)).toEqual(OrderTags.mutation);
+		expect(analyticsCompilerMocks.recomputeDayAnalyticsEffect).not.toHaveBeenCalled();
+		const [dailyRevenue, dessertRevenue, eodStock] = await Promise.all([
+			integrationDb.select().from(analyticsDailyRevenueTable),
+			integrationDb.select().from(analyticsDailyDessertRevenueTable),
+			integrationDb.select().from(analyticsDailyEodStockTable),
+		]);
+		expect(dailyRevenue).toHaveLength(0);
+		expect(dessertRevenue).toHaveLength(0);
+		expect(eodStock).toHaveLength(0);
+	});
+
+	it("surfaces cancellation invalidation failure after committing source-of-truth changes", async () => {
+		const dessert = await seedInventory(2);
+		await createCompletedOrder(
+			{ customerName: "Invalidate cancel", lines: [cartLine(dessert, 1)], deliveryCost: "0.00" },
+			MANAGER_ID,
+		);
+		const [order] = await integrationDb.select({ id: ordersTable.id }).from(ordersTable);
+		nextCacheMocks.updateTag.mockImplementationOnce(() => {
+			throw new Error("cache invalidation unavailable");
+		});
+
+		await expect(cancelOrderAsNormalPath(order.id, MANAGER_ID)).rejects.toThrow("cache invalidation unavailable");
+
+		const [persistedOrder] = await integrationDb.select().from(ordersTable).where(eq(ordersTable.id, order.id));
+		const [inventory] = await integrationDb.select().from(dailyDessertInventoryTable);
+		const audits = await integrationDb.select().from(inventoryAuditLogTable).orderBy(asc(inventoryAuditLogTable.id));
+		expect(persistedOrder.status).toBe("cancelled");
+		expect(inventory.quantity).toBe(2);
+		expect(audits.map(({ action }) => action)).toEqual(["order_deducted", "order_cancelled"]);
+		expect(analyticsCompilerMocks.recomputeDayAnalyticsEffect).not.toHaveBeenCalled();
 	});
 
 	it("omits submission identity and fingerprint from public order readers", async () => {
