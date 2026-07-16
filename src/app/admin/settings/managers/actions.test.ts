@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const spies = vi.hoisted(() => ({
 	requireAdmin: vi.fn(),
+	createUser: vi.fn(),
 	deleteManagerAccount: vi.fn(),
 	updateCache: vi.fn(),
 	databaseAttempts: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/guards", () => ({ requireAdmin: spies.requireAdmin }));
-vi.mock("@/lib/auth", () => ({ auth: { api: { createUser: vi.fn() } } }));
+vi.mock("@/lib/auth", () => ({ auth: { api: { createUser: spies.createUser } } }));
 vi.mock("@/lib/admin-account-deletion", () => ({ deleteManagerAccount: spies.deleteManagerAccount }));
 vi.mock("@/db", () => ({ db: { marker: "database" } }));
 vi.mock("@/server/effect/cache-tags", async () => {
@@ -38,7 +39,92 @@ vi.mock("@/server/effect/next-runtime", async () => {
 	};
 });
 
-const { deleteManager } = await import("@/app/admin/settings/managers/actions");
+const { createManager, deleteManager } = await import("@/app/admin/settings/managers/actions");
+
+describe("createManager", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		spies.requireAdmin.mockResolvedValue({ id: "actor-id" });
+		spies.createUser.mockResolvedValue({ user: { id: "created-id" } });
+	});
+
+	it("authorizes before provisioning through the trusted server API", async () => {
+		const callOrder: string[] = [];
+		spies.requireAdmin.mockImplementation(async () => {
+			callOrder.push("authorize");
+			return { id: "actor-id" };
+		});
+		spies.createUser.mockImplementation(async () => {
+			callOrder.push("create");
+			return { user: { id: "created-id" } };
+		});
+
+		await expect(
+			createManager({
+				name: "Store Manager",
+				email: "Manager@Example.COM",
+				password: "secure-password-123",
+				role: "admin",
+			}),
+		).resolves.toEqual({ success: true });
+
+		expect(callOrder).toEqual(["authorize", "create"]);
+		expect(spies.createUser).toHaveBeenCalledWith({
+			body: {
+				name: "Store Manager",
+				email: "manager@example.com",
+				password: "secure-password-123",
+				role: "admin",
+			},
+		});
+		expect(spies.updateCache).toHaveBeenCalledWith({
+			tags: ["managers"],
+			paths: ["/admin/settings/managers", "/admin/managers"],
+		});
+	});
+
+	it.each(["admin", "user"] as const)("passes the supported %s role to Better Auth", async (role) => {
+		await createManager({
+			name: "Store Manager",
+			email: `${role}@example.com`,
+			password: "secure-password-123",
+			role,
+		});
+
+		expect(spies.createUser).toHaveBeenCalledWith(expect.objectContaining({ body: expect.objectContaining({ role }) }));
+	});
+
+	it("stops before validation and provisioning when Admin authorization fails", async () => {
+		spies.requireAdmin.mockRejectedValue(new Error("Admin access required"));
+
+		await expect(
+			createManager({
+				name: "Store Manager",
+				email: "not-an-email",
+				password: "short",
+				role: "user",
+			}),
+		).rejects.toThrow("Admin access required");
+		expect(spies.createUser).not.toHaveBeenCalled();
+	});
+
+	it("returns a safe failure and leaves caches untouched when provisioning fails", async () => {
+		spies.createUser.mockRejectedValue(new Error("provider detail"));
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+		await expect(
+			createManager({
+				name: "Store Manager",
+				email: "manager@example.com",
+				password: "secure-password-123",
+				role: "user",
+			}),
+		).resolves.toEqual({ success: false, error: "Failed to create manager" });
+		expect(spies.updateCache).not.toHaveBeenCalled();
+
+		errorSpy.mockRestore();
+	});
+});
 
 describe("deleteManager", () => {
 	beforeEach(() => {

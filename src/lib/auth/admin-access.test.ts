@@ -39,23 +39,20 @@ async function createAdminSession(auth: ReturnType<typeof createTestAuth>, id: s
 }
 
 describe("application Admin access policy", () => {
-	it("allows Admins to provision both supported roles", async () => {
+	it("allows trusted server code to provision both supported roles", async () => {
 		const auth = createTestAuth();
-		const { headers } = await createAdminSession(auth, "admin-create");
 
 		for (const role of ["admin", "user"] as const) {
-			const response = await auth.handler(
-				post("/admin/create-user", headers, {
+			const result = await auth.api.createUser({
+				body: {
 					email: `created-${role}@example.com`,
 					name: `Created ${role}`,
 					password: "test-password-123",
 					role,
-				}),
-			);
+				},
+			});
 
-			expect(response.status).toBe(200);
-			const body = await response.json();
-			expect(body.user.role).toBe(role);
+			expect(result.user.role).toBe(role);
 		}
 	});
 

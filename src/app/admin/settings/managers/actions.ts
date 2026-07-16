@@ -1,7 +1,6 @@
 "use server";
 
 import { Effect } from "effect";
-import { headers } from "next/headers";
 import { db } from "@/db";
 import { type User, userTable } from "@/db/schema";
 import { deleteManagerAccount } from "@/lib/admin-account-deletion";
@@ -52,7 +51,6 @@ export async function createManager(data: CreateManagerSchema) {
 				password: validated.password,
 				role: validated.role,
 			},
-			headers: await headers(),
 		});
 
 		await runNextAppEffect(
