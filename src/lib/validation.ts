@@ -15,6 +15,7 @@ const orderRequestLineSchema: z.ZodType<OrderRequestLine> = z
 
 export const createOrderWithLinesSchema = z
 	.object({
+		submissionId: z.string().uuid(),
 		customerName: z
 			.string()
 			.trim()

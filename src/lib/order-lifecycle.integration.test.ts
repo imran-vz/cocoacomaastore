@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { getAnalyticsDay } from "@/lib/ist-date";
 import { buildOrderInvoiceModel } from "@/lib/order-invoice-model";
+import type { CreateCompletedOrderInput } from "@/lib/order-lifecycle";
 import type { OrderRequestLine } from "@/lib/types";
 import { closeIntegrationDatabase, integrationDb, resetIntegrationData } from "@/test/integration/database";
 
@@ -20,16 +21,32 @@ const FIXED_NOW = new Date("2026-07-15T12:00:00.000Z");
 const MANAGER_ID = "integration-manager";
 
 vi.doMock("@/db", () => ({ db: integrationDb }));
+const nextCacheMocks = vi.hoisted(() => ({ updateTag: vi.fn() }));
+
 vi.doMock("next/cache", () => ({
 	unstable_cache: (callback: () => unknown) => callback,
 	revalidatePath: vi.fn(),
 	revalidateTag: vi.fn(),
-	updateTag: vi.fn(),
+	updateTag: nextCacheMocks.updateTag,
 }));
 
-const { cancelOrderAsNormalPath, createCompletedOrder, getOrders, serializeOrders } = await import(
-	"@/lib/order-lifecycle"
-);
+const {
+	cancelOrderAsNormalPath,
+	createCompletedOrder: createCompletedOrderWithIdentity,
+	getOrders,
+	serializeOrders,
+} = await import("@/lib/order-lifecycle");
+
+let submissionSequence = 0;
+
+function nextSubmissionId() {
+	submissionSequence += 1;
+	return `00000000-0000-4000-8000-${submissionSequence.toString().padStart(12, "0")}`;
+}
+
+function createCompletedOrder(data: Omit<CreateCompletedOrderInput, "submissionId">, userId: string) {
+	return createCompletedOrderWithIdentity({ ...data, submissionId: nextSubmissionId() }, userId);
+}
 
 async function seedInventory(quantity: number) {
 	await integrationDb.insert(userTable).values({
@@ -79,9 +96,24 @@ async function waitUntilBlockedBy(writerPid: number) {
 	throw new Error("Order did not block on the catalog writer");
 }
 
+async function waitForBlockedSessionCount(expectedCount: number) {
+	for (let attempt = 0; attempt < 200; attempt += 1) {
+		const blocked = await integrationDb.execute(sql`
+			SELECT 1
+			FROM pg_stat_activity
+			WHERE datname = current_database()
+				AND cardinality(pg_blocking_pids(pid)) > 0
+		`);
+		if (blocked.length >= expectedCount) return;
+		await new Promise<void>((resolve) => setImmediate(resolve));
+	}
+	throw new Error(`Expected ${expectedCount} blocked database sessions`);
+}
+
 describe("order lifecycle persistence", () => {
 	beforeEach(async () => {
 		await resetIntegrationData();
+		nextCacheMocks.updateTag.mockReset();
 		vi.useFakeTimers({ toFake: ["Date"], now: FIXED_NOW });
 	});
 
@@ -359,6 +391,162 @@ describe("order lifecycle persistence", () => {
 		expect(await integrationDb.select().from(ordersTable)).toHaveLength(1);
 		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
 		expect((await integrationDb.select().from(dailyDessertInventoryTable))[0]?.quantity).toBe(0);
+	});
+
+	it("replays concurrent identical submissions with exactly one set of effects", async () => {
+		const baseDessert = await seedInventory(2);
+		const [modifier] = await integrationDb
+			.insert(dessertsTable)
+			.values({ name: "Idempotent Modifier", price: 25, kind: "modifier", hasUnlimitedStock: true })
+			.returning();
+		const [combo] = await integrationDb
+			.insert(dessertCombosTable)
+			.values({ name: "Idempotent Combo", baseDessertId: baseDessert.id })
+			.returning();
+		await integrationDb
+			.insert(dessertComboItemsTable)
+			.values({ comboId: combo.id, dessertId: modifier.id, quantity: 1 });
+		const data: CreateCompletedOrderInput = {
+			submissionId: "10000000-0000-4000-8000-000000000001",
+			customerName: "Concurrent Retry",
+			lines: [{ baseDessertId: baseDessert.id, comboId: combo.id, quantity: 1 }],
+			deliveryCost: "0.00",
+		};
+		const catalogLocked = deferred<number>();
+		const releaseCatalog = deferred();
+		const catalogWriter = integrationDb.transaction(async (tx) => {
+			const [backend] = (await tx.execute(sql`
+				SELECT pg_backend_pid()::integer AS pid
+			`)) as unknown as [{ pid: number }];
+			await tx
+				.select({ id: dessertsTable.id })
+				.from(dessertsTable)
+				.where(eq(dessertsTable.id, baseDessert.id))
+				.for("update");
+			catalogLocked.resolve(backend.pid);
+			await releaseCatalog.promise;
+		});
+		const writerPid = await catalogLocked.promise;
+		const firstCall = createCompletedOrderWithIdentity(data, MANAGER_ID);
+		await waitUntilBlockedBy(writerPid);
+		const secondCall = createCompletedOrderWithIdentity(data, MANAGER_ID);
+		try {
+			await waitForBlockedSessionCount(2);
+		} finally {
+			releaseCatalog.resolve();
+		}
+		const [first, second] = await Promise.all([firstCall, secondCall, catalogWriter]);
+
+		expect(first.orderId).toBe(second.orderId);
+		expect([first.replayed, second.replayed].sort()).toEqual([false, true]);
+		expect(await integrationDb.select().from(ordersTable)).toHaveLength(1);
+		expect(await integrationDb.select().from(orderItemsTable)).toHaveLength(1);
+		expect(await integrationDb.select().from(orderItemModifiersTable)).toHaveLength(1);
+		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
+		expect((await integrationDb.select().from(dailyDessertInventoryTable))[0]?.quantity).toBe(1);
+	});
+
+	it("rejects different request reuse without additional mutations", async () => {
+		const dessert = await seedInventory(3);
+		const data: CreateCompletedOrderInput = {
+			submissionId: "10000000-0000-4000-8000-000000000002",
+			customerName: "Original",
+			lines: [cartLine(dessert, 1)],
+			deliveryCost: "0.00",
+		};
+		await createCompletedOrderWithIdentity(data, MANAGER_ID);
+
+		await expect(createCompletedOrderWithIdentity({ ...data, customerName: "Changed" }, MANAGER_ID)).rejects.toThrow(
+			"already used for different order details",
+		);
+
+		expect(await integrationDb.select().from(ordersTable)).toHaveLength(1);
+		expect(await integrationDb.select().from(orderItemsTable)).toHaveLength(1);
+		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
+		expect((await integrationDb.select().from(dailyDessertInventoryTable))[0]?.quantity).toBe(2);
+	});
+
+	it("replays the original order after catalog mutation without resolving it again", async () => {
+		const dessert = await seedInventory(2);
+		const data: CreateCompletedOrderInput = {
+			submissionId: "10000000-0000-4000-8000-000000000003",
+			customerName: "Catalog Retry",
+			lines: [cartLine(dessert, 1)],
+			deliveryCost: "0.00",
+		};
+		const original = await createCompletedOrderWithIdentity(data, MANAGER_ID);
+		await integrationDb
+			.update(dessertsTable)
+			.set({ enabled: false, isDeleted: true, name: "Unavailable", price: 999 })
+			.where(eq(dessertsTable.id, dessert.id));
+
+		const replay = await createCompletedOrderWithIdentity(data, MANAGER_ID);
+
+		expect(replay).toMatchObject({ orderId: original.orderId, replayed: true, refreshWarning: false });
+		expect((await integrationDb.select().from(ordersTable))[0]?.total).toBe("125.00");
+		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
+	});
+
+	it("acknowledges a lost-response retry without repeating effects", async () => {
+		const dessert = await seedInventory(2);
+		const data: CreateCompletedOrderInput = {
+			submissionId: "10000000-0000-4000-8000-000000000004",
+			customerName: "Lost Response",
+			lines: [cartLine(dessert, 1)],
+			deliveryCost: "0.00",
+		};
+		await createCompletedOrderWithIdentity(data, MANAGER_ID);
+
+		const retry = await createCompletedOrderWithIdentity(data, MANAGER_ID);
+
+		expect(retry.replayed).toBe(true);
+		expect(await integrationDb.select().from(ordersTable)).toHaveLength(1);
+		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
+	});
+
+	it("returns a refresh warning after commit and cleanly replays on retry", async () => {
+		const dessert = await seedInventory(2);
+		const data: CreateCompletedOrderInput = {
+			submissionId: "10000000-0000-4000-8000-000000000005",
+			customerName: "Refresh Failure",
+			lines: [cartLine(dessert, 1)],
+			deliveryCost: "0.00",
+		};
+		const refreshError = new Error("refresh unavailable");
+		nextCacheMocks.updateTag.mockImplementationOnce(() => {
+			throw refreshError;
+		});
+		const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+		const saved = await createCompletedOrderWithIdentity(data, MANAGER_ID);
+		const replay = await createCompletedOrderWithIdentity(data, MANAGER_ID);
+
+		expect(saved).toMatchObject({ replayed: false, refreshWarning: true });
+		expect(replay).toMatchObject({ orderId: saved.orderId, replayed: true, refreshWarning: false });
+		expect(errorLog).toHaveBeenCalledWith("Order was saved, but order views could not be refreshed", expect.anything());
+		expect(await integrationDb.select().from(ordersTable)).toHaveLength(1);
+		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
+		errorLog.mockRestore();
+	});
+
+	it("omits submission identity and fingerprint from public order readers", async () => {
+		const dessert = await seedInventory(2);
+		await createCompletedOrderWithIdentity(
+			{
+				submissionId: "10000000-0000-4000-8000-000000000006",
+				customerName: "Public Shape",
+				lines: [cartLine(dessert, 1)],
+				deliveryCost: "0.00",
+			},
+			MANAGER_ID,
+		);
+
+		const [order] = await getOrders(FIXED_NOW);
+		const [serialized] = serializeOrders([order]);
+		for (const value of [order, serialized]) {
+			expect(value).not.toHaveProperty("submissionId");
+			expect(value).not.toHaveProperty("requestFingerprint");
+		}
 	});
 
 	it("restores same-day stock and records cancellation after the deduction audit", async () => {

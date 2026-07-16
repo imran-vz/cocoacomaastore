@@ -8,7 +8,13 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createOrderWithLines } from "@/app/manager/orders/actions";
 import type { UpiAccount } from "@/db/schema";
-import { getOrderCopyText, getUpiPaymentText, saveCartOrder } from "@/lib/pos-cart-behaviour";
+import type { GetOrderSubmissionId } from "@/lib/pos-cart-behaviour";
+import {
+	completeAcknowledgedOrder,
+	getOrderCopyText,
+	getUpiPaymentText,
+	saveCartOrder,
+} from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useUpiStore } from "@/store/upi-store";
@@ -28,6 +34,7 @@ interface TabletCartSidebarProps {
 	upiAccounts: UpiAccount[];
 	onOrderSaved: () => void | Promise<void>;
 	clearCart: () => void;
+	getSubmissionId: GetOrderSubmissionId;
 	customerName: string;
 	deliveryCost: number;
 }
@@ -41,6 +48,7 @@ export function TabletCartSidebar({
 	upiAccounts,
 	onOrderSaved,
 	clearCart,
+	getSubmissionId,
 	customerName,
 	deliveryCost,
 }: TabletCartSidebarProps) {
@@ -67,23 +75,41 @@ export function TabletCartSidebar({
 	const handleSaveOrder = async () => {
 		if (cart.length === 0 || isSaving) return;
 
+		setIsSaving(true);
+		let result: Awaited<ReturnType<typeof saveCartOrder>>;
 		try {
-			setIsSaving(true);
-			const result = await saveCartOrder(createOrderWithLines, {
+			const submissionId = getSubmissionId({ cart, customerName, deliveryCost });
+			result = await saveCartOrder(createOrderWithLines, {
 				cart,
 				customerName,
 				deliveryCost,
+				submissionId,
 			});
-			if (!result.ok) {
-				toast.error(result.error);
-				return;
-			}
-			toast.success("Order saved!");
-			await onOrderSaved();
-			clearCart();
 		} catch (err) {
-			console.error("Failed to complete order save flow:", err);
+			console.error("Failed to save order:", err);
 			toast.error(err instanceof Error ? err.message : "Failed to save order");
+			setIsSaving(false);
+			return;
+		}
+		if (!result.ok) {
+			toast.error(result.error);
+			setIsSaving(false);
+			return;
+		}
+
+		toast.success(result.replayed ? "Order already saved" : "Order saved!");
+		try {
+			const acknowledgement = await completeAcknowledgedOrder({
+				acknowledgement: result,
+				clearCart,
+				refreshInventory: onOrderSaved,
+			});
+			if (result.refreshWarning) {
+				toast.warning("Order saved, but reporting refresh failed");
+			}
+			if (!result.refreshWarning && acknowledgement.refreshWarning) {
+				toast.warning("Order saved, but inventory refresh failed");
+			}
 		} finally {
 			setIsSaving(false);
 		}
@@ -178,11 +204,7 @@ export function TabletCartSidebar({
 						<motion.button
 							type="button"
 							whileTap={{ scale: 0.95 }}
-							onClick={() => {
-								for (const line of cart) {
-									removeFromCart(line.cartLineId);
-								}
-							}}
+							onClick={clearCart}
 							className="text-[10px] text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
 						>
 							<Trash2 className="size-3" />

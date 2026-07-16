@@ -4,12 +4,13 @@ import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, X } from "lucide-react";
-import { use, useCallback, useEffect, useMemo, useReducer } from "react";
+import { use, useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { toast } from "sonner";
 
 import { toggleOutOfStock } from "@/app/desserts/actions";
 import type { UpiAccount } from "@/db/schema";
-import { applyPosCartEvent, initialPosCartState } from "@/lib/pos-cart-behaviour";
+import type { GetOrderSubmissionId, OrderSubmissionIdentity } from "@/lib/pos-cart-behaviour";
+import { applyPosCartEvent, initialPosCartState, resolveOrderSubmissionIdentity } from "@/lib/pos-cart-behaviour";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDessertStore } from "@/store/dessert-store";
@@ -63,6 +64,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 	});
 
 	const [cartState, dispatchCart] = useReducer(applyPosCartEvent, initialPosCartState);
+	const submissionIdentityRef = useRef<OrderSubmissionIdentity | null>(null);
 	const cart = cartState.cart;
 	const inventoryByDessertId = useMemo(() => {
 		const next: Record<number, number> = {};
@@ -149,9 +151,20 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 	);
 
 	const clearCart = useCallback(() => {
+		submissionIdentityRef.current = null;
 		dispatchCart({ type: "clear" });
 		form.reset();
 	}, [form]);
+
+	const getSubmissionId = useCallback<GetOrderSubmissionId>((input) => {
+		const identity = resolveOrderSubmissionIdentity(
+			submissionIdentityRef.current,
+			input,
+			globalThis.crypto.randomUUID(),
+		);
+		submissionIdentityRef.current = identity;
+		return identity.submissionId;
+	}, []);
 
 	const handleToggleStock = useCallback(
 		async (e: React.MouseEvent, dessert: Dessert) => {
@@ -250,6 +263,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 								customerName={customerName}
 								onOrderSaved={refreshInventory}
 								clearCart={clearCart}
+								getSubmissionId={getSubmissionId}
 							/>
 						</div>
 
@@ -264,6 +278,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 								upiAccounts={upiAccountsList}
 								onOrderSaved={refreshInventory}
 								clearCart={clearCart}
+								getSubmissionId={getSubmissionId}
 								customerName={customerName}
 								deliveryCost={deliveryCostAmount}
 							/>

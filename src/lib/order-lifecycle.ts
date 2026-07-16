@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { Effect } from "effect";
@@ -39,7 +40,7 @@ type OrderItemWithDessert = Omit<OrderItem, "baseDessertName" | "dessertId" | "i
 	modifiers: OrderItemModifierWithDessert[];
 };
 
-export type OrderDetails = Omit<Order, "isDeleted"> & {
+export type OrderDetails = Omit<Order, "isDeleted" | "requestFingerprint" | "submissionId"> & {
 	orderItems: OrderItemWithDessert[];
 };
 
@@ -79,10 +80,24 @@ type OrderInventoryAudit = {
 };
 
 export type CreateCompletedOrderInput = {
+	submissionId: string;
 	customerName: string;
 	lines: OrderRequestLine[];
 	deliveryCost: string;
 };
+
+export type CreateCompletedOrderResult = {
+	orderId: number;
+	replayed: boolean;
+	refreshWarning: boolean;
+};
+
+export class OrderSubmissionConflictError extends Error {
+	constructor() {
+		super("This order submission was already used for different order details.");
+		this.name = "OrderSubmissionConflictError";
+	}
+}
 
 type CatalogDessert = Pick<Dessert, "enabled" | "hasUnlimitedStock" | "id" | "isDeleted" | "kind" | "name" | "price">;
 
@@ -129,6 +144,27 @@ function refreshOrderMutationViewsAfterMutation(date: Date) {
 function parseDeliveryCostCents(deliveryCost: string) {
 	const [whole, fraction = ""] = deliveryCost.split(".");
 	return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+}
+
+export function fingerprintOrderRequest(data: CreateCompletedOrderInput) {
+	const normalized = {
+		customerName: sanitizeCustomerName(data.customerName),
+		deliveryCost: (parseDeliveryCostCents(data.deliveryCost) / 100).toFixed(2),
+		lines: data.lines
+			.map((line) => ({
+				baseDessertId: line.baseDessertId,
+				comboId: line.comboId ?? null,
+				quantity: line.quantity,
+			}))
+			.sort(
+				(left, right) =>
+					left.baseDessertId - right.baseDessertId ||
+					(left.comboId ?? -1) - (right.comboId ?? -1) ||
+					left.quantity - right.quantity,
+			),
+	};
+
+	return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
 }
 
 function computeOrderTotal(lines: readonly ResolvedOrderLine[], deliveryCost: string) {
@@ -510,58 +546,82 @@ export function getOrderInventoryRestorationsFromAudits(
 
 function createCompletedOrderEffect(data: CreateCompletedOrderInput, userId: string) {
 	const sanitizedCustomerName = sanitizeCustomerName(data.customerName);
+	const requestFingerprint = fingerprintOrderRequest(data);
 	const day = getAnalyticsDay();
 	const now = new Date();
 
 	return Effect.gen(function* () {
 		const database = yield* Database;
 
-		const order = yield* database.attempt("create completed order", (db) =>
-			db.transaction(async (tx) => {
-				const resolvedLines = await resolveAndLockOrderLines(tx, data.lines);
-				const inventoryDeductions = getCartLineInventoryDeductions(resolvedLines);
-				const total = computeOrderTotal(resolvedLines, data.deliveryCost);
-				const [order] = await tx
-					.insert(ordersTable)
-					.values({
-						customerName: sanitizedCustomerName,
-						createdAt: now,
-						status: "completed",
-						total,
-						deliveryCost: data.deliveryCost,
-					})
-					.returning();
+		return yield* database
+			.attempt("create completed order", (db) =>
+				db.transaction(async (tx) => {
+					const [claimedOrder] = await tx
+						.insert(ordersTable)
+						.values({
+							submissionId: data.submissionId,
+							requestFingerprint,
+							customerName: sanitizedCustomerName,
+							createdAt: now,
+							status: "completed",
+							total: "0.00",
+							deliveryCost: data.deliveryCost,
+						})
+						.onConflictDoNothing({ target: ordersTable.submissionId })
+						.returning();
 
-				const insertedItems = await tx
-					.insert(orderItemsTable)
-					.values(buildCartLineOrderItemInserts(order.id, resolvedLines))
-					.returning({ id: orderItemsTable.id });
+					if (!claimedOrder) {
+						const [winner] = await tx.select().from(ordersTable).where(eq(ordersTable.submissionId, data.submissionId));
+						if (!winner) {
+							throw new Error("Order submission winner was not visible");
+						}
+						if (winner.requestFingerprint !== requestFingerprint) {
+							throw new OrderSubmissionConflictError();
+						}
+						return { order: winner, replayed: true } as const;
+					}
 
-				const modifierInserts = buildOrderItemModifierInserts(resolvedLines, insertedItems);
+					const resolvedLines = await resolveAndLockOrderLines(tx, data.lines);
+					const inventoryDeductions = getCartLineInventoryDeductions(resolvedLines);
+					const total = computeOrderTotal(resolvedLines, data.deliveryCost);
+					const [order] = await tx
+						.update(ordersTable)
+						.set({ total })
+						.where(eq(ordersTable.id, claimedOrder.id))
+						.returning();
 
-				if (modifierInserts.length > 0) {
-					await tx.insert(orderItemModifiersTable).values(modifierInserts);
-				}
+					const insertedItems = await tx
+						.insert(orderItemsTable)
+						.values(buildCartLineOrderItemInserts(order.id, resolvedLines))
+						.returning({ id: orderItemsTable.id });
 
-				await applyOrderInventoryMovement({
-					tx,
-					day,
-					now,
-					movements: inventoryDeductions,
-					direction: "deduct",
-					audit: {
-						action: "order_deducted",
-						orderId: order.id,
-						userId,
-					},
-				});
+					const modifierInserts = buildOrderItemModifierInserts(resolvedLines, insertedItems);
 
-				return order;
-			}),
-		);
+					if (modifierInserts.length > 0) {
+						await tx.insert(orderItemModifiersTable).values(modifierInserts);
+					}
 
-		yield* refreshOrderMutationViewsAfterMutation(order.createdAt);
-		return order;
+					await applyOrderInventoryMovement({
+						tx,
+						day,
+						now,
+						movements: inventoryDeductions,
+						direction: "deduct",
+						audit: {
+							action: "order_deducted",
+							orderId: order.id,
+							userId,
+						},
+					});
+
+					return { order, replayed: false } as const;
+				}),
+			)
+			.pipe(
+				Effect.catchTag("BackendDatabaseError", (error) =>
+					error.cause instanceof OrderSubmissionConflictError ? Effect.fail(error.cause) : Effect.fail(error),
+				),
+			);
 	});
 }
 
@@ -574,6 +634,8 @@ export async function getOrders(date?: Date): Promise<GetOrdersReturnType> {
 	const orders = await db.query.ordersTable.findMany({
 		columns: {
 			isDeleted: false,
+			requestFingerprint: false,
+			submissionId: false,
 		},
 		where: and(
 			eq(ordersTable.isDeleted, false),
@@ -643,10 +705,24 @@ async function runOrderLifecycleOperation<T>(label: string, run: () => Promise<T
 	}
 }
 
-export async function createCompletedOrder(data: CreateCompletedOrderInput, userId: string) {
-	await runOrderLifecycleOperation("createCompletedOrder", () =>
+export async function createCompletedOrder(
+	data: CreateCompletedOrderInput,
+	userId: string,
+): Promise<CreateCompletedOrderResult> {
+	let created: { order: Order; replayed: boolean };
+	created = await runOrderLifecycleOperation("createCompletedOrder", () =>
 		runNextAppEffect(createCompletedOrderEffect(data, userId)),
 	);
+
+	let refreshWarning = false;
+	try {
+		await runNextAppEffect(refreshOrderMutationViewsAfterMutation(created.order.createdAt));
+	} catch (error) {
+		refreshWarning = true;
+		console.error("Order was saved, but order views could not be refreshed", error);
+	}
+
+	return { orderId: created.order.id, replayed: created.replayed, refreshWarning };
 }
 
 function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?: string, now = new Date()) {

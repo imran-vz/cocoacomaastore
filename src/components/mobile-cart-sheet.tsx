@@ -8,7 +8,13 @@ import { toast } from "sonner";
 
 import { createOrderWithLines } from "@/app/manager/orders/actions";
 import type { UpiAccount } from "@/db/schema";
-import { getOrderCopyText, getUpiPaymentText, saveCartOrder } from "@/lib/pos-cart-behaviour";
+import type { GetOrderSubmissionId } from "@/lib/pos-cart-behaviour";
+import {
+	completeAcknowledgedOrder,
+	getOrderCopyText,
+	getUpiPaymentText,
+	saveCartOrder,
+} from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useUpiStore } from "@/store/upi-store";
@@ -28,6 +34,7 @@ interface MobileCartSheetProps {
 	customerName: string;
 	onOrderSaved: () => void | Promise<void>;
 	clearCart: () => void;
+	getSubmissionId: GetOrderSubmissionId;
 }
 
 export function MobileCartSheet({
@@ -40,6 +47,7 @@ export function MobileCartSheet({
 	customerName,
 	onOrderSaved,
 	clearCart,
+	getSubmissionId,
 }: MobileCartSheetProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [shouldRender, setShouldRender] = useState(false);
@@ -83,24 +91,43 @@ export function MobileCartSheet({
 	const handleSaveOrder = async () => {
 		if (cart.length === 0 || isSaving) return;
 
+		setIsSaving(true);
+		let result: Awaited<ReturnType<typeof saveCartOrder>>;
 		try {
-			setIsSaving(true);
-			const result = await saveCartOrder(createOrderWithLines, {
+			const deliveryCost = form.state.values.deliveryCost || "0";
+			const submissionId = getSubmissionId({ cart, customerName, deliveryCost });
+			result = await saveCartOrder(createOrderWithLines, {
 				cart,
 				customerName,
-				deliveryCost: form.state.values.deliveryCost || "0",
+				deliveryCost,
+				submissionId,
 			});
-			if (!result.ok) {
-				toast.error(result.error);
-				return;
-			}
-			toast.success("Order saved!");
-			await onOrderSaved();
-			clearCart();
-			setIsOpen(false);
 		} catch (err) {
-			console.error("Failed to complete order save flow:", err);
+			console.error("Failed to save order:", err);
 			toast.error(err instanceof Error ? err.message : "Failed to save order");
+			setIsSaving(false);
+			return;
+		}
+		if (!result.ok) {
+			toast.error(result.error);
+			setIsSaving(false);
+			return;
+		}
+
+		toast.success(result.replayed ? "Order already saved" : "Order saved!");
+		try {
+			const acknowledgement = await completeAcknowledgedOrder({
+				acknowledgement: result,
+				clearCart,
+				closeCart: () => setIsOpen(false),
+				refreshInventory: onOrderSaved,
+			});
+			if (result.refreshWarning) {
+				toast.warning("Order saved, but reporting refresh failed");
+			}
+			if (!result.refreshWarning && acknowledgement.refreshWarning) {
+				toast.warning("Order saved, but inventory refresh failed");
+			}
 		} finally {
 			setIsSaving(false);
 		}

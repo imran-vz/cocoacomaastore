@@ -43,15 +43,39 @@ export type SaveOrderInput = {
 	cart: CartLine[];
 	customerName: string;
 	deliveryCost: string | number;
+	submissionId: string;
 };
 
-export type SaveOrderResult = { ok: true } | { ok: false; error: string };
+export type OrderSubmissionInput = Omit<SaveOrderInput, "submissionId">;
+
+export type OrderSubmissionIdentity = {
+	clientFingerprint: string;
+	submissionId: string;
+};
+
+export type GetOrderSubmissionId = (input: OrderSubmissionInput) => string;
+
+export type OrderSaveAcknowledgement = {
+	orderId: number;
+	replayed: boolean;
+	refreshWarning: boolean;
+};
+
+export type SaveOrderResult = ({ ok: true } & OrderSaveAcknowledgement) | { ok: false; error: string };
 
 export type SaveOrderAdapter = (input: {
 	customerName: string;
 	lines: OrderRequestLine[];
 	deliveryCost: string;
-}) => Promise<unknown>;
+	submissionId: string;
+}) => Promise<SaveOrderResult>;
+
+export type CompleteAcknowledgedOrderInput = {
+	acknowledgement: OrderSaveAcknowledgement;
+	clearCart: () => void;
+	closeCart?: () => void;
+	refreshInventory: () => void | Promise<void>;
+};
 
 export type CartLineView = {
 	displayName: string;

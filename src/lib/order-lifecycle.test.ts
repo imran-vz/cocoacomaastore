@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
 	canCancelOrderOnOperatingDay,
+	fingerprintOrderRequest,
 	getCartLineInventoryDeductions,
 	getOrderInventoryRestorationsFromAudits,
 	resolveOrderLinesFromCatalog,
@@ -36,6 +37,45 @@ const combo = {
 const comboItem = { comboId: combo.id, dessertId: modifier.id, quantity: 2 };
 
 describe("order-lifecycle", () => {
+	describe("order request fingerprint", () => {
+		const input = {
+			submissionId: "123e4567-e89b-42d3-a456-426614174000",
+			customerName: "  Aarav <b>Patel</b>  ",
+			deliveryCost: "5",
+			lines: [
+				{ baseDessertId: 10, quantity: 2 },
+				{ baseDessertId: 11, comboId: 30, quantity: 1 },
+			],
+		};
+
+		test("is independent of line order and equivalent normalization", () => {
+			expect(
+				fingerprintOrderRequest({
+					...input,
+					submissionId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+					customerName: "Aarav Patel",
+					deliveryCost: "5.00",
+					lines: [...input.lines].reverse(),
+				}),
+			).toBe(fingerprintOrderRequest(input));
+		});
+
+		test("changes for every semantic request field", () => {
+			const fingerprint = fingerprintOrderRequest(input);
+			const variants = [
+				{ ...input, customerName: "Different" },
+				{ ...input, deliveryCost: "5.01" },
+				{ ...input, lines: [{ ...input.lines[0], baseDessertId: 12 }, input.lines[1]] },
+				{ ...input, lines: [input.lines[0], { ...input.lines[1], comboId: 31 }] },
+				{ ...input, lines: [{ ...input.lines[0], quantity: 3 }, input.lines[1]] },
+			];
+
+			for (const variant of variants) {
+				expect(fingerprintOrderRequest(variant)).not.toBe(fingerprint);
+			}
+		});
+	});
+
 	describe("authoritative catalog resolution", () => {
 		test("uses the current direct price and additive combo price", () => {
 			const direct = resolveOrderLinesFromCatalog({

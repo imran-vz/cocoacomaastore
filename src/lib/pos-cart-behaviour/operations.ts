@@ -1,10 +1,15 @@
+import { sanitizeCustomerName } from "@/lib/sanitize";
 import type {
 	CartComboInput,
 	CartDessertInput,
 	CartLine,
 	CartLineView,
 	CartMutationResult,
+	CompleteAcknowledgedOrderInput,
 	InventoryByDessertId,
+	OrderSaveAcknowledgement,
+	OrderSubmissionIdentity,
+	OrderSubmissionInput,
 	PosCartEvent,
 	PosCartState,
 	SaveOrderAdapter,
@@ -232,19 +237,74 @@ export function getOrderCopyText(cart: CartLine[], total: number, deliveryCost: 
 	return `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
 }
 
+function getOrderRequestLines(cart: CartLine[]) {
+	return cart.map((line) =>
+		line.comboId === undefined
+			? { baseDessertId: line.baseDessertId, quantity: line.quantity }
+			: { baseDessertId: line.baseDessertId, comboId: line.comboId, quantity: line.quantity },
+	);
+}
+
+function normalizeDeliveryCost(deliveryCost: string | number): string {
+	const value = typeof deliveryCost === "number" ? deliveryCost : Number.parseFloat(deliveryCost || "0");
+	return value.toFixed(2);
+}
+
+export function fingerprintOrderSubmission(input: OrderSubmissionInput): string {
+	const lines = getOrderRequestLines(input.cart)
+		.map((line) => ({
+			baseDessertId: line.baseDessertId,
+			comboId: line.comboId ?? null,
+			quantity: line.quantity,
+		}))
+		.sort(
+			(a, b) => a.baseDessertId - b.baseDessertId || (a.comboId ?? -1) - (b.comboId ?? -1) || a.quantity - b.quantity,
+		);
+
+	return JSON.stringify({
+		customerName: sanitizeCustomerName(input.customerName),
+		deliveryCost: normalizeDeliveryCost(input.deliveryCost),
+		lines,
+	});
+}
+
+export function resolveOrderSubmissionIdentity(
+	current: OrderSubmissionIdentity | null,
+	input: OrderSubmissionInput,
+	nextSubmissionId: string,
+): OrderSubmissionIdentity {
+	const clientFingerprint = fingerprintOrderSubmission(input);
+	if (current?.clientFingerprint === clientFingerprint) return current;
+	return { clientFingerprint, submissionId: nextSubmissionId };
+}
+
+export async function completeAcknowledgedOrder({
+	acknowledgement,
+	clearCart,
+	closeCart,
+	refreshInventory,
+}: CompleteAcknowledgedOrderInput): Promise<OrderSaveAcknowledgement> {
+	clearCart();
+	closeCart?.();
+
+	try {
+		await refreshInventory();
+		return acknowledgement;
+	} catch (error) {
+		console.error("Failed to refresh inventory after saving order:", error);
+		return { ...acknowledgement, refreshWarning: true };
+	}
+}
+
 export async function saveCartOrder(adapter: SaveOrderAdapter, input: SaveOrderInput): Promise<SaveOrderResult> {
 	if (input.cart.length === 0) return { ok: false, error: "Cart is empty" };
 	try {
-		await adapter({
+		return await adapter({
 			customerName: input.customerName.trim(),
-			lines: input.cart.map((line) =>
-				line.comboId === undefined
-					? { baseDessertId: line.baseDessertId, quantity: line.quantity }
-					: { baseDessertId: line.baseDessertId, comboId: line.comboId, quantity: line.quantity },
-			),
-			deliveryCost: typeof input.deliveryCost === "number" ? input.deliveryCost.toFixed(2) : input.deliveryCost || "0",
+			lines: getOrderRequestLines(input.cart),
+			deliveryCost: normalizeDeliveryCost(input.deliveryCost),
+			submissionId: input.submissionId,
 		});
-		return { ok: true };
 	} catch (err) {
 		console.error("Failed to create order:", err);
 		return { ok: false, error: err instanceof Error ? err.message : "Failed to save order" };

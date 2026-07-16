@@ -18,6 +18,7 @@ import {
 } from "@/test/integration/database";
 
 const FIXED_NOW = new Date("2026-07-15T12:00:00.000Z");
+let orderSequence = 0;
 
 vi.doMock("server-only", () => ({}));
 vi.doMock("@/db", () => ({ db: integrationDb }));
@@ -54,9 +55,19 @@ async function seedOrder({
 	total: string;
 	quantity: number;
 }) {
+	orderSequence += 1;
 	const [order] = await integrationDb
 		.insert(ordersTable)
-		.values({ customerName: "Reporting", createdAt, deliveryCost: "0.00", total, status, isDeleted })
+		.values({
+			submissionId: `reporting-order-${orderSequence}`,
+			requestFingerprint: orderSequence.toString(16).padStart(64, "0"),
+			customerName: "Reporting",
+			createdAt,
+			deliveryCost: "0.00",
+			total,
+			status,
+			isDeleted,
+		})
 		.returning();
 	await integrationDb.insert(orderItemsTable).values({
 		orderId: order.id,

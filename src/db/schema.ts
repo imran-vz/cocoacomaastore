@@ -107,6 +107,8 @@ export const ordersTable = pgTable(
 	"orders",
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
+		submissionId: varchar({ length: 255 }).notNull(),
+		requestFingerprint: varchar({ length: 64 }).notNull(),
 		customerName: varchar({ length: 255 }).default(""),
 		createdAt: timestamp().notNull().defaultNow(),
 		deliveryCost: numeric({ precision: 5, scale: 2 }).notNull().default("0.00"),
@@ -117,6 +119,7 @@ export const ordersTable = pgTable(
 		isDeleted: boolean().notNull().default(false),
 	},
 	(table) => [
+		uniqueIndex("orders_submission_id_unique").on(table.submissionId),
 		index("orders_created_at_idx").on(table.createdAt),
 		index("orders_is_deleted_idx").on(table.isDeleted),
 		index("orders_active_idx").on(table.isDeleted, table.createdAt),

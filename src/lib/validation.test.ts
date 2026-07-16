@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import { createOrderWithLinesSchema, upsertInventorySchema } from "@/lib/validation";
 
 describe("order request validation", () => {
+	const submissionId = "123e4567-e89b-42d3-a456-426614174000";
+
 	it("accepts minimal direct and combo references", () => {
 		const input = {
+			submissionId,
 			customerName: "Customer",
 			lines: [
 				{ baseDessertId: 1, quantity: 2 },
@@ -18,6 +21,7 @@ describe("order request validation", () => {
 	it("rejects client-owned cart details", () => {
 		expect(
 			createOrderWithLinesSchema.safeParse({
+				submissionId,
 				customerName: "Customer",
 				lines: [
 					{
@@ -40,10 +44,22 @@ describe("order request validation", () => {
 	it("rejects unknown fields on the containing request", () => {
 		expect(
 			createOrderWithLinesSchema.safeParse({
+				submissionId,
 				customerName: "Customer",
 				lines: [{ baseDessertId: 1, quantity: 1 }],
 				deliveryCost: "0.00",
 				total: 0,
+			}).success,
+		).toBe(false);
+	});
+
+	it("rejects a non-UUID submission identity", () => {
+		expect(
+			createOrderWithLinesSchema.safeParse({
+				submissionId: "not-a-uuid",
+				customerName: "Customer",
+				lines: [{ baseDessertId: 1, quantity: 1 }],
+				deliveryCost: "0.00",
 			}).success,
 		).toBe(false);
 	});

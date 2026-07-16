@@ -163,7 +163,12 @@ describe("manual inventory persistence", () => {
 	it("serializes a manual save with an order deduction", async () => {
 		const dessert = await seedDessert("Order Race Dessert", 5);
 		const orderPromise = createCompletedOrder(
-			{ customerName: "Inventory Race", lines: [orderLine(dessert)], deliveryCost: "0.00" },
+			{
+				submissionId: "00000000-0000-4000-8000-000000000001",
+				customerName: "Inventory Race",
+				lines: [orderLine(dessert)],
+				deliveryCost: "0.00",
+			},
 			MANAGER_ID,
 		);
 		const manualPromise = runManualWrite([{ dessertId: dessert.id, expectedQuantity: 5, quantity: 10 }]);

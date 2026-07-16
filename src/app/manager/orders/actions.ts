@@ -6,12 +6,14 @@ import {
 	cancelOrderAsNormalPath,
 	createCompletedOrder,
 	getCachedOrders as getCachedOrdersCore,
+	OrderSubmissionConflictError,
 	serializeOrders,
 } from "@/lib/order-lifecycle";
 import type { OrderRequestLine } from "@/lib/types";
 import { cancelOrderSchema, createOrderWithLinesSchema } from "@/lib/validation";
 
 interface CreateOrderWithLinesData {
+	submissionId: string;
 	customerName: string;
 	lines: OrderRequestLine[];
 	deliveryCost: string;
@@ -42,7 +44,15 @@ async function mapDatabaseUnavailable<T>(fn: () => Promise<T>): Promise<T> {
 export async function createOrderWithLines(data: CreateOrderWithLinesData) {
 	const user = await mapDatabaseUnavailable(() => requireAuth());
 	const validated = createOrderWithLinesSchema.parse(data);
-	await mapDatabaseUnavailable(() => createCompletedOrder(validated, user.id));
+	try {
+		const result = await mapDatabaseUnavailable(() => createCompletedOrder(validated, user.id));
+		return { ok: true, ...result } as const;
+	} catch (error) {
+		if (error instanceof OrderSubmissionConflictError) {
+			return { ok: false, error: error.message } as const;
+		}
+		throw error;
+	}
 }
 
 export async function cancelOrder(orderId: number, reason?: string) {

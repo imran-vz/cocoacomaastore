@@ -3,10 +3,13 @@ import {
 	addComboToCart,
 	addDessertToCart,
 	applyPosCartEvent,
+	completeAcknowledgedOrder,
+	fingerprintOrderSubmission,
 	getCartLineView,
 	getOrderCopyText,
 	getUpiPaymentText,
 	initialPosCartState,
+	resolveOrderSubmissionIdentity,
 	saveCartOrder,
 	updateCartLineQuantity,
 } from "./operations";
@@ -92,13 +95,17 @@ describe("POS cart behaviour", () => {
 	});
 
 	it("saves only minimal direct and combo references through the provided adapter", async () => {
-		const adapter = vi.fn().mockResolvedValue(undefined);
+		const acknowledgement = { ok: true as const, orderId: 42, replayed: false, refreshWarning: false };
+		const adapter = vi.fn().mockResolvedValue(acknowledgement);
 		const comboLine: CartLine = { ...cartLine, cartLineId: "line-2", comboId: 10, comboName: "brownie blast" };
 		await expect(
-			saveCartOrder(adapter, { cart: [cartLine, comboLine], customerName: "  Ada  ", deliveryCost: 25 }),
-		).resolves.toEqual({
-			ok: true,
-		});
+			saveCartOrder(adapter, {
+				cart: [cartLine, comboLine],
+				customerName: "  Ada  ",
+				deliveryCost: 25,
+				submissionId: "93d933ae-adf6-4aec-a024-200fba2e3cd5",
+			}),
+		).resolves.toEqual(acknowledgement);
 		expect(adapter).toHaveBeenCalledWith({
 			customerName: "Ada",
 			lines: [
@@ -106,6 +113,92 @@ describe("POS cart behaviour", () => {
 				{ baseDessertId: 1, comboId: 10, quantity: 2 },
 			],
 			deliveryCost: "25.00",
+			submissionId: "93d933ae-adf6-4aec-a024-200fba2e3cd5",
 		});
+	});
+
+	it("preserves a serialized submission conflict from the server action", async () => {
+		const conflict = {
+			ok: false as const,
+			error: "This order submission was already used for different order details.",
+		};
+
+		await expect(
+			saveCartOrder(vi.fn().mockResolvedValue(conflict), {
+				cart: [cartLine],
+				customerName: "Ada",
+				deliveryCost: 0,
+				submissionId: "93d933ae-adf6-4aec-a024-200fba2e3cd5",
+			}),
+		).resolves.toEqual(conflict);
+	});
+
+	it("reuses submission identity for the same normalized minimal request and rotates it after a semantic change", () => {
+		const comboLine: CartLine = { ...cartLine, cartLineId: "line-2", comboId: 10, comboName: "brownie blast" };
+		const firstInput = {
+			cart: [cartLine, comboLine],
+			customerName: " <b>Ada</b> ",
+			deliveryCost: "25",
+		};
+		const first = resolveOrderSubmissionIdentity(null, firstInput, "first-id");
+		const unchanged = resolveOrderSubmissionIdentity(
+			first,
+			{
+				cart: [
+					{ ...comboLine, cartLineId: "different-client-id", comboName: "renamed locally" },
+					{ ...cartLine, baseDessertName: "renamed locally" },
+				],
+				customerName: "Ada",
+				deliveryCost: 25,
+			},
+			"unused-id",
+		);
+		const changed = resolveOrderSubmissionIdentity(
+			unchanged,
+			{ ...firstInput, cart: [{ ...cartLine, quantity: 3 }, comboLine] },
+			"changed-id",
+		);
+
+		expect(unchanged).toBe(first);
+		expect(changed.submissionId).toBe("changed-id");
+		expect(changed.clientFingerprint).not.toBe(first.clientFingerprint);
+		expect(fingerprintOrderSubmission(firstInput)).toBe(first.clientFingerprint);
+	});
+
+	it("rotates submission identity after an explicit reset and preserves it after an adapter error", async () => {
+		const input = { cart: [cartLine], customerName: "Ada", deliveryCost: 0 };
+		const first = resolveOrderSubmissionIdentity(null, input, "first-id");
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+		await expect(
+			saveCartOrder(vi.fn().mockRejectedValue(new Error("network unavailable")), {
+				...input,
+				submissionId: first.submissionId,
+			}),
+		).resolves.toEqual({ ok: false, error: "network unavailable" });
+		const retry = resolveOrderSubmissionIdentity(first, input, "unused-id");
+		const afterReset = resolveOrderSubmissionIdentity(null, input, "reset-id");
+
+		expect(retry.submissionId).toBe("first-id");
+		expect(afterReset.submissionId).toBe("reset-id");
+		errorSpy.mockRestore();
+	});
+
+	it("clears and closes an acknowledged order before refresh and reports refresh failure as a warning", async () => {
+		const events: string[] = [];
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+		const result = await completeAcknowledgedOrder({
+			acknowledgement: { orderId: 42, replayed: false, refreshWarning: false },
+			clearCart: () => events.push("clear"),
+			closeCart: () => events.push("close"),
+			refreshInventory: () => {
+				events.push("refresh");
+				throw new Error("refresh unavailable");
+			},
+		});
+
+		expect(events).toEqual(["clear", "close", "refresh"]);
+		expect(result).toEqual({ orderId: 42, replayed: false, refreshWarning: true });
+		errorSpy.mockRestore();
 	});
 });
