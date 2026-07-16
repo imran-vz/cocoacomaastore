@@ -97,14 +97,14 @@ describe("Better Auth Drizzle policy", () => {
 			id: "seeded-user",
 			email: "seeded@example.com",
 			password: "seeded-password-123",
-			role: "user",
+			role: "admin",
 		});
 		const cookie = await signIn("seeded@example.com", "seeded-password-123");
 		const session = await auth.handler(authRequest("/get-session", undefined, cookie));
 
 		expect(session.status).toBe(200);
 		expect(await session.json()).toMatchObject({
-			user: { id: "seeded-user", email: "seeded@example.com", role: "user" },
+			user: { id: "seeded-user", email: "seeded@example.com", role: "admin" },
 		});
 	});
 
