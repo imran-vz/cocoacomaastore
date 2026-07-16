@@ -36,7 +36,7 @@ weaken a STOP condition merely to keep moving.
 | 013 | [Remove inline full-day analytics compilation](013-remove-synchronous-full-day-analytics-from-order-mutations.md) | P2 | S | MED | 007, 011 | DONE |
 | 014 | [Exclude cancelled orders from sales summaries](014-exclude-cancelled-orders-from-sales-summaries.md) | P2 | S | LOW | 006 | DONE |
 | 015 | [Align order validation boundaries](015-align-order-validation-boundaries.md) | P2 | S | LOW | 006, 009 | DONE |
-| 016 | [Make setup and first-admin bootstrap reproducible](016-make-setup-and-admin-bootstrap-reproducible.md) | P2 | M | MED | 001, 003, 006, 012 | TODO |
+| 016 | [Make setup and first-admin bootstrap reproducible](016-make-setup-and-admin-bootstrap-reproducible.md) | P2 | M | MED | 001, 003, 006, 012 | DONE |
 
 ## Roadmap revision
 
