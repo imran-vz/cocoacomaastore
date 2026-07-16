@@ -78,8 +78,8 @@ The application should make day-to-day store work fast and clear:
 - Base UI/shadcn-style local UI primitives under `src/components/ui`.
 - Biome for formatting/linting through:
   - `pnpm format`
-  - `vp lint`
-  - `vp run typecheck`
+  - `pnpm lint`
+  - `pnpm typecheck`
 
 ## Data Model Anchors
 
