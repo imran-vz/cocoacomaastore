@@ -16,13 +16,17 @@ Precompute analytics into `analytics_*` tables from completed, non-deleted order
 
 Scheduled compilation is orchestrated by Trigger.dev tasks and backed by reusable TypeScript analytics functions.
 
-Incremental recomputation lives in `src/lib/recompute-day-analytics.ts` and updates affected daily/monthly analytics after order mutations.
+The `analytics_*` tables are closed-period read models. At 00:10 IST, the daily Trigger task overwrites the previous seven closed IST days from source truth; monthly compilation remains scheduled after month close.
+
+Current IST-day revenue metrics and chart points read live order tables. End-of-day stock trends include only closed IST days. Order creation and same-day cancellation synchronously invalidate the relevant caches but do not compile analytics in the request path.
 
 Analytics should count distinct orders where line-item joins could duplicate an order.
 
 ## Consequences
 
 - Dashboard and analytics pages can read small pre-aggregated tables.
-- Mutation paths must recompute affected analytics and revalidate relevant cache tags.
-- Analytics correctness depends on keeping batch and inline recompute logic aligned.
-- Derived analytics rows may be safely overwritten from source data.
+- Current-day revenue stays live without making closed-period reports query full order history.
+- End-of-day stock has a clear closed-day boundary and never exposes a stale compiled point for the open day.
+- Mutation paths await relevant cache invalidation; cache invalidation is not asynchronous compilation.
+- Derived analytics rows may be safely overwritten from source data by scheduled or operator-triggered repair.
+- Interactive cancellation cannot change a closed historical day because it is limited to the current operating day.

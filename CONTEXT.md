@@ -141,17 +141,18 @@ Batch workflow:
 - Shared analytics compile logic lives in reusable TypeScript modules exposed as Effect programs.
 - Jobs produce daily, monthly, dessert-level, and end-of-day stock analytics.
 
-Inline recompute workflow:
+Mutation and compilation boundary:
 
-- Library: `src/lib/recompute-day-analytics.ts`
-- Entry point: `recomputeAnalyticsForDate(date)`
-- Effect entry point: `recomputeAnalyticsForDateEffect(date)`
-- Used after order mutations so affected day/month analytics stay fresh.
-- Manager order mutations run analytics recompute and cache-tag invalidation through the Next-specific Effect runtime in `src/server/effect/next-runtime.ts`.
+- Order creation and same-day cancellation update source-of-truth order, inventory, and audit rows, then await cache-tag invalidation only.
+- Current IST-day dashboard metrics and chart points read live source tables.
+- End-of-day stock trends expose only closed IST days; the open current day has no compiled EOD point.
+- The Trigger.dev daily task runs at 00:10 IST and recomputes the previous seven closed IST days from source truth.
+- Interactive cancellation is limited to the current operating day, so it cannot change closed historical analytics.
+- Operators can request repair of the current seven-day closed window through the existing authenticated Trigger path.
 
 Cache invalidation:
 
-- Order and inventory mutations revalidate relevant tags such as `orders`, `dashboard`, `analytics`, `inventory`, and `desserts`.
+- Order and inventory mutations synchronously invalidate their domain cache tags before their request completes.
 
 ## Dashboard And Analytics UI
 
