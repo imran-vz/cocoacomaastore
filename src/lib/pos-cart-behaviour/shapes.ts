@@ -1,4 +1,4 @@
-import type { CartLine } from "@/lib/types";
+import type { CartLine, OrderRequestLine } from "@/lib/types";
 
 export type InventoryByDessertId = Record<number, number>;
 
@@ -49,7 +49,7 @@ export type SaveOrderResult = { ok: true } | { ok: false; error: string };
 
 export type SaveOrderAdapter = (input: {
 	customerName: string;
-	lines: CartLine[];
+	lines: OrderRequestLine[];
 	deliveryCost: string;
 }) => Promise<unknown>;
 

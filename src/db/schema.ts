@@ -135,8 +135,14 @@ export const orderItemsTable = pgTable(
 	"order_items",
 	{
 		id: integer().primaryKey().generatedAlwaysAsIdentity(),
-		orderId: integer().notNull(),
-		dessertId: integer().notNull(),
+		orderId: integer()
+			.notNull()
+			.references(() => ordersTable.id, { onDelete: "cascade" }),
+		dessertId: integer()
+			.notNull()
+			.references(() => dessertsTable.id, { onDelete: "restrict" }),
+		baseDessertName: varchar({ length: 255 }).notNull(),
+		inventoryDeducted: boolean().notNull(),
 		quantity: integer().notNull(),
 		unitPrice: numeric({ precision: 10, scale: 2 }).notNull().default("0.00"), // snapshotted price per unit at order time
 		comboId: integer().references(() => dessertCombosTable.id, {
@@ -179,7 +185,8 @@ export const orderItemModifiersTable = pgTable(
 			.references(() => orderItemsTable.id, { onDelete: "cascade" }),
 		dessertId: integer()
 			.notNull()
-			.references(() => dessertsTable.id, { onDelete: "cascade" }),
+			.references(() => dessertsTable.id, { onDelete: "restrict" }),
+		dessertName: varchar({ length: 255 }).notNull(),
 		quantity: integer().notNull().default(1), // quantity of this modifier per unit
 	},
 	(table) => [

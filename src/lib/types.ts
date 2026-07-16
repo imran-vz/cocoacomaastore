@@ -29,6 +29,12 @@ export interface CartLine {
 	comboName?: string;
 }
 
+export type OrderRequestLine = {
+	baseDessertId: number;
+	comboId?: number;
+	quantity: number;
+};
+
 // ============================================================================
 // Combo with relations - for UI display
 // ============================================================================

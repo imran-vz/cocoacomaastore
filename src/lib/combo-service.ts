@@ -230,6 +230,16 @@ export async function updateComboItems(comboId: number, items: Array<{ dessertId
 			const database = yield* Database;
 			yield* database.attempt("update combo items", (db) =>
 				db.transaction(async (tx) => {
+					const [combo] = await tx
+						.select({ id: dessertCombosTable.id, isDeleted: dessertCombosTable.isDeleted })
+						.from(dessertCombosTable)
+						.where(eq(dessertCombosTable.id, validated.comboId))
+						.for("no key update");
+
+					if (!combo || combo.isDeleted) {
+						throw new Error("Combo is missing or inactive");
+					}
+
 					await tx.delete(dessertComboItemsTable).where(eq(dessertComboItemsTable.comboId, validated.comboId));
 
 					if (validated.items.length > 0) {

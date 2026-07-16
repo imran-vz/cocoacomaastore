@@ -237,7 +237,11 @@ export async function saveCartOrder(adapter: SaveOrderAdapter, input: SaveOrderI
 	try {
 		await adapter({
 			customerName: input.customerName.trim(),
-			lines: input.cart,
+			lines: input.cart.map((line) =>
+				line.comboId === undefined
+					? { baseDessertId: line.baseDessertId, quantity: line.quantity }
+					: { baseDessertId: line.baseDessertId, comboId: line.comboId, quantity: line.quantity },
+			),
 			deliveryCost: typeof input.deliveryCost === "number" ? input.deliveryCost.toFixed(2) : input.deliveryCost || "0",
 		});
 		return { ok: true };

@@ -1,45 +1,36 @@
 import { z } from "zod";
+import type { OrderRequestLine } from "@/lib/types";
 
 // ============================================================================
 // Order Validation
 // ============================================================================
 
-const cartLineModifierSchema = z.object({
-	dessertId: z.number().int().positive(),
-	name: z.string().min(1).max(255),
-	price: z.number().int().min(0),
-	quantity: z.number().int().min(1).max(99),
-});
+const orderRequestLineSchema: z.ZodType<OrderRequestLine> = z
+	.object({
+		baseDessertId: z.number().int().positive(),
+		comboId: z.number().int().positive().optional(),
+		quantity: z.number().int().min(1).max(99),
+	})
+	.strict();
 
-const cartLineSchema = z.object({
-	cartLineId: z.string().min(1).max(100),
-	baseDessertId: z.number().int().positive(),
-	baseDessertName: z.string().min(1).max(255),
-	baseDessertPrice: z.number().int().min(0),
-	hasUnlimitedStock: z.boolean(),
-	modifiers: z.array(cartLineModifierSchema).max(20),
-	unitPrice: z.number().int().min(0),
-	quantity: z.number().int().min(1).max(99),
-	comboId: z.number().int().positive().optional(),
-	comboName: z.string().max(255).optional(),
-});
-
-export const createOrderWithLinesSchema = z.object({
-	customerName: z
-		.string()
-		.trim()
-		.min(0)
-		.max(255)
-		.transform((val) => val || ""),
-	lines: z.array(cartLineSchema).min(1).max(100),
-	deliveryCost: z
-		.string()
-		.regex(/^\d+(\.\d{1,2})?$/, "Invalid delivery cost format")
-		.refine((val) => {
-			const num = Number.parseFloat(val);
-			return num >= 0 && num <= 10000;
-		}, "Delivery cost must be between 0 and 10000"),
-});
+export const createOrderWithLinesSchema = z
+	.object({
+		customerName: z
+			.string()
+			.trim()
+			.min(0)
+			.max(255)
+			.transform((val) => val || ""),
+		lines: z.array(orderRequestLineSchema).min(1).max(100),
+		deliveryCost: z
+			.string()
+			.regex(/^\d+(\.\d{1,2})?$/, "Invalid delivery cost format")
+			.refine((val) => {
+				const num = Number.parseFloat(val);
+				return num >= 0 && num <= 10000;
+			}, "Delivery cost must be between 0 and 10000"),
+	})
+	.strict();
 
 export const cancelOrderSchema = z.object({
 	orderId: z.number().int().positive(),
@@ -205,7 +196,6 @@ export const updateComboItemsSchema = z.object({
 // ============================================================================
 
 export type CreateOrderWithLinesInput = z.infer<typeof createOrderWithLinesSchema>;
-export type CartLineInput = z.infer<typeof cartLineSchema>;
 export type CreateDessertInput = z.infer<typeof createDessertSchema>;
 export type UpdateDessertInput = z.infer<typeof updateDessertSchema>;
 export type CreateManagerInput = z.infer<typeof createManagerSchema>;

@@ -8,12 +8,12 @@ import {
 	getCachedOrders as getCachedOrdersCore,
 	serializeOrders,
 } from "@/lib/order-lifecycle";
-import type { CartLine } from "@/lib/types";
+import type { OrderRequestLine } from "@/lib/types";
 import { cancelOrderSchema, createOrderWithLinesSchema } from "@/lib/validation";
 
 interface CreateOrderWithLinesData {
 	customerName: string;
-	lines: CartLine[];
+	lines: OrderRequestLine[];
 	deliveryCost: string;
 }
 
