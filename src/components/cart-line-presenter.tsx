@@ -5,6 +5,7 @@ import { Minus, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { useLongPress } from "@/hooks/use-long-press";
+import { MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
 import { getCartLineView } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 		threshold: 300,
 		onCancel: () => {
 			const newQty = quantityRef.current + delta;
+			if (delta > 0 && newQty > MAX_ORDER_LINE_QUANTITY) return;
 			quantityRef.current = newQty;
 			updateQuantity(line.cartLineId, newQty);
 		},
@@ -65,6 +67,13 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 	const incrementLongPress = useLongPress(() => {
 		intervalRef.current = setInterval(() => {
 			const nextQty = quantityRef.current + 1;
+			if (nextQty > MAX_ORDER_LINE_QUANTITY) {
+				if (intervalRef.current) {
+					clearInterval(intervalRef.current);
+					intervalRef.current = null;
+				}
+				return;
+			}
 			quantityRef.current = nextQty;
 			updateQuantity(line.cartLineId, nextQty);
 		}, 100);
@@ -132,8 +141,10 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 					<motion.button
 						whileTap={{ scale: isTablet ? 0.85 : 0.9 }}
 						type="button"
+						disabled={line.quantity >= MAX_ORDER_LINE_QUANTITY}
+						aria-label="Increase quantity"
 						className={cn(
-							"flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors",
+							"flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50 disabled:pointer-events-none",
 							isTablet ? "h-7 w-8" : "h-9 w-10",
 						)}
 						{...incrementLongPress()}

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { createOrderWithLines } from "@/app/manager/orders/actions";
 import type { UpiAccount } from "@/db/schema";
+import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { GetOrderSubmissionId } from "@/lib/pos-cart-behaviour";
 import {
 	completeAcknowledgedOrder,
@@ -350,6 +351,7 @@ export function MobileCartSheet({
 																type="number"
 																step="0.01"
 																min="0"
+																max={MAX_DELIVERY_COST}
 																value={field.state.value}
 																onChange={(e) => field.handleChange(e.target.value)}
 																onBlur={field.handleBlur}

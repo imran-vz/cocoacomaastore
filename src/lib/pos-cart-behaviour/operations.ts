@@ -1,3 +1,4 @@
+import { MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
 import { sanitizeCustomerName } from "@/lib/sanitize";
 import type {
 	CartComboInput,
@@ -17,7 +18,7 @@ import type {
 	SaveOrderResult,
 } from "./shapes";
 
-const MAX_CART_LINE_QUANTITY = 199;
+const QUANTITY_LIMIT_MESSAGE = `Quantity cannot be greater than ${MAX_ORDER_LINE_QUANTITY}`;
 const OUT_OF_STOCK_MESSAGE = "Out of stock — set today's inventory";
 
 function generateCartLineId(): string {
@@ -45,11 +46,7 @@ function getAvailableStock(dessertId: number, hasUnlimitedStock: boolean, invent
 }
 
 function incrementExistingLine(cart: CartLine[], cartLineId: string): CartLine[] {
-	return cart.map((line) =>
-		line.cartLineId === cartLineId && line.quantity < MAX_CART_LINE_QUANTITY
-			? { ...line, quantity: line.quantity + 1 }
-			: line,
-	);
+	return cart.map((line) => (line.cartLineId === cartLineId ? { ...line, quantity: line.quantity + 1 } : line));
 }
 
 export function addDessertToCart(
@@ -60,10 +57,13 @@ export function addDessertToCart(
 	const available = getAvailableStock(dessert.id, dessert.hasUnlimitedStock, inventoryByDessertId);
 	const usedInCart = getCartInventoryUsage(cart).get(dessert.id) ?? 0;
 	const remaining = available - usedInCart;
+	const existingLine = cart.find((line) => line.baseDessertId === dessert.id && line.modifiers.length === 0);
 
+	if (existingLine && existingLine.quantity >= MAX_ORDER_LINE_QUANTITY) {
+		return { ok: false, cart, error: QUANTITY_LIMIT_MESSAGE };
+	}
 	if (remaining <= 0) return { ok: false, cart, error: OUT_OF_STOCK_MESSAGE };
 
-	const existingLine = cart.find((line) => line.baseDessertId === dessert.id && line.modifiers.length === 0);
 	if (existingLine) {
 		if (existingLine.quantity >= available) return { ok: false, cart, error: `Only ${available} left` };
 		return { ok: true, cart: incrementExistingLine(cart, existingLine.cartLineId) };
@@ -95,10 +95,13 @@ export function addComboToCart(
 	const available = getAvailableStock(combo.baseDessertId, combo.baseDessert.hasUnlimitedStock, inventoryByDessertId);
 	const usedInCart = getCartInventoryUsage(cart).get(combo.baseDessertId) ?? 0;
 	const remaining = available - usedInCart;
+	const existingLine = cart.find((line) => line.comboId === combo.id);
 
+	if (existingLine && existingLine.quantity >= MAX_ORDER_LINE_QUANTITY) {
+		return { ok: false, cart, error: QUANTITY_LIMIT_MESSAGE };
+	}
 	if (remaining <= 0) return { ok: false, cart, error: OUT_OF_STOCK_MESSAGE };
 
-	const existingLine = cart.find((line) => line.comboId === combo.id);
 	if (existingLine) {
 		if (existingLine.quantity >= available) return { ok: false, cart, error: `Only ${available} left` };
 		return { ok: true, cart: incrementExistingLine(cart, existingLine.cartLineId) };
@@ -147,6 +150,7 @@ export function updateCartLineQuantity(
 
 	const line = cart.find((item) => item.cartLineId === cartLineId);
 	if (!line) return { ok: true, cart };
+	if (quantity > MAX_ORDER_LINE_QUANTITY) return { ok: false, cart, error: QUANTITY_LIMIT_MESSAGE };
 
 	const available = getAvailableStock(line.baseDessertId, line.hasUnlimitedStock, inventoryByDessertId);
 	const usedByOthers = cart
@@ -162,8 +166,6 @@ export function updateCartLineQuantity(
 			error: `Only ${maxAllowed} available`,
 		};
 	}
-	if (quantity > MAX_CART_LINE_QUANTITY) return { ok: false, cart, error: "Quantity cannot be greater than 199" };
-
 	return {
 		ok: true,
 		cart: cart.map((item) => (item.cartLineId === cartLineId ? { ...item, quantity } : item)),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_DELIVERY_COST, MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
 import type { OrderRequestLine } from "@/lib/types";
 
 // ============================================================================
@@ -9,7 +10,7 @@ const orderRequestLineSchema: z.ZodType<OrderRequestLine> = z
 	.object({
 		baseDessertId: z.number().int().positive(),
 		comboId: z.number().int().positive().optional(),
-		quantity: z.number().int().min(1).max(99),
+		quantity: z.number().int().min(1).max(MAX_ORDER_LINE_QUANTITY),
 	})
 	.strict();
 
@@ -28,8 +29,8 @@ export const createOrderWithLinesSchema = z
 			.regex(/^\d+(\.\d{1,2})?$/, "Invalid delivery cost format")
 			.refine((val) => {
 				const num = Number.parseFloat(val);
-				return num >= 0 && num <= 10000;
-			}, "Delivery cost must be between 0 and 10000"),
+				return num >= 0 && num <= MAX_DELIVERY_COST;
+			}, "Delivery cost must be between 0 and 999.99"),
 	})
 	.strict();
 
