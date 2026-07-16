@@ -61,6 +61,8 @@ async function seedOrder({
 	await integrationDb.insert(orderItemsTable).values({
 		orderId: order.id,
 		dessertId,
+		baseDessertName: "Reporting Dessert",
+		inventoryDeducted: false,
 		quantity,
 		unitPrice: total,
 	});

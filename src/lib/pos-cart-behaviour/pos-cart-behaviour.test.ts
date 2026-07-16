@@ -91,13 +91,21 @@ describe("POS cart behaviour", () => {
 		expect(getOrderCopyText([cartLine], 425, 25)).toContain("Brownie (+ 2× ice cream) × 2 = ₹400.00");
 	});
 
-	it("saves Orders through the provided adapter", async () => {
+	it("saves only minimal direct and combo references through the provided adapter", async () => {
 		const adapter = vi.fn().mockResolvedValue(undefined);
+		const comboLine: CartLine = { ...cartLine, cartLineId: "line-2", comboId: 10, comboName: "brownie blast" };
 		await expect(
-			saveCartOrder(adapter, { cart: [cartLine], customerName: "  Ada  ", deliveryCost: 25 }),
+			saveCartOrder(adapter, { cart: [cartLine, comboLine], customerName: "  Ada  ", deliveryCost: 25 }),
 		).resolves.toEqual({
 			ok: true,
 		});
-		expect(adapter).toHaveBeenCalledWith({ customerName: "Ada", lines: [cartLine], deliveryCost: "25.00" });
+		expect(adapter).toHaveBeenCalledWith({
+			customerName: "Ada",
+			lines: [
+				{ baseDessertId: 1, quantity: 2 },
+				{ baseDessertId: 1, comboId: 10, quantity: 2 },
+			],
+			deliveryCost: "25.00",
+		});
 	});
 });

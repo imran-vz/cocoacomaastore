@@ -29,7 +29,7 @@ weaken a STOP condition merely to keep moving.
 | 006 | [Establish a green quality gate](006-establish-green-quality-gate.md) | P1 | S | LOW | — | DONE |
 | 007 | [Add disposable PostgreSQL lifecycle/reporting tests](007-add-database-lifecycle-reporting-tests.md) | P1 | M | MED | 005, 006 | DONE |
 | 008 | [Establish versioned database migrations](008-establish-versioned-database-migrations.md) | P1 | M | HIGH | 006, 007 | SKIPPED |
-| 009 | [Create server-owned order snapshots](009-create-server-owned-order-snapshots.md) | P1 | L | HIGH | 007 | TODO |
+| 009 | [Create server-owned order snapshots](009-create-server-owned-order-snapshots.md) | P1 | L | HIGH | 007 | DONE |
 | 010 | [Make inventory writes audited and concurrency-safe](010-make-inventory-writes-audited-and-concurrency-safe.md) | P1 | M | HIGH | 007 | DONE |
 | 011 | [Make order submission idempotent](011-make-order-submission-idempotent.md) | P1 | M | HIGH | 007, 009 | TODO |
 | 012 | [Upgrade vulnerable production dependencies](012-upgrade-vulnerable-production-dependencies.md) | P1 | M | HIGH | 001, 004, 006, 007 | TODO |
@@ -46,8 +46,8 @@ Plans that originally depended on it remain necessary and have been remodelled t
 pushing the live schema into guarded disposable PostgreSQL databases. A production push remains an explicit
 operator action with a backup, change record, and write pause when old and new writers are incompatible.
 
-Plans 001-007, 010, and 014 are complete. Continue with the remaining plans in index order: 009, 011, 012, 013,
-015, and 016.
+Plans 001-010 and 014 are complete except for intentionally skipped Plan 008. Continue with the remaining plans
+in index order: 011, 012, 013, 015, and 016.
 
 ## Recommended execution waves
 
