@@ -19,7 +19,6 @@ import {
 } from "@/db/schema";
 import { isDatabaseUnavailableError } from "@/lib/errors";
 import { getAnalyticsDay, getDayKey, getEndOfDayIST, getStartOfDayIST } from "@/lib/ist-date";
-import { recomputeDayAnalyticsEffect } from "@/lib/recompute-day-analytics";
 import { sanitizeCustomerName } from "@/lib/sanitize";
 import type { OrderRequestLine } from "@/lib/types";
 import { CacheTag, OrderTags, updateTagsEffect } from "@/server/effect/cache-tags";
@@ -51,8 +50,6 @@ export type SerializedOrderDetails = Omit<OrderDetails, "createdAt"> & {
 };
 
 export type SerializedOrders = SerializedOrderDetails[];
-
-type OrderMutationTag = (typeof OrderTags.mutation)[number];
 
 export type InventoryDeductionRequest = {
 	dessertId: number;
@@ -130,15 +127,8 @@ type ResolvedOrderLine = {
 const MAX_ORDER_TOTAL_CENTS = 9_999_999_999;
 const MAX_UNIT_PRICE = 99_999_999;
 
-function refreshOrderMutationViewsEffect(date: Date, tags: readonly OrderMutationTag[] = OrderTags.mutation) {
-	return Effect.gen(function* () {
-		yield* recomputeDayAnalyticsEffect(date);
-		yield* updateTagsEffect(tags);
-	});
-}
-
-function refreshOrderMutationViewsAfterMutation(date: Date) {
-	return refreshOrderMutationViewsEffect(date, OrderTags.mutation);
+function invalidateOrderMutationCachesEffect(tags: readonly string[] = OrderTags.mutation) {
+	return updateTagsEffect(tags);
 }
 
 function parseDeliveryCostCents(deliveryCost: string) {
@@ -709,17 +699,16 @@ export async function createCompletedOrder(
 	data: CreateCompletedOrderInput,
 	userId: string,
 ): Promise<CreateCompletedOrderResult> {
-	let created: { order: Order; replayed: boolean };
-	created = await runOrderLifecycleOperation("createCompletedOrder", () =>
+	const created: { order: Order; replayed: boolean } = await runOrderLifecycleOperation("createCompletedOrder", () =>
 		runNextAppEffect(createCompletedOrderEffect(data, userId)),
 	);
 
 	let refreshWarning = false;
 	try {
-		await runNextAppEffect(refreshOrderMutationViewsAfterMutation(created.order.createdAt));
+		await runNextAppEffect(invalidateOrderMutationCachesEffect());
 	} catch (error) {
 		refreshWarning = true;
-		console.error("Order was saved, but order views could not be refreshed", error);
+		console.error("Order was saved, but order caches could not be invalidated", error);
 	}
 
 	return { orderId: created.order.id, replayed: created.replayed, refreshWarning };
@@ -731,7 +720,7 @@ function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?:
 	return Effect.gen(function* () {
 		const database = yield* Database;
 
-		const order = yield* database.attempt("cancel order", (db) =>
+		yield* database.attempt("cancel order", (db) =>
 			db.transaction(async (tx) => {
 				const [order] = await tx
 					.select({
@@ -806,7 +795,7 @@ function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?:
 			}),
 		);
 
-		yield* refreshOrderMutationViewsAfterMutation(order.createdAt);
+		yield* invalidateOrderMutationCachesEffect();
 	});
 }
 

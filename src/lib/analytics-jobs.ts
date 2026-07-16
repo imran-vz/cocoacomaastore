@@ -31,7 +31,7 @@ function getCurrentISTYearMonth(now = new Date()): YearMonth {
 	};
 }
 
-function getClosedAnalyticsDays(now = new Date(), days = DEFAULT_DAILY_REPAIR_DAYS): Date[] {
+export function getClosedAnalyticsDays(now = new Date(), days = DEFAULT_DAILY_REPAIR_DAYS): Date[] {
 	const currentISTDay = getAnalyticsDay(now);
 
 	return Array.from({ length: days }, (_, index) => {

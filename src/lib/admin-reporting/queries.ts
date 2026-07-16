@@ -629,10 +629,10 @@ export async function getCachedMonthlyDessertRevenue(month?: string) {
 async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
 	const start = performance.now();
 
-	const endDay = getAnalyticsDay(new Date());
-	const startDay = new Date(endDay);
-	startDay.setDate(startDay.getDate() - (days - 1));
-	const endDayParam = timestampParam(endDay);
+	const currentDay = getAnalyticsDay(new Date());
+	const startDay = new Date(currentDay);
+	startDay.setUTCDate(startDay.getUTCDate() - days);
+	const currentDayParam = timestampParam(currentDay);
 	const startDayParam = timestampParam(startDay);
 
 	const results = await db
@@ -645,7 +645,9 @@ async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
 		})
 		.from(analyticsDailyEodStockTable)
 		.innerJoin(dessertsTable, eq(analyticsDailyEodStockTable.dessertId, dessertsTable.id))
-		.where(and(gte(analyticsDailyEodStockTable.day, startDayParam), lte(analyticsDailyEodStockTable.day, endDayParam)))
+		.where(
+			and(gte(analyticsDailyEodStockTable.day, startDayParam), lt(analyticsDailyEodStockTable.day, currentDayParam)),
+		)
 		.orderBy(analyticsDailyEodStockTable.day, dessertsTable.name);
 
 	const duration = performance.now() - start;
