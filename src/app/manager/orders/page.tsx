@@ -14,24 +14,29 @@ export const metadata: Metadata = {
 
 function OrdersSkeleton() {
 	return (
-		<div className="space-y-3">
-			{/* Header skeleton */}
+		<div className="space-y-4">
 			<div>
-				<Skeleton className="h-8 w-24" />
-				<Skeleton className="h-4 w-48 mt-1" />
+				<div className="flex items-start justify-between gap-3">
+					<div>
+						<Skeleton className="h-8 w-28" />
+						<Skeleton className="mt-2 h-4 w-44" />
+					</div>
+					<Skeleton className="h-11 w-24 md:h-8 md:w-36" />
+				</div>
 			</div>
 
-			{/* Stats skeleton */}
-			<div className="grid grid-cols-2 gap-2">
-				<Skeleton className="h-16 rounded-lg" />
-				<Skeleton className="h-16 rounded-lg" />
-			</div>
+			<div className="mx-auto max-w-6xl space-y-3">
+				<div className="grid grid-cols-2 gap-4 border-y py-3">
+					<Skeleton className="h-10" />
+					<Skeleton className="h-10" />
+				</div>
 
-			{/* Orders skeleton */}
-			<div className="space-y-2">
-				<Skeleton className="h-20 rounded-lg" />
-				<Skeleton className="h-20 rounded-lg" />
-				<Skeleton className="h-20 rounded-lg" />
+				<div className="space-y-2">
+					<Skeleton className="h-20 rounded-xl" />
+					<Skeleton className="h-20 rounded-xl" />
+					<Skeleton className="h-20 rounded-xl" />
+					<Skeleton className="h-20 rounded-xl" />
+				</div>
 			</div>
 		</div>
 	);
@@ -41,7 +46,7 @@ export default async function Orders() {
 	const orders = await getOrders();
 
 	return (
-		<main className="min-h-app p-3 pb-4 w-full max-w-2xl mx-auto">
+		<main className="min-h-app mx-auto w-full max-w-7xl p-3 pb-6 md:p-4 md:pb-8">
 			<Suspense fallback={<OrdersSkeleton />}>
 				<OrdersPage initialOrders={orders} />
 			</Suspense>

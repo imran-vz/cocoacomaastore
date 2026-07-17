@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { downloadOrderInvoice } from "@/lib/order-invoice";
 import type { SerializedOrderDetails } from "@/lib/order-lifecycle";
+import { cn } from "@/lib/utils";
 
-export function OrderInvoiceButton({ order }: { order: SerializedOrderDetails }) {
+export function OrderInvoiceButton({ order, className }: { order: SerializedOrderDetails; className?: string }) {
 	const [isExporting, setIsExporting] = useState(false);
 
 	const handleExport = async () => {
@@ -26,7 +27,13 @@ export function OrderInvoiceButton({ order }: { order: SerializedOrderDetails })
 	};
 
 	return (
-		<Button variant="outline" size="sm" className="w-full" onClick={handleExport} disabled={isExporting}>
+		<Button
+			variant="outline"
+			size="sm"
+			className={cn("w-full", className)}
+			onClick={handleExport}
+			disabled={isExporting}
+		>
 			{isExporting ? <Spinner className="size-4" /> : <Download className="size-4" />}
 			{isExporting ? "Preparing PDF..." : "Export PDF"}
 		</Button>
