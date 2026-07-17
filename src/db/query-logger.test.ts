@@ -21,12 +21,14 @@ function createClient(query: FakeQuery<unknown>): FakeClient {
 	return { unsafe: vi.fn(() => query) };
 }
 
-function expectOkLog(paramsCount: number, sentinel: string, normalizedQuery: string) {
+function expectOkLog(paramsCount: number, ...sentinels: string[]) {
 	expect(console.log).toHaveBeenCalledTimes(1);
 	const [message, details] = vi.mocked(console.log).mock.calls[0];
-	expect(message).toMatch(new RegExp(`^\\[db\\] ok \\d+\\.\\dms ${normalizedQuery}$`));
-	expect(details).toEqual({ paramsCount });
-	expect(JSON.stringify(vi.mocked(console.log).mock.calls)).not.toContain(sentinel);
+	expect(message).toBe("[db] query timing");
+	expect(details).toMatchObject({ operation: "query", status: "ok", paramsCount });
+	expect(details).toHaveProperty("durationMs");
+	const serialized = JSON.stringify(vi.mocked(console.log).mock.calls);
+	for (const sentinel of sentinels) expect(serialized).not.toContain(sentinel);
 	expect(console.error).not.toHaveBeenCalled();
 }
 
@@ -50,8 +52,7 @@ describe("query timing parameter redaction", () => {
 
 		await expect(client.unsafe("select   *  from sessions", sentinels)).resolves.toBe("unchanged-result");
 
-		expectOkLog(2, sentinels[0], "select \\* from sessions");
-		expect(JSON.stringify(vi.mocked(console.log).mock.calls)).not.toContain(sentinels[1]);
+		expectOkLog(2, ...sentinels, "select   *  from sessions");
 	});
 
 	it("redacts parameters from projected values queries", async () => {
@@ -66,18 +67,36 @@ describe("query timing parameter redaction", () => {
 		expectOkLog(1, sentinel, "select id from orders");
 	});
 
-	it("redacts failed query parameters and rethrows the same error", async () => {
-		const sentinel = "not-a-real-password-hash";
-		const error = new Error("synthetic failure");
+	it("redacts failed query text, parameters, and PostgreSQL error fields while rethrowing the same error", async () => {
+		const sentinels = {
+			parameter: "not-a-real-password-hash",
+			message: "not-a-real-email",
+			detail: "not-a-real-customer-name",
+			hint: "not-a-real-token",
+			where: "not-a-real-session",
+			cause: "not-a-real-credential",
+		};
+		const error = {
+			code: "23505",
+			message: sentinels.message,
+			detail: sentinels.detail,
+			hint: sentinels.hint,
+			where: sentinels.where,
+			cause: { message: sentinels.cause },
+		};
+		const query = "update users set password = $1";
 		const client = withQueryTiming(createClient(Promise.reject(error) as FakeQuery<unknown>));
 
-		await expect(client.unsafe("update users set password = $1", [sentinel])).rejects.toBe(error);
+		await expect(client.unsafe(query, [sentinels.parameter])).rejects.toBe(error);
 
 		expect(console.error).toHaveBeenCalledTimes(1);
 		const [message, details] = vi.mocked(console.error).mock.calls[0];
-		expect(message).toMatch(/^\[db\] error \d+\.\dms update users set password = \$1$/);
-		expect(details).toEqual({ paramsCount: 1, error });
-		expect(JSON.stringify(vi.mocked(console.error).mock.calls)).not.toContain(sentinel);
+		expect(message).toBe("[db] query timing");
+		expect(details).toMatchObject({ operation: "query", code: "23505", status: "error", paramsCount: 1 });
+		expect(details).toHaveProperty("durationMs");
+		const serialized = JSON.stringify(vi.mocked(console.error).mock.calls);
+		expect(serialized).not.toContain(query);
+		for (const sentinel of Object.values(sentinels)) expect(serialized).not.toContain(sentinel);
 		expect(console.log).not.toHaveBeenCalled();
 	});
 

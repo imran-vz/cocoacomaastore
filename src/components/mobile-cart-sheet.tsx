@@ -1,17 +1,12 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, ChevronUp, Copy, Loader2, ReceiptIndianRupee, ShoppingBag, X } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { ChevronUp, Loader2, ShoppingBag, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
-import type { UpiAccount } from "@/db/schema";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
-import { getOrderCopyText, getUpiPaymentText } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useUpiStore } from "@/store/upi-store";
 import { CartLinePresenter } from "./cart-line-presenter";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -25,7 +20,6 @@ interface MobileCartSheetProps {
 	// biome-ignore lint/suspicious/noExplicitAny: TanStack form has complex generics
 	form: any;
 	total: number;
-	upiAccounts: UpiAccount[];
 	customerName: string;
 	onSaveOrder: SaveCartOrder;
 	isSaving: boolean;
@@ -37,7 +31,6 @@ export function MobileCartSheet({
 	removeFromCart,
 	form,
 	total,
-	upiAccounts,
 	customerName,
 	onSaveOrder,
 	isSaving,
@@ -45,25 +38,8 @@ export function MobileCartSheet({
 	const [isOpen, setIsOpen] = useState(false);
 	const [shouldRender, setShouldRender] = useState(false);
 	const [showForm, setShowForm] = useState(false);
-	const [showOnlineOptions, setShowOnlineOptions] = useState(false);
-	const [copiedOrder, setCopiedOrder] = useState(false);
-	const [copiedQr, setCopiedQr] = useState(false);
-	const qrCodeRef = useRef<SVGSVGElement>(null);
-
-	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
 
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
-
-	useEffect(() => {
-		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
-		if (!isValid && upiAccounts.length > 0) {
-			setSelectedUpiId(upiAccounts[0].id.toString());
-		}
-	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
-
-	const selectedAccount = upiAccounts.find((account) => account.id.toString() === selectedUpiId);
-	const upiId = selectedAccount?.upiId || upiAccounts[0]?.upiId || "";
-	const upiPaymentText = getUpiPaymentText(total, cart, upiId);
 
 	const handleToggle = useCallback(() => {
 		setIsOpen((prev) => {
@@ -88,73 +64,6 @@ export function MobileCartSheet({
 		});
 	};
 
-	const copyOrderDetails = async () => {
-		if (cart.length === 0) return;
-
-		const deliveryCost = Number.parseFloat(form.state.values.deliveryCost || "0");
-		const orderText = getOrderCopyText(cart, total, deliveryCost);
-
-		await navigator.clipboard.writeText(orderText);
-		setCopiedOrder(true);
-		toast.info("Order copied!", { duration: 1000 });
-		setTimeout(() => setCopiedOrder(false), 2000);
-	};
-
-	const getQrCodeDataUrl = async (): Promise<string> => {
-		if (!qrCodeRef.current) return "";
-
-		const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
-		const svgBlob = new Blob([svgData], {
-			type: "image/svg+xml;charset=utf-8",
-		});
-		const url = URL.createObjectURL(svgBlob);
-
-		const canvas = document.createElement("canvas");
-		const ctx = canvas.getContext("2d");
-		const img = new Image(400, 400);
-
-		try {
-			await new Promise((resolve, reject) => {
-				img.onload = resolve;
-				img.onerror = reject;
-				img.src = url;
-			});
-
-			const padding = 48;
-			canvas.width = img.width + padding * 2;
-			canvas.height = img.height + padding * 2;
-
-			if (ctx) {
-				ctx.fillStyle = "white";
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
-				ctx.drawImage(img, padding, padding);
-			}
-
-			return canvas.toDataURL("image/png");
-		} finally {
-			URL.revokeObjectURL(url);
-		}
-	};
-
-	const copyQrCode = async () => {
-		if (!qrCodeRef.current) return;
-
-		try {
-			const dataUrl = await getQrCodeDataUrl();
-			const response = await fetch(dataUrl);
-			const blob = await response.blob();
-
-			await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-
-			setCopiedQr(true);
-			toast.info("QR copied!", { duration: 1000 });
-			setTimeout(() => setCopiedQr(false), 2000);
-		} catch (err) {
-			console.error("Failed to copy QR:", err);
-			toast.error("Failed to copy QR code");
-		}
-	};
-
 	useEffect(() => {
 		if (cart.length === 0 && isOpen) {
 			setIsOpen(false);
@@ -168,8 +77,6 @@ export function MobileCartSheet({
 
 	return (
 		<>
-			<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />
-
 			<AnimatePresence onExitComplete={handleExitComplete}>
 				{isOpen && (
 					<motion.div
@@ -348,76 +255,9 @@ export function MobileCartSheet({
 									</AnimatePresence>
 								</div>
 
-								<div className="mt-4 pt-4 border-t">
-									<button
-										type="button"
-										onClick={() => setShowOnlineOptions((current) => !current)}
-										className="w-full flex items-center justify-between py-2 text-sm text-muted-foreground"
-									>
-										<span>Online Order Options</span>
-										<ChevronDown className={cn("size-4 transition-transform", showOnlineOptions && "rotate-180")} />
-									</button>
-
-									<AnimatePresence>
-										{showOnlineOptions && (
-											<motion.div
-												initial={{ height: 0, opacity: 0 }}
-												animate={{ height: "auto", opacity: 1 }}
-												exit={{ height: 0, opacity: 0 }}
-												className="overflow-hidden"
-											>
-												<div className="pt-3 space-y-3">
-													{upiAccounts.length > 1 && (
-														<div className="flex items-center justify-between">
-															<span className="text-xs text-muted-foreground">UPI Account</span>
-															<select
-																value={selectedUpiId}
-																onChange={(e) => setSelectedUpiId(e.target.value)}
-																className="text-xs border rounded-lg px-2 py-1 bg-muted"
-															>
-																{upiAccounts.map((account) => (
-																	<option key={account.id} value={account.id.toString()}>
-																		{account.label}
-																	</option>
-																))}
-															</select>
-														</div>
-													)}
-
-													<div className="grid grid-cols-2 gap-3">
-														<motion.button
-															type="button"
-															whileTap={{ scale: 0.95 }}
-															onClick={copyOrderDetails}
-															className={cn(
-																"flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all",
-																copiedOrder
-																	? "bg-green-50 border-green-200 text-green-600"
-																	: "bg-muted/50 hover:bg-muted",
-															)}
-														>
-															{copiedOrder ? <Check className="size-4" /> : <Copy className="size-4" />}
-															<span className="text-sm font-medium">{copiedOrder ? "Copied!" : "Copy Order"}</span>
-														</motion.button>
-
-														<motion.button
-															type="button"
-															whileTap={{ scale: 0.95 }}
-															onClick={copyQrCode}
-															className={cn(
-																"flex items-center justify-center gap-2 py-3 px-4 rounded-xl border transition-all",
-																copiedQr ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
-															)}
-														>
-															{copiedQr ? <Check className="size-4" /> : <ReceiptIndianRupee className="size-4" />}
-															<span className="text-sm font-medium">{copiedQr ? "Copied!" : "Copy QR"}</span>
-														</motion.button>
-													</div>
-												</div>
-											</motion.div>
-										)}
-									</AnimatePresence>
-								</div>
+								<p className="mt-4 border-t pt-4 text-center text-xs text-muted-foreground">
+									Save the order to generate its final receipt and UPI QR.
+								</p>
 							</div>
 
 							<div className="shrink-0 p-4 border-t bg-background">

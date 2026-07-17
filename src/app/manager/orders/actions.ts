@@ -5,7 +5,7 @@ import { isDatabaseUnavailableError } from "@/lib/errors";
 import {
 	cancelOrderAsNormalPath,
 	createCompletedOrder,
-	getCachedOrders as getCachedOrdersCore,
+	getOrders as getOrdersCore,
 	OrderSubmissionConflictError,
 	serializeOrders,
 } from "@/lib/order-lifecycle";
@@ -19,9 +19,10 @@ interface CreateOrderWithLinesData {
 	deliveryCost: string;
 }
 
-export async function getCachedOrders() {
+export async function getOrders() {
 	await requireManagerAccess();
-	return serializeOrders(await getCachedOrdersCore());
+	// Cancellation targets must come from current database state, not Next's persistent order cache.
+	return serializeOrders(await getOrdersCore());
 }
 
 async function mapDatabaseUnavailable<T>(fn: () => Promise<T>): Promise<T> {

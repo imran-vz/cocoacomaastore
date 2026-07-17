@@ -3,6 +3,7 @@ import {
 	type BootstrapAdminConfig,
 	type BootstrapAdminDependencies,
 	bootstrapFirstAdmin,
+	type LockedBootstrapAdminDependencies,
 	parseBootstrapAdminEnvironment,
 	SHARED_DATABASE_ACKNOWLEDGEMENT,
 } from "@/lib/bootstrap-admin";
@@ -25,8 +26,8 @@ function environment(overrides: Partial<NodeJS.ProcessEnv> = {}): NodeJS.Process
 	};
 }
 
-function dependencies(overrides: Partial<BootstrapAdminDependencies> = {}) {
-	return {
+function dependencies(overrides: Partial<LockedBootstrapAdminDependencies> = {}) {
+	const lockedDependencies = {
 		findUserByEmail: vi.fn(async () => null),
 		findFirstAdmin: vi.fn(async () => null),
 		createCredentialUser: vi.fn(async () => ({ id: "sentinel-created-id" })),
@@ -34,6 +35,10 @@ function dependencies(overrides: Partial<BootstrapAdminDependencies> = {}) {
 		deleteCreatedUser: vi.fn(async () => true),
 		...overrides,
 	};
+	return {
+		...lockedDependencies,
+		withFirstAdminLock: vi.fn((run) => run(lockedDependencies)),
+	} satisfies BootstrapAdminDependencies & LockedBootstrapAdminDependencies;
 }
 
 const sensitiveSentinels = [

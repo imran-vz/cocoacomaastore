@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_DELIVERY_COST, MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
+import { MAX_DELIVERY_COST, MAX_ORDER_CANCELLATION_REASON_LENGTH, MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
 import type { OrderRequestLine } from "@/lib/types";
 
 // ============================================================================
@@ -36,7 +36,7 @@ export const createOrderWithLinesSchema = z
 
 export const cancelOrderSchema = z.object({
 	orderId: z.number().int().positive(),
-	reason: z.string().trim().min(1).max(500).optional(),
+	reason: z.string().trim().min(1).max(MAX_ORDER_CANCELLATION_REASON_LENGTH).optional(),
 });
 
 // ============================================================================

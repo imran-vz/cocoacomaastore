@@ -88,6 +88,21 @@ describe("repository setup contract", () => {
 		for (const link of localLinks) await expect(access(path.join(ROOT, link))).resolves.toBeUndefined();
 	});
 
+	it("keeps the unadopted migration baseline non-operational", async () => {
+		const [packageSource, readme, plansIndex] = await Promise.all([
+			readRepositoryFile("package.json"),
+			readRepositoryFile("README.md"),
+			readRepositoryFile("plans/README.md"),
+		]);
+		const packageJson = JSON.parse(packageSource) as { scripts: Record<string, string> };
+
+		expect(packageJson.scripts).not.toHaveProperty("db:migrate");
+		expect(packageJson.scripts).not.toHaveProperty("db:generate");
+		expect(readme).toContain("does not currently expose or support versioned Drizzle migration commands");
+		expect(readme).toContain("must never be applied to an existing database");
+		expect(plansIndex).toMatch(/008[^\n]+SKIPPED/);
+	});
+
 	it("documents the current package quality commands", async () => {
 		const context = await readRepositoryFile("CONTEXT.md");
 		expect(context).toContain("pnpm format");

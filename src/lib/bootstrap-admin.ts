@@ -9,12 +9,16 @@ export type BootstrapAdminConfig = {
 	databaseUrl: string;
 };
 
-export type BootstrapAdminDependencies = {
+export type LockedBootstrapAdminDependencies = {
 	findUserByEmail(email: string): Promise<{ id: string; role: string | null } | null>;
 	findFirstAdmin(): Promise<{ id: string } | null>;
 	createCredentialUser(input: { name: string; email: string; password: string; role: "user" }): Promise<{ id: string }>;
 	promoteCreatedUser(input: { id: string; email: string }): Promise<boolean>;
 	deleteCreatedUser(id: string): Promise<boolean>;
+};
+
+export type BootstrapAdminDependencies = {
+	withFirstAdminLock<T>(run: (dependencies: LockedBootstrapAdminDependencies) => Promise<T>): Promise<T>;
 };
 
 const LOCAL_DATABASE_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
@@ -78,9 +82,9 @@ export function parseBootstrapAdminEnvironment(env: NodeJS.ProcessEnv): Bootstra
 	return { name, email, password, databaseUrl };
 }
 
-export async function bootstrapFirstAdmin(
+async function bootstrapFirstAdminLocked(
 	config: BootstrapAdminConfig,
-	dependencies: BootstrapAdminDependencies,
+	dependencies: LockedBootstrapAdminDependencies,
 ): Promise<"created" | "already-admin"> {
 	const normalizedEmail = config.email.trim().toLowerCase();
 	const existingUser = await dependencies.findUserByEmail(normalizedEmail);
@@ -117,4 +121,11 @@ export async function bootstrapFirstAdmin(
 	}
 	if (!cleanedUp) throw new Error(MANUAL_REVIEW_REQUIRED);
 	throw new Error(BOOTSTRAP_FAILED);
+}
+
+export function bootstrapFirstAdmin(
+	config: BootstrapAdminConfig,
+	dependencies: BootstrapAdminDependencies,
+): Promise<"created" | "already-admin"> {
+	return dependencies.withFirstAdminLock((lockedDependencies) => bootstrapFirstAdminLocked(config, lockedDependencies));
 }

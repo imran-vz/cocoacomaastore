@@ -16,6 +16,7 @@ const base = {
 	kind: "base" as const,
 	enabled: true,
 	isDeleted: false,
+	isOutOfStock: false,
 	hasUnlimitedStock: false,
 };
 const modifier = {
@@ -25,6 +26,7 @@ const modifier = {
 	kind: "modifier" as const,
 	enabled: true,
 	isDeleted: false,
+	isOutOfStock: false,
 	hasUnlimitedStock: true,
 };
 const combo = {
@@ -110,7 +112,7 @@ describe("order-lifecycle", () => {
 			expect(resolved.unitPrice).toBe(75);
 		});
 
-		test("rejects mismatched, inactive, missing, and duplicate references", () => {
+		test("rejects mismatched, unavailable, missing, and duplicate references", () => {
 			const input = {
 				lines: [{ baseDessertId: base.id, comboId: combo.id, quantity: 1 }],
 				desserts: [base, modifier],
@@ -122,11 +124,38 @@ describe("order-lifecycle", () => {
 			);
 			expect(() =>
 				resolveOrderLinesFromCatalog({ ...input, desserts: [{ ...base, enabled: false }, modifier] }),
-			).toThrow("inactive");
+			).toThrow("unavailable");
 			expect(() => resolveOrderLinesFromCatalog({ ...input, combos: [] })).toThrow("missing");
 			expect(() => resolveOrderLinesFromCatalog({ ...input, lines: [...input.lines, ...input.lines] })).toThrow(
 				"Duplicate",
 			);
+		});
+
+		test("rejects out-of-stock direct bases, combo bases, and combo modifiers", () => {
+			expect(() =>
+				resolveOrderLinesFromCatalog({
+					lines: [{ baseDessertId: base.id, quantity: 1 }],
+					desserts: [{ ...base, isOutOfStock: true }],
+					combos: [],
+					comboItems: [],
+				}),
+			).toThrow("Base dessert is missing or unavailable");
+			expect(() =>
+				resolveOrderLinesFromCatalog({
+					lines: [{ baseDessertId: base.id, comboId: combo.id, quantity: 1 }],
+					desserts: [{ ...base, isOutOfStock: true }, modifier],
+					combos: [combo],
+					comboItems: [comboItem],
+				}),
+			).toThrow("Base dessert is missing or unavailable");
+			expect(() =>
+				resolveOrderLinesFromCatalog({
+					lines: [{ baseDessertId: base.id, comboId: combo.id, quantity: 1 }],
+					desserts: [base, { ...modifier, isOutOfStock: true }],
+					combos: [combo],
+					comboItems: [comboItem],
+				}),
+			).toThrow("Combo modifier is missing or unavailable");
 		});
 
 		test("rejects prices outside numeric persistence bounds", () => {

@@ -1,3 +1,5 @@
+import { createSafeDiagnostic } from "@/server/safe-diagnostics";
+
 type QueryLike = Promise<unknown> & {
 	values?: (...args: unknown[]) => Promise<unknown>;
 };
@@ -28,22 +30,16 @@ function getSlowQueryMs() {
 	return Number.isFinite(value) && value >= 0 ? value : DEFAULT_SLOW_QUERY_MS;
 }
 
-function normalizeQuery(query: string) {
-	return query.replace(/\s+/g, " ").trim();
-}
-
 function shouldLogQuery(durationMs: number, status: QueryLogStatus) {
 	return status === "error" || durationMs >= getSlowQueryMs();
 }
 
 function logQueryTiming({
-	query,
 	params,
 	durationMs,
 	status,
 	error,
 }: {
-	query: string;
 	params: unknown[];
 	durationMs: number;
 	status: QueryLogStatus;
@@ -51,27 +47,28 @@ function logQueryTiming({
 }) {
 	if (!shouldLogQuery(durationMs, status)) return;
 
-	const message = `[db] ${status} ${durationMs.toFixed(1)}ms ${normalizeQuery(query)}`;
-	const details = {
+	const diagnostic = createSafeDiagnostic({
+		operation: "query",
+		error,
+		status,
+		durationMs,
 		paramsCount: params.length,
-	};
+	});
 
 	if (status === "error") {
-		console.error(message, { ...details, error });
+		console.error("[db] query timing", diagnostic);
 		return;
 	}
 
-	console.log(message, details);
+	console.log("[db] query timing", diagnostic);
 }
 
 function observeQuery<T>(
 	promise: Promise<T>,
 	{
-		query,
 		params,
 		start,
 	}: {
-		query: string;
 		params: unknown[];
 		start: number;
 	},
@@ -79,7 +76,6 @@ function observeQuery<T>(
 	return promise.then(
 		(result) => {
 			logQueryTiming({
-				query,
 				params,
 				durationMs: performance.now() - start,
 				status: "ok",
@@ -88,7 +84,6 @@ function observeQuery<T>(
 		},
 		(error) => {
 			logQueryTiming({
-				query,
 				params,
 				durationMs: performance.now() - start,
 				status: "error",
@@ -99,24 +94,18 @@ function observeQuery<T>(
 	);
 }
 
-function wrapQuery<TQuery extends QueryLike>(
-	queryResult: TQuery,
-	query: string,
-	params: unknown[],
-	start: number,
-): TQuery {
+function wrapQuery<TQuery extends QueryLike>(queryResult: TQuery, params: unknown[], start: number): TQuery {
 	if (!isQueryTimingEnabled()) return queryResult;
 
 	return new Proxy(queryResult, {
 		get(target, property, receiver) {
 			if (property === "values" && typeof target.values === "function") {
-				return (...args: unknown[]) =>
-					observeQuery(target.values?.(...args) ?? Promise.resolve([]), { query, params, start });
+				return (...args: unknown[]) => observeQuery(target.values?.(...args) ?? Promise.resolve([]), { params, start });
 			}
 
 			if (property === "then") {
 				return (onFulfilled: unknown, onRejected: unknown) =>
-					observeQuery(target, { query, params, start }).then(
+					observeQuery(target, { params, start }).then(
 						onFulfilled as Parameters<Promise<unknown>["then"]>[0],
 						onRejected as Parameters<Promise<unknown>["then"]>[1],
 					);
@@ -124,14 +113,12 @@ function wrapQuery<TQuery extends QueryLike>(
 
 			if (property === "catch") {
 				return (onRejected: unknown) =>
-					observeQuery(target, { query, params, start }).catch(onRejected as Parameters<Promise<unknown>["catch"]>[0]);
+					observeQuery(target, { params, start }).catch(onRejected as Parameters<Promise<unknown>["catch"]>[0]);
 			}
 
 			if (property === "finally") {
 				return (onFinally: unknown) =>
-					observeQuery(target, { query, params, start }).finally(
-						onFinally as Parameters<Promise<unknown>["finally"]>[0],
-					);
+					observeQuery(target, { params, start }).finally(onFinally as Parameters<Promise<unknown>["finally"]>[0]);
 			}
 
 			return Reflect.get(target, property, receiver);
@@ -170,7 +157,7 @@ export function withQueryTiming<TClient extends object>(client: TClient): TClien
 
 	timedClient.unsafe = ((query: string, params: unknown[] = [], options?: unknown) => {
 		const start = performance.now();
-		return wrapQuery(originalUnsafe(query, params as never[], options), query, params, start);
+		return wrapQuery(originalUnsafe(query, params as never[], options), params, start);
 	}) as TimedClient["unsafe"];
 
 	if (timedClient.begin) {

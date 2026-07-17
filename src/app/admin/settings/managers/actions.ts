@@ -11,6 +11,7 @@ import { type CreateManagerSchema, createManagerSchema, deleteManagerSchema } fr
 import { CacheTag, updateNextCacheEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 import { Database } from "@/server/effect/services/db";
+import { logSafeServerError } from "@/server/safe-diagnostics";
 
 export type ManagerRow = Pick<User, "id" | "name" | "email" | "role"> & {
 	createdAt: string;
@@ -61,7 +62,7 @@ export async function createManager(data: CreateManagerSchema) {
 		);
 		return { success: true };
 	} catch (error) {
-		console.error("Error creating manager:", error);
+		logSafeServerError("create manager", error);
 		return { success: false, error: "Failed to create manager" };
 	}
 }
@@ -88,7 +89,7 @@ export async function deleteManager(id: string) {
 			}),
 		);
 	} catch (error) {
-		console.error("Error deleting manager:", error);
+		logSafeServerError("delete manager", error);
 		return { success: false, error: "Failed to delete manager" };
 	}
 }

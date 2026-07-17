@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createOrderWithLinesSchema, upsertInventorySchema } from "@/lib/validation";
+import { MAX_ORDER_CANCELLATION_REASON_LENGTH } from "@/lib/order-limits";
+import { cancelOrderSchema, createOrderWithLinesSchema, upsertInventorySchema } from "@/lib/validation";
 
 describe("order request validation", () => {
 	const submissionId = "123e4567-e89b-42d3-a456-426614174000";
@@ -100,6 +101,22 @@ describe("order request validation", () => {
 				expect.objectContaining({ message: "Delivery cost must be between 0 and 999.99" }),
 			);
 		}
+	});
+});
+
+describe("cancellation validation", () => {
+	it("accepts the largest reason whose prefixed audit note fits", () => {
+		const reason = "x".repeat(MAX_ORDER_CANCELLATION_REASON_LENGTH);
+		expect(cancelOrderSchema.parse({ orderId: 1, reason })).toEqual({ orderId: 1, reason });
+	});
+
+	it("rejects a reason one character above the persisted boundary", () => {
+		expect(
+			cancelOrderSchema.safeParse({
+				orderId: 1,
+				reason: "x".repeat(MAX_ORDER_CANCELLATION_REASON_LENGTH + 1),
+			}).success,
+		).toBe(false);
 	});
 });
 

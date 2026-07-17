@@ -17,6 +17,11 @@ import {
 import { getAnalyticsDay } from "@/lib/ist-date";
 import { buildOrderInvoiceModel } from "@/lib/order-invoice-model";
 import type { CreateCompletedOrderInput } from "@/lib/order-lifecycle";
+import {
+	MAX_INVENTORY_AUDIT_NOTE_LENGTH,
+	MAX_ORDER_CANCELLATION_REASON_LENGTH,
+	ORDER_CANCELLATION_AUDIT_PREFIX,
+} from "@/lib/order-limits";
 import type { OrderRequestLine } from "@/lib/types";
 import { closeIntegrationDatabase, integrationDb, resetIntegrationData } from "@/test/integration/database";
 
@@ -152,10 +157,18 @@ describe("order lifecycle persistence", () => {
 	it("persists authoritative catalog prices and immutable direct snapshots", async () => {
 		const dessert = await seedInventory(3);
 
-		await createCompletedOrder(
+		const acknowledgement = await createCompletedOrder(
 			{ customerName: "Authoritative", lines: [cartLine(dessert, 2)], deliveryCost: "10.50" },
 			MANAGER_ID,
 		);
+
+		expect(acknowledgement.receipt).toMatchObject({
+			id: acknowledgement.orderId,
+			customerName: "Authoritative",
+			lines: [{ name: "Integration Dessert", quantity: 2, unitPriceCents: 12_500, lineTotalCents: 25_000 }],
+			deliveryCents: 1_050,
+			totalCents: 26_050,
+		});
 
 		const [persistedOrder] = await integrationDb.select().from(ordersTable);
 		const [persistedItem] = await integrationDb.select().from(orderItemsTable);
@@ -271,6 +284,58 @@ describe("order lifecycle persistence", () => {
 		).rejects.toThrow();
 		expect(await integrationDb.select().from(ordersTable)).toHaveLength(0);
 		expect((await integrationDb.select().from(dailyDessertInventoryTable))[0]?.quantity).toBe(2);
+	});
+
+	it("rejects stale carts when a base or combo modifier becomes out of stock", async () => {
+		const baseDessert = await seedInventory(3);
+		const [modifier] = await integrationDb
+			.insert(dessertsTable)
+			.values({ name: "Stock Toggle Modifier", price: 25, kind: "modifier", hasUnlimitedStock: true })
+			.returning();
+		const [combo] = await integrationDb
+			.insert(dessertCombosTable)
+			.values({ name: "Stock Toggle Combo", baseDessertId: baseDessert.id })
+			.returning();
+		await integrationDb
+			.insert(dessertComboItemsTable)
+			.values({ comboId: combo.id, dessertId: modifier.id, quantity: 1 });
+
+		await integrationDb.update(dessertsTable).set({ isOutOfStock: true }).where(eq(dessertsTable.id, baseDessert.id));
+		await expect(
+			createCompletedOrder(
+				{ customerName: "Stale Direct", lines: [cartLine(baseDessert, 1)], deliveryCost: "0.00" },
+				MANAGER_ID,
+			),
+		).rejects.toThrow();
+		await expect(
+			createCompletedOrder(
+				{
+					customerName: "Stale Combo Base",
+					lines: [{ baseDessertId: baseDessert.id, comboId: combo.id, quantity: 1 }],
+					deliveryCost: "0.00",
+				},
+				MANAGER_ID,
+			),
+		).rejects.toThrow();
+
+		await integrationDb.update(dessertsTable).set({ isOutOfStock: false }).where(eq(dessertsTable.id, baseDessert.id));
+		await integrationDb.update(dessertsTable).set({ isOutOfStock: true }).where(eq(dessertsTable.id, modifier.id));
+		await expect(
+			createCompletedOrder(
+				{
+					customerName: "Stale Combo Modifier",
+					lines: [{ baseDessertId: baseDessert.id, comboId: combo.id, quantity: 1 }],
+					deliveryCost: "0.00",
+				},
+				MANAGER_ID,
+			),
+		).rejects.toThrow();
+
+		expect(await integrationDb.select().from(ordersTable)).toHaveLength(0);
+		expect(await integrationDb.select().from(orderItemsTable)).toHaveLength(0);
+		expect(await integrationDb.select().from(orderItemModifiersTable)).toHaveLength(0);
+		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(0);
+		expect((await integrationDb.select().from(dailyDessertInventoryTable))[0]?.quantity).toBe(3);
 	});
 
 	it("rolls back the complete transaction when the aggregate total exceeds persistence capacity", async () => {
@@ -446,6 +511,7 @@ describe("order lifecycle persistence", () => {
 		const [first, second] = await Promise.all([firstCall, secondCall, catalogWriter]);
 
 		expect(first.orderId).toBe(second.orderId);
+		expect(first.receipt).toEqual(second.receipt);
 		expect([first.replayed, second.replayed].sort()).toEqual([false, true]);
 		expect(await integrationDb.select().from(ordersTable)).toHaveLength(1);
 		expect(await integrationDb.select().from(orderItemsTable)).toHaveLength(1);
@@ -491,6 +557,12 @@ describe("order lifecycle persistence", () => {
 		const replay = await createCompletedOrderWithIdentity(data, MANAGER_ID);
 
 		expect(replay).toMatchObject({ orderId: original.orderId, replayed: true, refreshWarning: false });
+		expect(replay.receipt).toEqual(original.receipt);
+		expect(replay.receipt).toMatchObject({
+			customerName: "Catalog Retry",
+			lines: [{ name: "Integration Dessert", unitPriceCents: 12_500 }],
+			totalCents: 12_500,
+		});
 		expect((await integrationDb.select().from(ordersTable))[0]?.total).toBe("125.00");
 		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
 	});
@@ -531,10 +603,10 @@ describe("order lifecycle persistence", () => {
 
 		expect(saved).toMatchObject({ replayed: false, refreshWarning: true });
 		expect(replay).toMatchObject({ orderId: saved.orderId, replayed: true, refreshWarning: false });
-		expect(errorLog).toHaveBeenCalledWith(
-			"Order was saved, but order caches could not be invalidated",
-			expect.anything(),
-		);
+		expect(errorLog).toHaveBeenCalledWith("[server] operation failed", {
+			operation: "invalidate order caches",
+			status: "error",
+		});
 		expect(await integrationDb.select().from(ordersTable)).toHaveLength(1);
 		expect(await integrationDb.select().from(inventoryAuditLogTable)).toHaveLength(1);
 		expect((await integrationDb.select().from(dailyDessertInventoryTable))[0]?.quantity).toBe(1);
@@ -632,6 +704,27 @@ describe("order lifecycle persistence", () => {
 			{ action: "order_deducted", previousQuantity: 2, newQuantity: 1 },
 			{ action: "order_cancelled", previousQuantity: 1, newQuantity: 2 },
 		]);
+	});
+
+	it("persists the maximum cancellation reason within the audit-note capacity", async () => {
+		const dessert = await seedInventory(2);
+		await createCompletedOrder(
+			{ customerName: "Maximum cancellation", lines: [cartLine(dessert, 1)], deliveryCost: "0.00" },
+			MANAGER_ID,
+		);
+		const [order] = await integrationDb.select({ id: ordersTable.id }).from(ordersTable);
+		const reason = "x".repeat(MAX_ORDER_CANCELLATION_REASON_LENGTH);
+
+		await cancelOrderAsNormalPath(order.id, MANAGER_ID, reason);
+
+		const [persistedOrder] = await integrationDb.select().from(ordersTable).where(eq(ordersTable.id, order.id));
+		const [inventory] = await integrationDb.select().from(dailyDessertInventoryTable);
+		const audits = await integrationDb.select().from(inventoryAuditLogTable).orderBy(asc(inventoryAuditLogTable.id));
+		const cancellationAudit = audits.find((audit) => audit.action === "order_cancelled");
+		expect(persistedOrder.status).toBe("cancelled");
+		expect(inventory.quantity).toBe(2);
+		expect(cancellationAudit?.note).toBe(`${ORDER_CANCELLATION_AUDIT_PREFIX}${reason}`);
+		expect(cancellationAudit?.note).toHaveLength(MAX_INVENTORY_AUDIT_NOTE_LENGTH);
 	});
 
 	it("cancels an unlimited-stock-only order without deduction audits", async () => {

@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { SerializedOrderDetails, SerializedOrders } from "@/lib/order-lifecycle";
+import { MAX_ORDER_CANCELLATION_REASON_LENGTH } from "@/lib/order-limits";
 import { summarizeOrderSales } from "@/lib/order-sales-summary";
 import { cn } from "@/lib/utils";
 import { cancelOrder } from "./actions";
@@ -229,6 +230,7 @@ function OrderCard({
 														list="cancel-reasons"
 														placeholder="Select or type a reason..."
 														value={cancelReason}
+														maxLength={MAX_ORDER_CANCELLATION_REASON_LENGTH}
 														onChange={(e) => setCancelReason(e.target.value)}
 														disabled={isCancelling}
 													/>
@@ -299,8 +301,8 @@ export default function OrdersPage({ initialOrders }: { initialOrders: Serialize
 	});
 	const cancelOrderMutation = useMutation({
 		mutationFn: ({ orderId, reason }: { orderId: number; reason?: string }) => cancelOrder(orderId, reason),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["manager-orders", "today"] });
+		onSettled: async () => {
+			await queryClient.invalidateQueries({ queryKey: ["manager-orders", "today"] });
 		},
 	});
 

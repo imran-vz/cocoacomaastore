@@ -9,10 +9,16 @@ import { toast } from "sonner";
 
 import { toggleOutOfStock } from "@/app/desserts/actions";
 import type { UpiAccount } from "@/db/schema";
-import { applyPosCartEvent, initialPosCartState } from "@/lib/pos-cart-behaviour";
+import {
+	applyPosCartEvent,
+	initialPosCartState,
+	reconcileSubmittedOrderFields,
+	type SubmittedOrderSnapshot,
+} from "@/lib/pos-cart-behaviour";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDessertStore } from "@/store/dessert-store";
+import { CompletedOrderReceiptDialog } from "./completed-order-receipt-dialog";
 import { cartFormSchema } from "./form-schema/cart";
 import { MobileCartSheet } from "./mobile-cart-sheet";
 import { ProductGrid } from "./product-grid";
@@ -92,13 +98,21 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		setLocalDesserts(items);
 	}, [items, setLocalDesserts]);
 
-	const availableCombos = useMemo(
-		() =>
-			combosList.filter((combo) =>
-				localDesserts.some((dessert) => dessert.id === combo.baseDessertId && !dessert.isOutOfStock),
-			),
-		[combosList, localDesserts],
-	);
+	const availableCombos = useMemo(() => {
+		const dessertById = new Map(localDesserts.map((dessert) => [dessert.id, dessert]));
+		const isAvailable = (dessertId: number) => {
+			const dessert = dessertById.get(dessertId);
+			return Boolean(dessert?.enabled && !dessert.isDeleted && !dessert.isOutOfStock);
+		};
+
+		return combosList.filter(
+			(combo) =>
+				combo.enabled &&
+				!combo.isDeleted &&
+				isAvailable(combo.baseDessertId) &&
+				combo.items.every((item) => isAvailable(item.dessertId)),
+		);
+	}, [combosList, localDesserts]);
 
 	const form = useForm({
 		defaultValues: { name: "", deliveryCost: "" },
@@ -149,12 +163,33 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		[inventoryByDessertId],
 	);
 
+	const acknowledgeSubmittedOrder = useCallback(
+		(snapshot: SubmittedOrderSnapshot) => {
+			dispatchCart({ type: "acknowledge-submission", submittedCart: snapshot.cart });
+			const current = {
+				customerName: form.state.values.name,
+				deliveryCost: form.state.values.deliveryCost,
+			};
+			const reconciled = reconcileSubmittedOrderFields(current, snapshot);
+			if (reconciled.customerName !== current.customerName) form.setFieldValue("name", reconciled.customerName);
+			if (reconciled.deliveryCost !== current.deliveryCost) {
+				form.setFieldValue("deliveryCost", reconciled.deliveryCost);
+			}
+		},
+		[form],
+	);
+
 	const clearCart = useCallback(() => {
 		dispatchCart({ type: "clear" });
 		form.reset();
 	}, [form]);
 
-	const { isSaving, saveOrder } = useSaveCartOrder({ cart, clearCart, refreshInventory });
+	const { completedOrder, dismissCompletedOrder, isSaving, saveOrder } = useSaveCartOrder({
+		cart,
+		intentVersion: cartState.intentVersion,
+		acknowledgeSubmittedOrder,
+		refreshInventory,
+	});
 
 	const handleToggleStock = useCallback(
 		async (e: React.MouseEvent, dessert: Dessert) => {
@@ -179,102 +214,107 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 	);
 
 	return (
-		<form.Subscribe selector={(state) => state.values}>
-			{({ deliveryCost, name: customerName }) => {
-				const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
-				const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, deliveryCostAmount);
+		<>
+			<form.Subscribe selector={(state) => state.values}>
+				{({ deliveryCost, name: customerName }) => {
+					const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
+					const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, deliveryCostAmount);
 
-				return (
-					<div className="min-h-app flex flex-col md:flex-row md:gap-4 lg:gap-6">
-						{/* Main Content - Products */}
-						<div className="flex-1 flex flex-col min-w-0">
-							{/* Search Header */}
-							<motion.div
-								initial={{ opacity: 0, y: -10 }}
-								animate={{ opacity: 1, y: 0 }}
-								className={cn("sticky z-50 md:relative md:top-0 mb-1", searchStickyTopClass)}
-							>
-								<div className="px-4 py-2 md:px-0 md:py-4">
-									<div className="relative">
-										<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-										<input
-											type="text"
-											placeholder="Search items..."
-											value={searchQuery}
-											onChange={(e) => setSearchQuery(e.target.value)}
-											className={cn(
-												"w-full h-10 md:h-11 pl-10 pr-10 rounded-xl border-2 bg-background",
-												"text-sm placeholder:text-muted-foreground",
-												"focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",
-												"transition-all duration-200",
-											)}
-										/>
-										<AnimatePresence>
-											{searchQuery && (
-												<motion.button
-													type="button"
-													initial={{ opacity: 0, scale: 0.8 }}
-													animate={{ opacity: 1, scale: 1 }}
-													exit={{ opacity: 0, scale: 0.8 }}
-													onClick={() => setSearchQuery("")}
-													className="absolute right-3 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
-												>
-													<X className="size-3.5" />
-												</motion.button>
-											)}
-										</AnimatePresence>
+					return (
+						<div className="min-h-app flex flex-col md:flex-row md:gap-4 lg:gap-6">
+							{/* Main Content - Products */}
+							<div className="flex-1 flex flex-col min-w-0">
+								{/* Search Header */}
+								<motion.div
+									initial={{ opacity: 0, y: -10 }}
+									animate={{ opacity: 1, y: 0 }}
+									className={cn("sticky z-50 md:relative md:top-0 mb-1", searchStickyTopClass)}
+								>
+									<div className="px-4 py-2 md:px-0 md:py-4">
+										<div className="relative">
+											<Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+											<input
+												type="text"
+												placeholder="Search items..."
+												value={searchQuery}
+												onChange={(e) => setSearchQuery(e.target.value)}
+												className={cn(
+													"w-full h-10 md:h-11 pl-10 pr-10 rounded-xl border-2 bg-background",
+													"text-sm placeholder:text-muted-foreground",
+													"focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",
+													"transition-all duration-200",
+												)}
+											/>
+											<AnimatePresence>
+												{searchQuery && (
+													<motion.button
+														type="button"
+														initial={{ opacity: 0, scale: 0.8 }}
+														animate={{ opacity: 1, scale: 1 }}
+														exit={{ opacity: 0, scale: 0.8 }}
+														onClick={() => setSearchQuery("")}
+														className="absolute right-3 top-1/2 -translate-y-1/2 size-6 flex items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
+													>
+														<X className="size-3.5" />
+													</motion.button>
+												)}
+											</AnimatePresence>
+										</div>
 									</div>
-								</div>
-							</motion.div>
+								</motion.div>
 
-							{/* Product Grid */}
-							<div className="flex-1 px-4 pb-24 md:pb-6 md:px-0">
-								<ProductGrid
-									desserts={dessertsWithInventory}
-									combos={availableCombos}
-									onAddToCart={addToCart}
-									onAddComboToCart={addCombo}
-									onToggleStock={handleToggleStock}
-									stockToggleLoadingIds={stockToggleLoadingIds}
-									searchQuery={searchQuery}
+								{/* Product Grid */}
+								<div className="flex-1 px-4 pb-24 md:pb-6 md:px-0">
+									<ProductGrid
+										desserts={dessertsWithInventory}
+										combos={availableCombos}
+										onAddToCart={addToCart}
+										onAddComboToCart={addCombo}
+										onToggleStock={handleToggleStock}
+										stockToggleLoadingIds={stockToggleLoadingIds}
+										searchQuery={searchQuery}
+									/>
+								</div>
+							</div>
+
+							{/* Cart - Mobile Bottom Sheet */}
+							<div className="md:hidden">
+								<MobileCartSheet
+									cart={cart}
+									updateQuantity={updateQuantity}
+									removeFromCart={removeFromCart}
+									form={form}
+									total={total}
+									customerName={customerName}
+									onSaveOrder={saveOrder}
+									isSaving={isSaving}
+								/>
+							</div>
+
+							{/* Cart - Tablet Sidebar */}
+							<div className="hidden md:block md:w-85 lg:w-95 xl:w-100 shrink-0 sticky top-13 h-[calc(100vh-52px-24px)] py-4 pr-4">
+								<TabletCartSidebar
+									cart={cart}
+									updateQuantity={updateQuantity}
+									removeFromCart={removeFromCart}
+									form={form}
+									total={total}
+									clearCart={clearCart}
+									onSaveOrder={saveOrder}
+									isSaving={isSaving}
+									customerName={customerName}
+									deliveryCost={deliveryCost}
 								/>
 							</div>
 						</div>
-
-						{/* Cart - Mobile Bottom Sheet */}
-						<div className="md:hidden">
-							<MobileCartSheet
-								cart={cart}
-								updateQuantity={updateQuantity}
-								removeFromCart={removeFromCart}
-								form={form}
-								total={total}
-								upiAccounts={upiAccountsList}
-								customerName={customerName}
-								onSaveOrder={saveOrder}
-								isSaving={isSaving}
-							/>
-						</div>
-
-						{/* Cart - Tablet Sidebar */}
-						<div className="hidden md:block md:w-85 lg:w-95 xl:w-100 shrink-0 sticky top-13 h-[calc(100vh-52px-24px)] py-4 pr-4">
-							<TabletCartSidebar
-								cart={cart}
-								updateQuantity={updateQuantity}
-								removeFromCart={removeFromCart}
-								form={form}
-								total={total}
-								upiAccounts={upiAccountsList}
-								clearCart={clearCart}
-								onSaveOrder={saveOrder}
-								isSaving={isSaving}
-								customerName={customerName}
-								deliveryCost={deliveryCostAmount}
-							/>
-						</div>
-					</div>
-				);
-			}}
-		</form.Subscribe>
+					);
+				}}
+			</form.Subscribe>
+			<CompletedOrderReceiptDialog
+				acknowledgement={completedOrder}
+				upiAccounts={upiAccountsList}
+				onClose={dismissCompletedOrder}
+			/>
+		</>
 	);
 }

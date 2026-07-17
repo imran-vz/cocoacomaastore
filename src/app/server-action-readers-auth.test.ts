@@ -5,6 +5,7 @@ const spies = vi.hoisted(() => ({
 	requireManagerAccess: vi.fn(),
 	requireSession: vi.fn(),
 	getCachedOrdersCore: vi.fn(),
+	getOrdersCore: vi.fn(),
 	serializeOrders: vi.fn(),
 	getDailyInventoryDay: vi.fn(),
 	getDailyInventoryDayKey: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("@/lib/order-lifecycle", () => ({
 	cancelOrderAsNormalPath: vi.fn(),
 	createCompletedOrder: vi.fn(),
 	getCachedOrders: spies.getCachedOrdersCore,
+	getOrders: spies.getOrdersCore,
 	serializeOrders: spies.serializeOrders,
 }));
 
@@ -47,7 +49,7 @@ vi.mock("@/db", () => ({
 	),
 }));
 
-const { getCachedOrders: getManagerOrders } = await import("@/app/manager/orders/actions");
+const { getOrders: getManagerOrders } = await import("@/app/manager/orders/actions");
 const { getCachedOrders: getAdminOrders } = await import("@/app/admin/orders/actions");
 const { getCachedManagers } = await import("@/app/admin/settings/managers/actions");
 const { getCachedTodayInventory } = await import("@/app/manager/inventory/actions");
@@ -67,6 +69,7 @@ describe("server-action reader authorization", () => {
 
 		expect(spies.requireManagerAccess).toHaveBeenCalledTimes(1);
 		expect(spies.requireSession).not.toHaveBeenCalled();
+		expect(spies.getOrdersCore).not.toHaveBeenCalled();
 		expect(spies.getCachedOrdersCore).not.toHaveBeenCalled();
 		expect(spies.serializeOrders).not.toHaveBeenCalled();
 	});

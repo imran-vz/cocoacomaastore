@@ -1,7 +1,17 @@
 import postgres from "postgres";
-import { getTestDatabaseUrls } from "./test-database-url";
+import {
+	assertDatabaseName,
+	getTestDatabaseUrls,
+	TEST_DATABASE_MAINTENANCE_NAME,
+	TEST_DATABASE_NAME,
+} from "./test-database-url";
 
-const TEST_DATABASE_NAME = "cocoacomaa_test";
+async function readCurrentDatabase(client: ReturnType<typeof postgres>) {
+	const [row] = await client<{ currentDatabase: string }[]>`
+		SELECT current_database() AS "currentDatabase"
+	`;
+	return row?.currentDatabase;
+}
 
 async function main() {
 	const command = process.argv[2];
@@ -10,10 +20,11 @@ async function main() {
 		throw new Error("Expected an integration database lifecycle command: create or drop");
 	}
 
-	const { maintenanceUrl } = getTestDatabaseUrls();
+	const { maintenanceUrl, targetUrl } = getTestDatabaseUrls();
 	const maintenanceClient = postgres(maintenanceUrl, { max: 1 });
 
 	try {
+		assertDatabaseName(await readCurrentDatabase(maintenanceClient), TEST_DATABASE_MAINTENANCE_NAME);
 		await maintenanceClient`
 			SELECT pg_terminate_backend(pid)
 			FROM pg_stat_activity
@@ -24,6 +35,12 @@ async function main() {
 
 		if (command === "create") {
 			await maintenanceClient.unsafe(`CREATE DATABASE "${TEST_DATABASE_NAME}"`);
+			const targetClient = postgres(targetUrl, { max: 1 });
+			try {
+				assertDatabaseName(await readCurrentDatabase(targetClient), TEST_DATABASE_NAME);
+			} finally {
+				await targetClient.end();
+			}
 			console.log("Created disposable integration database.");
 		} else {
 			console.log("Dropped disposable integration database.");
@@ -33,14 +50,7 @@ async function main() {
 	}
 }
 
-function getSafeErrorMessage(error: unknown) {
-	if (!(error instanceof Error)) return "Unknown error";
-	return error.message
-		.replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted database URL]")
-		.replace(/password=\S+/gi, "password=[redacted]");
-}
-
-main().catch((error) => {
-	console.error(`Integration database lifecycle failed: ${getSafeErrorMessage(error)}`);
+main().catch(() => {
+	console.error("Integration database lifecycle failed.");
 	process.exitCode = 1;
 });

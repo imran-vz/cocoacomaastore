@@ -1,56 +1,35 @@
-import { bootstrapFirstAdmin, parseBootstrapAdminEnvironment } from "@/lib/bootstrap-admin";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import { type BootstrapAdminDependencies, bootstrapFirstAdmin } from "@/lib/bootstrap-admin";
+import {
+	applyBootstrapRuntimeEnvironment,
+	prepareBootstrapAdminEnvironment,
+	readBootstrapEnvironmentFile,
+} from "./bootstrap-admin-environment";
 
-async function main(): Promise<number> {
+async function loadBootstrapAdminDependencies() {
+	const [{ auth }, { db }, { createBootstrapAdminDependencies }] = await Promise.all([
+		import("@/lib/auth"),
+		import("@/db"),
+		import("@/lib/bootstrap-admin-database"),
+	]);
+	return createBootstrapAdminDependencies(db, auth);
+}
+
+export async function runBootstrapAdminCommand({
+	environment = process.env,
+	readEnvironmentFile = readBootstrapEnvironmentFile,
+	loadDependencies = loadBootstrapAdminDependencies,
+}: {
+	environment?: NodeJS.ProcessEnv;
+	readEnvironmentFile?: () => Promise<string | undefined>;
+	loadDependencies?: () => Promise<BootstrapAdminDependencies>;
+} = {}): Promise<number> {
 	try {
-		const config = parseBootstrapAdminEnvironment(process.env);
-
-		delete process.env.BOOTSTRAP_ADMIN_NAME;
-		delete process.env.BOOTSTRAP_ADMIN_EMAIL;
-		delete process.env.BOOTSTRAP_ADMIN_PASSWORD;
-		delete process.env.COCOACOMAA_BOOTSTRAP_ADMIN_ACKNOWLEDGE_SHARED_DATABASE;
-		process.env.DB_QUERY_TIMING = "0";
-
-		const [{ auth }, { db }, { and, eq }, { userTable }] = await Promise.all([
-			import("@/lib/auth"),
-			import("@/db"),
-			import("drizzle-orm"),
-			import("@/db/schema"),
-		]);
-
-		const status = await bootstrapFirstAdmin(config, {
-			async findUserByEmail(email) {
-				const [user] = await db
-					.select({ id: userTable.id, role: userTable.role })
-					.from(userTable)
-					.where(eq(userTable.email, email))
-					.limit(1);
-				return user ?? null;
-			},
-			async findFirstAdmin() {
-				const [user] = await db
-					.select({ id: userTable.id })
-					.from(userTable)
-					.where(eq(userTable.role, "admin"))
-					.limit(1);
-				return user ?? null;
-			},
-			async createCredentialUser(input) {
-				const result = await auth.api.createUser({ body: input });
-				return { id: result.user.id };
-			},
-			async promoteCreatedUser({ id, email }) {
-				const updated = await db
-					.update(userTable)
-					.set({ role: "admin" })
-					.where(and(eq(userTable.id, id), eq(userTable.email, email), eq(userTable.role, "user")))
-					.returning({ id: userTable.id });
-				return updated.length === 1;
-			},
-			async deleteCreatedUser(id) {
-				const deleted = await db.delete(userTable).where(eq(userTable.id, id)).returning({ id: userTable.id });
-				return deleted.length === 1;
-			},
-		});
+		const prepared = prepareBootstrapAdminEnvironment(environment, await readEnvironmentFile());
+		applyBootstrapRuntimeEnvironment(environment, prepared.persistentEnvironment);
+		const dependencies = await loadDependencies();
+		const status = await bootstrapFirstAdmin(prepared.config, dependencies);
 
 		console.log(status === "created" ? "First administrator created." : "First administrator already exists.");
 		return 0;
@@ -60,4 +39,7 @@ async function main(): Promise<number> {
 	}
 }
 
-main().then((exitCode) => process.exit(exitCode));
+const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : undefined;
+if (invokedPath === import.meta.url) {
+	runBootstrapAdminCommand().then((exitCode) => process.exit(exitCode));
+}

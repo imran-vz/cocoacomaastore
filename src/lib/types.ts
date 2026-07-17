@@ -44,6 +44,9 @@ export interface ComboWithDetails extends DessertCombo {
 		id: number;
 		name: string;
 		price: number;
+		enabled: boolean;
+		isDeleted: boolean;
+		isOutOfStock: boolean;
 		hasUnlimitedStock: boolean;
 	};
 	items: Array<{
@@ -54,6 +57,9 @@ export interface ComboWithDetails extends DessertCombo {
 			id: number;
 			name: string;
 			price: number;
+			enabled: boolean;
+			isDeleted: boolean;
+			isOutOfStock: boolean;
 		};
 	}>;
 }

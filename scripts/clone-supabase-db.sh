@@ -13,6 +13,7 @@
 #   pnpm db:clone:supabase
 #   SUPABASE_DATABASE_URL='postgresql://...' pnpm db:clone:supabase
 #   ./scripts/clone-supabase-db.sh '<supabase-url>' '<local-url>'
+#   CONFIRM_CLONE=clone pnpm db:clone:supabase   # skip the confirmation prompt
 
 set -euo pipefail
 
@@ -88,8 +89,18 @@ echo "Remote: $(mask_url "$REMOTE_URL")"
 echo "Local:  $(mask_url "$LOCAL_URL")"
 echo
 echo "This will drop and recreate the local public schema."
-read -r -p "Continue? Type 'clone' to proceed: " CONFIRM
-[[ "$CONFIRM" == "clone" ]] || die "Aborted"
+
+# Skip the prompt when CONFIRM_CLONE=clone (non-interactive environments).
+# Otherwise read from /dev/tty so the prompt works even when stdin is not a
+# terminal (e.g. when run via `vp run`, which provides non-blocking stdin).
+if [[ "${CONFIRM_CLONE:-}" != "clone" ]]; then
+	if [[ -r /dev/tty && -w /dev/tty ]]; then
+		read -r -p "Continue? Type 'clone' to proceed: " CONFIRM < /dev/tty
+		[[ "$CONFIRM" == "clone" ]] || die "Aborted"
+	else
+		die "No interactive terminal available. Re-run with CONFIRM_CLONE=clone to proceed non-interactively."
+	fi
+fi
 
 echo "Dumping Supabase public schema..."
 pg_dump "$REMOTE_URL" \
@@ -118,4 +129,3 @@ pg_restore \
 	"$DUMP_FILE"
 
 echo "Local database clone complete."
-    

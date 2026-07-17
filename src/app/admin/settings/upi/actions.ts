@@ -9,6 +9,7 @@ import { createUpiAccountSchema, deleteUpiAccountSchema, updateUpiAccountSchema 
 import { UpiTags, updateNextCacheEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 import { Database } from "@/server/effect/services/db";
+import { logSafeServerError } from "@/server/safe-diagnostics";
 
 export type AdminUpiAccount = Omit<UpiAccount, "createdAt"> & {
 	createdAt: string;
@@ -62,7 +63,7 @@ export async function createUpiAccount(data: { label: string; upiId: string; ena
 		);
 		return { success: true };
 	} catch (error) {
-		console.error("Error creating UPI account:", error);
+		logSafeServerError("create UPI account", error);
 		return { success: false, error: "Failed to create UPI account" };
 	}
 }
@@ -96,7 +97,7 @@ export async function updateUpiAccount(id: UpiAccount["id"], data: Pick<UpiAccou
 		);
 		return { success: true };
 	} catch (error) {
-		console.error("Error updating UPI account:", error);
+		logSafeServerError("update UPI account", error);
 		return { success: false, error: "Failed to update UPI account" };
 	}
 }
@@ -122,7 +123,7 @@ export async function deleteUpiAccount(id: UpiAccount["id"]) {
 		);
 		return { success: true };
 	} catch (error) {
-		console.error("Error deleting UPI account:", error);
+		logSafeServerError("delete UPI account", error);
 		return { success: false, error: "Failed to delete UPI account" };
 	}
 }

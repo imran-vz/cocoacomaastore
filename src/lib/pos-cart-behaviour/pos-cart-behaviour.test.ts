@@ -7,8 +7,12 @@ import {
 	fingerprintOrderSubmission,
 	getCartLineView,
 	getOrderCopyText,
+	getReceiptCopyText,
+	getReceiptUpiPaymentText,
 	getUpiPaymentText,
 	initialPosCartState,
+	reconcileAcknowledgedCart,
+	reconcileSubmittedOrderFields,
 	resolveOrderSubmissionIdentity,
 	saveCartOrder,
 	updateCartLineQuantity,
@@ -31,6 +35,26 @@ const cartLine: CartLine = {
 	modifiers: [{ dessertId: 2, name: "ice cream", price: 50, quantity: 2 }],
 	unitPrice: 200,
 	quantity: 2,
+};
+
+const receipt = {
+	id: 42,
+	customerName: "Ada",
+	createdAt: "2026-07-17T10:00:00.000Z",
+	status: "completed" as const,
+	lines: [
+		{
+			id: 1,
+			name: "Brownie",
+			details: "",
+			quantity: 2,
+			unitPriceCents: 20_000,
+			lineTotalCents: 40_000,
+		},
+	],
+	subtotalCents: 40_000,
+	deliveryCents: 2_500,
+	totalCents: 42_500,
 };
 
 const combo: CartComboInput = {
@@ -131,7 +155,7 @@ describe("POS cart behaviour", () => {
 	});
 
 	it("saves only minimal direct and combo references through the provided adapter", async () => {
-		const acknowledgement = { ok: true as const, orderId: 42, replayed: false, refreshWarning: false };
+		const acknowledgement = { ok: true as const, orderId: 42, receipt, replayed: false, refreshWarning: false };
 		const adapter = vi.fn().mockResolvedValue(acknowledgement);
 		const comboLine: CartLine = { ...cartLine, cartLineId: "line-2", comboId: 10, comboName: "brownie blast" };
 		await expect(
@@ -175,6 +199,7 @@ describe("POS cart behaviour", () => {
 			cart: [cartLine, comboLine],
 			customerName: " <b>Ada</b> ",
 			deliveryCost: "25",
+			intentVersion: 0,
 		};
 		const first = resolveOrderSubmissionIdentity(null, firstInput, "first-id");
 		const unchanged = resolveOrderSubmissionIdentity(
@@ -186,6 +211,7 @@ describe("POS cart behaviour", () => {
 				],
 				customerName: "Ada",
 				deliveryCost: 25,
+				intentVersion: 0,
 			},
 			"unused-id",
 		);
@@ -201,8 +227,8 @@ describe("POS cart behaviour", () => {
 		expect(fingerprintOrderSubmission(firstInput)).toBe(first.clientFingerprint);
 	});
 
-	it("rotates submission identity after an explicit reset and preserves it after an adapter error", async () => {
-		const input = { cart: [cartLine], customerName: "Ada", deliveryCost: 0 };
+	it("rotates submission identity after a new-order intent and preserves it after an adapter error", async () => {
+		const input = { cart: [cartLine], customerName: "Ada", deliveryCost: 0, intentVersion: 0 };
 		const first = resolveOrderSubmissionIdentity(null, input, "first-id");
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
@@ -213,19 +239,68 @@ describe("POS cart behaviour", () => {
 			}),
 		).resolves.toEqual({ ok: false, error: "network unavailable" });
 		const retry = resolveOrderSubmissionIdentity(first, input, "unused-id");
-		const afterReset = resolveOrderSubmissionIdentity(null, input, "reset-id");
+		const afterReset = resolveOrderSubmissionIdentity(first, { ...input, intentVersion: 1 }, "reset-id");
 
 		expect(retry.submissionId).toBe("first-id");
 		expect(afterReset.submissionId).toBe("reset-id");
 		errorSpy.mockRestore();
 	});
 
-	it("clears and closes an acknowledged order before refresh and reports refresh failure as a warning", async () => {
+	it("advances the order intent after clear, remove-last, and acknowledgement", () => {
+		const populated = { ...initialPosCartState, cart: [cartLine] };
+		const cleared = applyPosCartEvent(populated, { type: "clear" });
+		const removed = applyPosCartEvent(populated, { type: "remove-line", cartLineId: cartLine.cartLineId });
+		const acknowledged = applyPosCartEvent(populated, {
+			type: "acknowledge-submission",
+			submittedCart: [cartLine],
+		});
+
+		expect(cleared).toMatchObject({ cart: [], intentVersion: 1 });
+		expect(removed).toMatchObject({ cart: [], intentVersion: 1 });
+		expect(acknowledged).toMatchObject({ cart: [], intentVersion: 1 });
+	});
+
+	it("acknowledges only the submitted quantities and preserves later cart edits", () => {
+		const addedLater = { ...cartLine, cartLineId: "line-2", baseDessertId: 3, baseDessertName: "cookie" };
+		expect(reconcileAcknowledgedCart([cartLine, addedLater], [cartLine])).toEqual([addedLater]);
+		expect(reconcileAcknowledgedCart([{ ...cartLine, quantity: 3 }], [{ ...cartLine, quantity: 2 }])).toEqual([
+			{ ...cartLine, quantity: 1 },
+		]);
+		expect(reconcileAcknowledgedCart([{ ...cartLine, quantity: 1 }], [{ ...cartLine, quantity: 2 }])).toEqual([]);
+		expect(reconcileAcknowledgedCart([{ ...cartLine, cartLineId: "reconstructed" }], [cartLine])).toEqual([
+			{ ...cartLine, cartLineId: "reconstructed" },
+		]);
+	});
+
+	it("clears only form values that still match the submitted snapshot", () => {
+		expect(
+			reconcileSubmittedOrderFields(
+				{ customerName: "Ada", deliveryCost: "25" },
+				{ customerName: "Ada", deliveryCost: "25" },
+			),
+		).toEqual({ customerName: "", deliveryCost: "" });
+		expect(
+			reconcileSubmittedOrderFields(
+				{ customerName: "Grace", deliveryCost: "30" },
+				{ customerName: "Ada", deliveryCost: "25" },
+			),
+		).toEqual({ customerName: "Grace", deliveryCost: "30" });
+	});
+
+	it("builds saved receipt copy and UPI data from authoritative cents", () => {
+		expect(getReceiptCopyText(receipt)).toContain("Total: ₹425.00");
+		expect(getReceiptCopyText(receipt)).toContain("Order #42");
+		const upi = getReceiptUpiPaymentText(receipt, "store@upi");
+		expect(upi).toContain("am=425.00");
+		expect(upi).toContain("Order+42");
+	});
+
+	it("acknowledges and closes an order before refresh and reports refresh failure as a warning", async () => {
 		const events: string[] = [];
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 		const result = await completeAcknowledgedOrder({
-			acknowledgement: { orderId: 42, replayed: false, refreshWarning: false },
-			clearCart: () => events.push("clear"),
+			acknowledgement: { orderId: 42, receipt, replayed: false, refreshWarning: false },
+			acknowledgeSubmittedOrder: () => events.push("acknowledge"),
 			closeCart: () => events.push("close"),
 			refreshInventory: () => {
 				events.push("refresh");
@@ -233,8 +308,8 @@ describe("POS cart behaviour", () => {
 			},
 		});
 
-		expect(events).toEqual(["clear", "close", "refresh"]);
-		expect(result).toEqual({ orderId: 42, replayed: false, refreshWarning: true });
+		expect(events).toEqual(["acknowledge", "close", "refresh"]);
+		expect(result).toEqual({ orderId: 42, receipt, replayed: false, refreshWarning: true });
 		errorSpy.mockRestore();
 	});
 });

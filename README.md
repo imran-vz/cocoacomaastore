@@ -47,6 +47,8 @@ The tracked `.env.example` contains placeholders only. `NODE_ENV` is runtime-man
 
 ## First administrator bootstrap
 
+The command selectively loads persistent database/authentication settings from the repository `.env`, with values already exported in the invoking shell taking precedence. It deliberately ignores any `BOOTSTRAP_ADMIN_*` values found in `.env`; one-time bootstrap inputs and the shared-database acknowledgement must come from the invoking shell.
+
 Export the name and email, read the password silently, and invoke the one-time command. The password must not appear in a command argument or shell history.
 
 ```sh
@@ -83,6 +85,10 @@ Rerunning with the same existing administrator email is a no-op and does not res
 - An operator-approved, verified backup.
 - A reviewed Drizzle schema diff for the exact target.
 - An explicit production change window and approval.
+
+This repository does not currently expose or support versioned Drizzle migration commands. Existing databases were established with `drizzle-kit push` and do not have an adopted migration ledger. In particular, any generated `0000` full-schema baseline is for review only and must never be applied to an existing database. Adopting migrations later requires a separate operator-approved project covering backups, exact schema comparison, migration-ledger baselining, replay against disposable databases, and a reviewed rollout procedure.
+
+The populated order-table transition has a dedicated, guarded [order columns cutover runbook](docs/order-columns-cutover.md). It performs the required nullable staging, deterministic backfill, verification, and final constraints without adopting the untrusted baseline as a migration ledger.
 
 To clone the Supabase `public` schema into local PostgreSQL, configure `SUPABASE_DATABASE_URL` or `REMOTE_DATABASE_URL`, then run:
 

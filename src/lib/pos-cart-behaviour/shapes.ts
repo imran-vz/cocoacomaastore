@@ -1,3 +1,4 @@
+import type { OrderInvoiceModel } from "@/lib/order-invoice-model";
 import type { CartLine, OrderRequestLine } from "@/lib/types";
 
 export type InventoryByDessertId = Record<number, number>;
@@ -29,6 +30,7 @@ export type CartMutationResult = { ok: true; cart: CartLine[] } | { ok: false; c
 
 export type PosCartState = {
 	cart: CartLine[];
+	intentVersion: number;
 	lastError: { id: number; message: string } | null;
 };
 
@@ -37,6 +39,7 @@ export type PosCartEvent =
 	| { type: "add-combo"; combo: CartComboInput; inventoryByDessertId: InventoryByDessertId }
 	| { type: "remove-line"; cartLineId: string }
 	| { type: "update-quantity"; cartLineId: string; quantity: number; inventoryByDessertId: InventoryByDessertId }
+	| { type: "acknowledge-submission"; submittedCart: CartLine[] }
 	| { type: "clear" };
 
 export type SaveOrderInput = {
@@ -46,15 +49,21 @@ export type SaveOrderInput = {
 	submissionId: string;
 };
 
-export type OrderSubmissionInput = Omit<SaveOrderInput, "submissionId">;
+export type OrderSubmissionInput = Omit<SaveOrderInput, "submissionId"> & {
+	intentVersion: number;
+};
+
+export type SubmittedOrderSnapshot = OrderSubmissionInput;
 
 export type OrderSubmissionIdentity = {
 	clientFingerprint: string;
+	intentVersion: number;
 	submissionId: string;
 };
 
 export type OrderSaveAcknowledgement = {
 	orderId: number;
+	receipt: OrderInvoiceModel;
 	replayed: boolean;
 	refreshWarning: boolean;
 };
@@ -70,7 +79,7 @@ export type SaveOrderAdapter = (input: {
 
 export type CompleteAcknowledgedOrderInput = {
 	acknowledgement: OrderSaveAcknowledgement;
-	clearCart: () => void;
+	acknowledgeSubmittedOrder: () => void;
 	closeCart?: () => void;
 	refreshInventory: () => void | Promise<void>;
 };

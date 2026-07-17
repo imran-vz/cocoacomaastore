@@ -1,3 +1,4 @@
+import type { OrderInvoiceModel } from "@/lib/order-invoice-model";
 import { MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
 import { normalizeDeliveryCost, serializeOrderSubmission } from "@/lib/order-submission";
 import type {
@@ -172,11 +173,35 @@ export function updateCartLineQuantity(
 	};
 }
 
-export const initialPosCartState: PosCartState = { cart: [], lastError: null };
+export function reconcileAcknowledgedCart(currentCart: CartLine[], submittedCart: readonly CartLine[]) {
+	const submittedByLineId = new Map(submittedCart.map((line) => [line.cartLineId, line]));
+	return currentCart.flatMap((line) => {
+		const submitted = submittedByLineId.get(line.cartLineId);
+		if (!submitted) return [line];
+		const remainingQuantity = line.quantity - submitted.quantity;
+		return remainingQuantity > 0 ? [{ ...line, quantity: remainingQuantity }] : [];
+	});
+}
+
+export function reconcileSubmittedOrderFields(
+	current: { customerName: string; deliveryCost: string },
+	submitted: { customerName: string; deliveryCost: string | number },
+) {
+	return {
+		customerName: current.customerName === submitted.customerName ? "" : current.customerName,
+		deliveryCost: current.deliveryCost === String(submitted.deliveryCost) ? "" : current.deliveryCost,
+	};
+}
+
+export const initialPosCartState: PosCartState = { cart: [], intentVersion: 0, lastError: null };
 
 function withResult(state: PosCartState, result: CartMutationResult): PosCartState {
+	const intentVersion =
+		state.cart.length > 0 && result.cart.length === 0 ? state.intentVersion + 1 : state.intentVersion;
 	return {
+		...state,
 		cart: result.cart,
+		intentVersion,
 		lastError: result.ok ? state.lastError : { id: (state.lastError?.id ?? 0) + 1, message: result.error },
 	};
 }
@@ -188,14 +213,20 @@ export function applyPosCartEvent(state: PosCartState, event: PosCartEvent): Pos
 		case "add-combo":
 			return withResult(state, addComboToCart(state.cart, event.combo, event.inventoryByDessertId));
 		case "remove-line":
-			return { ...state, cart: removeCartLine(state.cart, event.cartLineId) };
+			return withResult(state, { ok: true, cart: removeCartLine(state.cart, event.cartLineId) });
 		case "update-quantity":
 			return withResult(
 				state,
 				updateCartLineQuantity(state.cart, event.cartLineId, event.quantity, event.inventoryByDessertId),
 			);
+		case "acknowledge-submission":
+			return {
+				...state,
+				cart: reconcileAcknowledgedCart(state.cart, event.submittedCart),
+				intentVersion: state.intentVersion + 1,
+			};
 		case "clear":
-			return { ...state, cart: [] };
+			return { ...state, cart: [], intentVersion: state.intentVersion + 1 };
 	}
 }
 
@@ -239,6 +270,33 @@ export function getOrderCopyText(cart: CartLine[], total: number, deliveryCost: 
 	return `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
 }
 
+function formatReceiptMoney(cents: number) {
+	return (cents / 100).toFixed(2);
+}
+
+export function getReceiptCopyText(receipt: OrderInvoiceModel) {
+	const lines = receipt.lines
+		.map(
+			(line) =>
+				`${line.name}${line.details ? ` (${line.details})` : ""} × ${line.quantity} = ₹${formatReceiptMoney(line.lineTotalCents)}`,
+		)
+		.join("\n");
+	const delivery = receipt.deliveryCents > 0 ? `\nDelivery: ₹${formatReceiptMoney(receipt.deliveryCents)}` : "";
+	return `Order #${receipt.id}\n${receipt.customerName}\n${lines}${delivery}\n------\nTotal: ₹${formatReceiptMoney(receipt.totalCents)}`;
+}
+
+export function getReceiptUpiPaymentText(receipt: OrderInvoiceModel, upiId: string) {
+	const transactionNote = `Order ${receipt.id}: ${receipt.lines
+		.map((line) => line.name)
+		.join(", ")
+		.slice(0, 60)}`;
+	const params = new URLSearchParams();
+	params.set("am", formatReceiptMoney(receipt.totalCents));
+	params.set("pn", "Cocoa Comaa");
+	params.set("tn", transactionNote);
+	return `upi://pay?pa=${upiId}&${params.toString()}`;
+}
+
 function getOrderRequestLines(cart: CartLine[]) {
 	return cart.map((line) =>
 		line.comboId === undefined
@@ -261,17 +319,17 @@ export function resolveOrderSubmissionIdentity(
 	nextSubmissionId: string,
 ): OrderSubmissionIdentity {
 	const clientFingerprint = fingerprintOrderSubmission(input);
-	if (current?.clientFingerprint === clientFingerprint) return current;
-	return { clientFingerprint, submissionId: nextSubmissionId };
+	if (current?.clientFingerprint === clientFingerprint && current.intentVersion === input.intentVersion) return current;
+	return { clientFingerprint, intentVersion: input.intentVersion, submissionId: nextSubmissionId };
 }
 
 export async function completeAcknowledgedOrder({
 	acknowledgement,
-	clearCart,
+	acknowledgeSubmittedOrder,
 	closeCart,
 	refreshInventory,
 }: CompleteAcknowledgedOrderInput): Promise<OrderSaveAcknowledgement> {
-	clearCart();
+	acknowledgeSubmittedOrder();
 	closeCart?.();
 
 	try {

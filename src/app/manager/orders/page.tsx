@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCachedOrders } from "./actions";
+import { getOrders } from "./actions";
 import OrdersPage from "./orders-page";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ function OrdersSkeleton() {
 }
 
 export default async function Orders() {
-	const orders = await getCachedOrders();
+	const orders = await getOrders();
 
 	return (
 		<main className="min-h-app p-3 pb-4 w-full max-w-2xl mx-auto">

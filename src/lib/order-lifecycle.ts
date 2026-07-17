@@ -12,6 +12,7 @@ import {
 	inventoryAuditLogTable,
 	type Order,
 	type OrderItem,
+	type OrderItemModifier,
 	orderItemModifiersTable,
 	orderItemsTable,
 	ordersTable,
@@ -19,12 +20,15 @@ import {
 import { isDatabaseUnavailableError } from "@/lib/errors";
 import { applyOrderInventoryMovement, type OrderInventoryMovement } from "@/lib/inventory/order-inventory-movement";
 import { getAnalyticsDay, getDayKey, getEndOfDayIST, getStartOfDayIST } from "@/lib/ist-date";
+import { buildOrderInvoiceModel, type OrderInvoiceModel } from "@/lib/order-invoice-model";
+import { ORDER_CANCELLATION_AUDIT_PREFIX } from "@/lib/order-limits";
 import { serializeOrderSubmission } from "@/lib/order-submission";
 import { sanitizeCustomerName } from "@/lib/sanitize";
 import type { OrderRequestLine } from "@/lib/types";
 import { CacheTag, OrderTags, updateTagsEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 import { Database } from "@/server/effect/services/db";
+import { logSafeServerError } from "@/server/safe-diagnostics";
 
 type AppDatabase = typeof drizzleDb;
 type OrderTransaction = Parameters<Parameters<AppDatabase["transaction"]>[0]>[0];
@@ -43,6 +47,46 @@ type OrderItemWithDessert = Omit<OrderItem, "baseDessertName" | "dessertId" | "i
 export type OrderDetails = Omit<Order, "isDeleted" | "requestFingerprint" | "submissionId"> & {
 	orderItems: OrderItemWithDessert[];
 };
+
+type PersistedOrderDetails = Order & {
+	orderItems: Array<Omit<OrderItem, "orderId"> & { modifiers: Array<Omit<OrderItemModifier, "orderItemId">> }>;
+};
+
+function mapPersistedOrderDetails({
+	isDeleted: _,
+	requestFingerprint: __,
+	submissionId: ___,
+	orderItems,
+	...order
+}: PersistedOrderDetails): OrderDetails {
+	return {
+		...order,
+		orderItems: orderItems.map(({ baseDessertName, dessertId, inventoryDeducted: ____, modifiers, ...item }) => ({
+			...item,
+			dessert: { id: dessertId, name: baseDessertName },
+			modifiers: modifiers.map(({ dessertId: modifierDessertId, dessertName, ...modifier }) => ({
+				...modifier,
+				dessert: { id: modifierDessertId, name: dessertName },
+			})),
+		})),
+	};
+}
+
+async function loadPersistedOrderDetails(tx: OrderTransaction, orderId: number) {
+	const order = await tx.query.ordersTable.findFirst({
+		where: eq(ordersTable.id, orderId),
+		with: {
+			orderItems: {
+				columns: { orderId: false },
+				with: {
+					modifiers: { columns: { orderItemId: false } },
+				},
+			},
+		},
+	});
+	if (!order) throw new Error("Persisted order receipt was not found");
+	return mapPersistedOrderDetails(order);
+}
 
 export type GetOrdersReturnType = OrderDetails[];
 
@@ -73,6 +117,7 @@ export type CreateCompletedOrderInput = {
 
 export type CreateCompletedOrderResult = {
 	orderId: number;
+	receipt: OrderInvoiceModel;
 	replayed: boolean;
 	refreshWarning: boolean;
 };
@@ -84,7 +129,10 @@ export class OrderSubmissionConflictError extends Error {
 	}
 }
 
-type CatalogDessert = Pick<Dessert, "enabled" | "hasUnlimitedStock" | "id" | "isDeleted" | "kind" | "name" | "price">;
+type CatalogDessert = Pick<
+	Dessert,
+	"enabled" | "hasUnlimitedStock" | "id" | "isDeleted" | "isOutOfStock" | "kind" | "name" | "price"
+>;
 
 type CatalogCombo = {
 	baseDessertId: number;
@@ -175,8 +223,8 @@ export function resolveOrderLinesFromCatalog({
 		references.add(reference);
 
 		const base = dessertById.get(line.baseDessertId);
-		if (!base || base.kind !== "base" || base.isDeleted || !base.enabled) {
-			throw new Error("Base dessert is missing or inactive");
+		if (!base || base.kind !== "base" || base.isDeleted || !base.enabled || base.isOutOfStock) {
+			throw new Error("Base dessert is missing or unavailable");
 		}
 		assertValidFinalUnitPrice(base.price);
 
@@ -203,8 +251,14 @@ export function resolveOrderLinesFromCatalog({
 
 		const modifiers = (itemsByComboId.get(combo.id) ?? []).map((item) => {
 			const modifier = dessertById.get(item.dessertId);
-			if (!modifier || modifier.kind !== "modifier" || modifier.isDeleted || !modifier.enabled) {
-				throw new Error("Combo modifier is missing or inactive");
+			if (
+				!modifier ||
+				modifier.kind !== "modifier" ||
+				modifier.isDeleted ||
+				!modifier.enabled ||
+				modifier.isOutOfStock
+			) {
+				throw new Error("Combo modifier is missing or unavailable");
 			}
 			if (!Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 99) {
 				throw new Error("Combo modifier quantity is invalid");
@@ -286,6 +340,7 @@ async function resolveAndLockOrderLines(tx: OrderTransaction, lines: readonly Or
 			kind: dessertsTable.kind,
 			enabled: dessertsTable.enabled,
 			isDeleted: dessertsTable.isDeleted,
+			isOutOfStock: dessertsTable.isOutOfStock,
 			hasUnlimitedStock: dessertsTable.hasUnlimitedStock,
 		})
 		.from(dessertsTable)
@@ -438,7 +493,7 @@ function createCompletedOrderEffect(data: CreateCompletedOrderInput, userId: str
 						if (winner.requestFingerprint !== requestFingerprint) {
 							throw new OrderSubmissionConflictError();
 						}
-						return { order: winner, replayed: true } as const;
+						return { order: await loadPersistedOrderDetails(tx, winner.id), replayed: true } as const;
 					}
 
 					const resolvedLines = await resolveAndLockOrderLines(tx, data.lines);
@@ -478,7 +533,7 @@ function createCompletedOrderEffect(data: CreateCompletedOrderInput, userId: str
 						},
 					});
 
-					return { order, replayed: false } as const;
+					return { order: await loadPersistedOrderDetails(tx, order.id), replayed: false } as const;
 				}),
 			)
 			.pipe(
@@ -496,11 +551,6 @@ export async function getOrders(date?: Date): Promise<GetOrdersReturnType> {
 	const { db } = await import("@/db");
 
 	const orders = await db.query.ordersTable.findMany({
-		columns: {
-			isDeleted: false,
-			requestFingerprint: false,
-			submissionId: false,
-		},
 		where: and(
 			eq(ordersTable.isDeleted, false),
 			gte(ordersTable.createdAt, dayStart),
@@ -525,17 +575,7 @@ export async function getOrders(date?: Date): Promise<GetOrdersReturnType> {
 	const duration = performance.now() - start;
 	console.log(`getOrders: ${duration}ms`);
 
-	return orders.map((order) => ({
-		...order,
-		orderItems: order.orderItems.map(({ baseDessertName, dessertId, inventoryDeducted: _, modifiers, ...item }) => ({
-			...item,
-			dessert: { id: dessertId, name: baseDessertName },
-			modifiers: modifiers.map(({ dessertId: modifierDessertId, dessertName, ...modifier }) => ({
-				...modifier,
-				dessert: { id: modifierDessertId, name: dessertName },
-			})),
-		})),
-	}));
+	return orders.map(mapPersistedOrderDetails);
 }
 
 export async function getCachedOrders(date?: Date) {
@@ -551,7 +591,10 @@ export async function getCachedOrders(date?: Date) {
 export function serializeOrders(orders: GetOrdersReturnType): SerializedOrders {
 	return orders.map((order) => ({
 		...order,
-		createdAt: order.createdAt.toISOString(),
+		createdAt:
+			order.createdAt instanceof Date
+				? order.createdAt.toISOString()
+				: new Date(order.createdAt as unknown as string).toISOString(),
 	}));
 }
 
@@ -573,19 +616,25 @@ export async function createCompletedOrder(
 	data: CreateCompletedOrderInput,
 	userId: string,
 ): Promise<CreateCompletedOrderResult> {
-	const created: { order: Order; replayed: boolean } = await runOrderLifecycleOperation("createCompletedOrder", () =>
-		runNextAppEffect(createCompletedOrderEffect(data, userId)),
+	const created: { order: OrderDetails; replayed: boolean } = await runOrderLifecycleOperation(
+		"createCompletedOrder",
+		() => runNextAppEffect(createCompletedOrderEffect(data, userId)),
 	);
+
+	const [serializedOrder] = serializeOrders([created.order]);
+	if (!serializedOrder) throw new Error("Persisted order receipt was not found");
+	const receipt = buildOrderInvoiceModel(serializedOrder);
+	if (receipt.id !== created.order.id) throw new Error("Persisted order receipt did not match its order");
 
 	let refreshWarning = false;
 	try {
 		await runNextAppEffect(invalidateOrderMutationCachesEffect());
 	} catch (error) {
 		refreshWarning = true;
-		console.error("Order was saved, but order caches could not be invalidated", error);
+		logSafeServerError("invalidate order caches", error);
 	}
 
-	return { orderId: created.order.id, replayed: created.replayed, refreshWarning };
+	return { orderId: created.order.id, receipt, replayed: created.replayed, refreshWarning };
 }
 
 function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?: string, now = new Date()) {
@@ -661,7 +710,7 @@ function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?:
 						action: "order_cancelled",
 						orderId,
 						userId,
-						note: reason ? `Order cancelled: ${reason}` : "Order cancelled - stock restored",
+						note: reason ? `${ORDER_CANCELLATION_AUDIT_PREFIX}${reason}` : "Order cancelled - stock restored",
 					},
 				});
 

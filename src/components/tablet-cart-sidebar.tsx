@@ -1,17 +1,9 @@
 "use client";
 
-import { Collapsible as CollapsiblePrimitive } from "@base-ui/react/collapsible";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, Copy, Loader2, ReceiptIndianRupee, ShoppingBag, Trash2 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
-import type { UpiAccount } from "@/db/schema";
+import { Loader2, ShoppingBag, Trash2 } from "lucide-react";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
-import { getOrderCopyText, getUpiPaymentText } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { useUpiStore } from "@/store/upi-store";
 import { CartLinePresenter } from "./cart-line-presenter";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -26,12 +18,11 @@ interface TabletCartSidebarProps {
 	// biome-ignore lint/suspicious/noExplicitAny: TanStack form has complex generics
 	form: any;
 	total: number;
-	upiAccounts: UpiAccount[];
 	clearCart: () => void;
 	onSaveOrder: SaveCartOrder;
 	isSaving: boolean;
 	customerName: string;
-	deliveryCost: number;
+	deliveryCost: string;
 }
 
 export function TabletCartSidebar({
@@ -40,7 +31,6 @@ export function TabletCartSidebar({
 	removeFromCart,
 	form,
 	total,
-	upiAccounts,
 	clearCart,
 	onSaveOrder,
 	isSaving,
@@ -48,92 +38,9 @@ export function TabletCartSidebar({
 	deliveryCost,
 }: TabletCartSidebarProps) {
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
-	const [copiedOrder, setCopiedOrder] = useState(false);
-	const [copiedQr, setCopiedQr] = useState(false);
-	const [isOnlineOrderOpen, setIsOnlineOrderOpen] = useState(false);
-	const qrCodeRef = useRef<SVGSVGElement>(null);
-
-	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
-
-	useEffect(() => {
-		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
-		if (!isValid && upiAccounts.length > 0) {
-			setSelectedUpiId(upiAccounts[0].id.toString());
-		}
-	}, [upiAccounts, selectedUpiId, setSelectedUpiId]);
-
-	const selectedAccount = upiAccounts.find((account) => account.id.toString() === selectedUpiId);
-	const upiId = selectedAccount?.upiId || upiAccounts[0]?.upiId || "";
-	const upiPaymentText = getUpiPaymentText(total, cart, upiId);
 
 	const handleSaveOrder = async () => {
 		await onSaveOrder({ customerName, deliveryCost });
-	};
-
-	const copyOrderDetails = async () => {
-		if (cart.length === 0) return;
-
-		const orderText = getOrderCopyText(cart, total, deliveryCost);
-
-		await navigator.clipboard.writeText(orderText);
-		setCopiedOrder(true);
-		toast.info("Order copied!", { duration: 1000 });
-		setTimeout(() => setCopiedOrder(false), 2000);
-	};
-
-	const getQrCodeDataUrl = async (): Promise<string> => {
-		if (!qrCodeRef.current) return "";
-
-		const svgData = new XMLSerializer().serializeToString(qrCodeRef.current);
-		const svgBlob = new Blob([svgData], {
-			type: "image/svg+xml;charset=utf-8",
-		});
-		const url = URL.createObjectURL(svgBlob);
-
-		const canvas = document.createElement("canvas");
-		const ctx = canvas.getContext("2d");
-		const img = new Image(400, 400);
-
-		try {
-			await new Promise((resolve, reject) => {
-				img.onload = resolve;
-				img.onerror = reject;
-				img.src = url;
-			});
-
-			const padding = 48;
-			canvas.width = img.width + padding * 2;
-			canvas.height = img.height + padding * 2;
-
-			if (ctx) {
-				ctx.fillStyle = "white";
-				ctx.fillRect(0, 0, canvas.width, canvas.height);
-				ctx.drawImage(img, padding, padding);
-			}
-
-			return canvas.toDataURL("image/png");
-		} finally {
-			URL.revokeObjectURL(url);
-		}
-	};
-
-	const copyQrCode = async () => {
-		if (!qrCodeRef.current) return;
-
-		try {
-			const dataUrl = await getQrCodeDataUrl();
-			const response = await fetch(dataUrl);
-			const blob = await response.blob();
-
-			await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-
-			setCopiedQr(true);
-			toast.info("QR copied!", { duration: 1000 });
-			setTimeout(() => setCopiedQr(false), 2000);
-		} catch (err) {
-			console.error("Failed to copy QR:", err);
-			toast.error("Failed to copy QR code");
-		}
 	};
 
 	return (
@@ -263,63 +170,9 @@ export function TabletCartSidebar({
 				</div>
 
 				{cart.length > 0 && (
-					<CollapsiblePrimitive.Root open={isOnlineOrderOpen} onOpenChange={setIsOnlineOrderOpen}>
-						<CollapsiblePrimitive.Trigger className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors">
-							<span className="font-medium">Online Order (Instagram)</span>
-							<ChevronDown
-								className={cn("size-4 transition-transform duration-200", isOnlineOrderOpen && "rotate-180")}
-							/>
-						</CollapsiblePrimitive.Trigger>
-						<CollapsiblePrimitive.Panel className="overflow-hidden h-(--collapsible-panel-height) data-ending-style:h-0 data-starting-style:h-0 transition-all duration-200 ease-out">
-							<div className="space-y-2 pt-2">
-								{upiAccounts.length > 1 && (
-									<div className="px-1">
-										<select
-											value={selectedUpiId}
-											onChange={(e) => setSelectedUpiId(e.target.value)}
-											className="w-full text-xs border rounded-lg px-2 py-1.5 bg-muted"
-										>
-											{upiAccounts.map((account) => (
-												<option key={account.id} value={account.id.toString()}>
-													{account.label}
-												</option>
-											))}
-										</select>
-									</div>
-								)}
-
-								<div className="grid grid-cols-2 gap-2">
-									<motion.button
-										type="button"
-										whileTap={{ scale: 0.95 }}
-										onClick={copyOrderDetails}
-										className={cn(
-											"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-all",
-											copiedOrder ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
-										)}
-									>
-										{copiedOrder ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-										<span>{copiedOrder ? "Copied!" : "Copy Order"}</span>
-									</motion.button>
-
-									<motion.button
-										type="button"
-										whileTap={{ scale: 0.95 }}
-										onClick={copyQrCode}
-										className={cn(
-											"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-all",
-											copiedQr ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
-										)}
-									>
-										{copiedQr ? <Check className="size-3.5" /> : <ReceiptIndianRupee className="size-3.5" />}
-										<span>{copiedQr ? "Copied!" : "Copy QR"}</span>
-									</motion.button>
-								</div>
-
-								<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />
-							</div>
-						</CollapsiblePrimitive.Panel>
-					</CollapsiblePrimitive.Root>
+					<p className="text-center text-[11px] text-muted-foreground">
+						Save the order to generate its final receipt and UPI QR.
+					</p>
 				)}
 
 				<Button
