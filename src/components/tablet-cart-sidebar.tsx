@@ -6,16 +6,9 @@ import { Check, ChevronDown, Copy, Loader2, ReceiptIndianRupee, ShoppingBag, Tra
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { createOrderWithLines } from "@/app/manager/orders/actions";
 import type { UpiAccount } from "@/db/schema";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
-import type { GetOrderSubmissionId } from "@/lib/pos-cart-behaviour";
-import {
-	completeAcknowledgedOrder,
-	getOrderCopyText,
-	getUpiPaymentText,
-	saveCartOrder,
-} from "@/lib/pos-cart-behaviour";
+import { getOrderCopyText, getUpiPaymentText } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useUpiStore } from "@/store/upi-store";
@@ -24,6 +17,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { ScrollArea } from "./ui/scroll-area";
+import type { SaveCartOrder } from "./use-save-cart-order";
 
 interface TabletCartSidebarProps {
 	cart: CartLine[];
@@ -33,9 +27,9 @@ interface TabletCartSidebarProps {
 	form: any;
 	total: number;
 	upiAccounts: UpiAccount[];
-	onOrderSaved: () => void | Promise<void>;
 	clearCart: () => void;
-	getSubmissionId: GetOrderSubmissionId;
+	onSaveOrder: SaveCartOrder;
+	isSaving: boolean;
 	customerName: string;
 	deliveryCost: number;
 }
@@ -47,14 +41,13 @@ export function TabletCartSidebar({
 	form,
 	total,
 	upiAccounts,
-	onOrderSaved,
 	clearCart,
-	getSubmissionId,
+	onSaveOrder,
+	isSaving,
 	customerName,
 	deliveryCost,
 }: TabletCartSidebarProps) {
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
-	const [isSaving, setIsSaving] = useState(false);
 	const [copiedOrder, setCopiedOrder] = useState(false);
 	const [copiedQr, setCopiedQr] = useState(false);
 	const [isOnlineOrderOpen, setIsOnlineOrderOpen] = useState(false);
@@ -74,46 +67,7 @@ export function TabletCartSidebar({
 	const upiPaymentText = getUpiPaymentText(total, cart, upiId);
 
 	const handleSaveOrder = async () => {
-		if (cart.length === 0 || isSaving) return;
-
-		setIsSaving(true);
-		let result: Awaited<ReturnType<typeof saveCartOrder>>;
-		try {
-			const submissionId = getSubmissionId({ cart, customerName, deliveryCost });
-			result = await saveCartOrder(createOrderWithLines, {
-				cart,
-				customerName,
-				deliveryCost,
-				submissionId,
-			});
-		} catch (err) {
-			console.error("Failed to save order:", err);
-			toast.error(err instanceof Error ? err.message : "Failed to save order");
-			setIsSaving(false);
-			return;
-		}
-		if (!result.ok) {
-			toast.error(result.error);
-			setIsSaving(false);
-			return;
-		}
-
-		toast.success(result.replayed ? "Order already saved" : "Order saved!");
-		try {
-			const acknowledgement = await completeAcknowledgedOrder({
-				acknowledgement: result,
-				clearCart,
-				refreshInventory: onOrderSaved,
-			});
-			if (result.refreshWarning) {
-				toast.warning("Order saved, but reporting refresh failed");
-			}
-			if (!result.refreshWarning && acknowledgement.refreshWarning) {
-				toast.warning("Order saved, but inventory refresh failed");
-			}
-		} finally {
-			setIsSaving(false);
-		}
+		await onSaveOrder({ customerName, deliveryCost });
 	};
 
 	const copyOrderDetails = async () => {

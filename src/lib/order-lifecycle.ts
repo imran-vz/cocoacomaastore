@@ -1,12 +1,11 @@
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
-import { and, asc, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { Effect } from "effect";
 import { unstable_cache } from "next/cache";
 import type { db as drizzleDb } from "@/db";
 import {
 	type Dessert,
-	dailyDessertInventoryTable,
 	dessertComboItemsTable,
 	dessertCombosTable,
 	dessertsTable,
@@ -18,7 +17,9 @@ import {
 	ordersTable,
 } from "@/db/schema";
 import { isDatabaseUnavailableError } from "@/lib/errors";
+import { applyOrderInventoryMovement, type OrderInventoryMovement } from "@/lib/inventory/order-inventory-movement";
 import { getAnalyticsDay, getDayKey, getEndOfDayIST, getStartOfDayIST } from "@/lib/ist-date";
+import { serializeOrderSubmission } from "@/lib/order-submission";
 import { sanitizeCustomerName } from "@/lib/sanitize";
 import type { OrderRequestLine } from "@/lib/types";
 import { CacheTag, OrderTags, updateTagsEffect } from "@/server/effect/cache-tags";
@@ -57,23 +58,10 @@ export type InventoryDeductionRequest = {
 	name: string;
 };
 
-type InsertedOrderItem = {
+export type InsertedOrderItem = {
 	id: number;
-};
-
-type OrderInventoryMovement = {
 	dessertId: number;
-	quantity: number;
-	name: string;
-};
-
-type OrderInventoryMovementDirection = "deduct" | "restore";
-
-type OrderInventoryAudit = {
-	action: "order_deducted" | "order_cancelled";
-	orderId: number;
-	userId: string;
-	note?: string;
+	comboId: number | null;
 };
 
 export type CreateCompletedOrderInput = {
@@ -113,7 +101,7 @@ type CatalogComboItem = {
 	quantity: number;
 };
 
-type ResolvedOrderLine = {
+export type ResolvedOrderLine = {
 	baseDessertId: number;
 	baseDessertName: string;
 	comboId: number | null;
@@ -137,24 +125,7 @@ function parseDeliveryCostCents(deliveryCost: string) {
 }
 
 export function fingerprintOrderRequest(data: CreateCompletedOrderInput) {
-	const normalized = {
-		customerName: sanitizeCustomerName(data.customerName),
-		deliveryCost: (parseDeliveryCostCents(data.deliveryCost) / 100).toFixed(2),
-		lines: data.lines
-			.map((line) => ({
-				baseDessertId: line.baseDessertId,
-				comboId: line.comboId ?? null,
-				quantity: line.quantity,
-			}))
-			.sort(
-				(left, right) =>
-					left.baseDessertId - right.baseDessertId ||
-					(left.comboId ?? -1) - (right.comboId ?? -1) ||
-					left.quantity - right.quantity,
-			),
-	};
-
-	return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
+	return createHash("sha256").update(serializeOrderSubmission(data)).digest("hex");
 }
 
 function computeOrderTotal(lines: readonly ResolvedOrderLine[], deliveryCost: string) {
@@ -359,130 +330,29 @@ function buildCartLineOrderItemInserts(orderId: number, lines: readonly Resolved
 	}));
 }
 
-function buildOrderItemModifierInserts(
+export function buildOrderItemModifierInserts(
 	lines: readonly ResolvedOrderLine[],
 	insertedItems: readonly InsertedOrderItem[],
 ) {
-	return lines.flatMap((line, index) =>
-		line.modifiers.map((modifier) => ({
-			orderItemId: insertedItems[index].id,
+	const insertedItemByReference = new Map(
+		insertedItems.map((item) => [`${item.dessertId}:${item.comboId ?? "direct"}`, item.id]),
+	);
+
+	return lines.flatMap((line) => {
+		const insertedItemId = insertedItemByReference.get(`${line.baseDessertId}:${line.comboId ?? "direct"}`);
+		if (insertedItemId === undefined) throw new Error("Inserted order item could not be matched to its request line");
+
+		return line.modifiers.map((modifier) => ({
+			orderItemId: insertedItemId,
 			dessertId: modifier.dessertId,
 			dessertName: modifier.dessertName,
 			quantity: modifier.quantity,
-		})),
-	);
+		}));
+	});
 }
 
 export function canCancelOrderOnOperatingDay(orderCreatedAt: Date, now = new Date()) {
 	return getAnalyticsDay(orderCreatedAt).getTime() === getAnalyticsDay(now).getTime();
-}
-
-function mapMovementsByDessertId(movements: readonly OrderInventoryMovement[]) {
-	return {
-		ids: movements.map((item) => item.dessertId).sort((a, b) => a - b),
-		quantityByDessertId: new Map(movements.map((item) => [item.dessertId, item.quantity])),
-		nameByDessertId: new Map(movements.map((item) => [item.dessertId, item.name])),
-	};
-}
-
-function buildInventoryUpdateCaseStatements({
-	dessertIds,
-	quantityByDessertId,
-	direction,
-}: {
-	dessertIds: readonly number[];
-	quantityByDessertId: ReadonlyMap<number, number>;
-	direction: OrderInventoryMovementDirection;
-}) {
-	return dessertIds
-		.map((dessertId) => {
-			const quantity = quantityByDessertId.get(dessertId) ?? 0;
-			const nextQuantity =
-				direction === "deduct"
-					? sql`${dailyDessertInventoryTable.quantity} - ${quantity}`
-					: sql`${dailyDessertInventoryTable.quantity} + ${quantity}`;
-			return sql`WHEN ${dailyDessertInventoryTable.dessertId} = ${dessertId} THEN ${nextQuantity}`;
-		})
-		.reduce((acc, curr) => sql`${acc} ${curr}`);
-}
-
-async function applyOrderInventoryMovement({
-	tx,
-	day,
-	now,
-	movements,
-	direction,
-	audit,
-}: {
-	tx: OrderTransaction;
-	day: Date;
-	now: Date;
-	movements: readonly OrderInventoryMovement[];
-	direction: OrderInventoryMovementDirection;
-	audit: OrderInventoryAudit;
-}) {
-	if (movements.length === 0) return;
-
-	const { ids: dessertIds, quantityByDessertId, nameByDessertId } = mapMovementsByDessertId(movements);
-	const lockedInventory = await tx
-		.select({
-			dessertId: dailyDessertInventoryTable.dessertId,
-			quantity: dailyDessertInventoryTable.quantity,
-		})
-		.from(dailyDessertInventoryTable)
-		.where(and(eq(dailyDessertInventoryTable.day, day), inArray(dailyDessertInventoryTable.dessertId, dessertIds)))
-		.orderBy(asc(dailyDessertInventoryTable.dessertId))
-		.for("update");
-
-	const stockMap = new Map(lockedInventory.map((row) => [row.dessertId, row.quantity]));
-
-	if (direction === "deduct") {
-		for (const dessertId of dessertIds) {
-			const currentStock = stockMap.get(dessertId) ?? 0;
-			const requestedQty = quantityByDessertId.get(dessertId) ?? 0;
-			if (currentStock < requestedQty) {
-				const name = nameByDessertId.get(dessertId) ?? "Unknown";
-				throw new Error(`Insufficient stock for ${name}. Available: ${currentStock}, Requested: ${requestedQty}`);
-			}
-		}
-	}
-
-	const updated = await tx
-		.update(dailyDessertInventoryTable)
-		.set({
-			quantity: sql`CASE ${buildInventoryUpdateCaseStatements({ dessertIds, quantityByDessertId, direction })} ELSE ${dailyDessertInventoryTable.quantity} END`,
-			updatedAt: now,
-		})
-		.where(and(eq(dailyDessertInventoryTable.day, day), inArray(dailyDessertInventoryTable.dessertId, dessertIds)))
-		.returning({
-			dessertId: dailyDessertInventoryTable.dessertId,
-			newQuantity: dailyDessertInventoryTable.quantity,
-		});
-
-	const updatedIds = new Set(updated.map((row) => row.dessertId));
-	for (const dessertId of dessertIds) {
-		if (!updatedIds.has(dessertId)) {
-			const name = nameByDessertId.get(dessertId) ?? "Unknown";
-			throw new Error(`Failed to update inventory for ${name} (unexpected error)`);
-		}
-	}
-
-	await tx.insert(inventoryAuditLogTable).values(
-		updated.map((row) => {
-			const quantity = quantityByDessertId.get(row.dessertId) ?? 0;
-			return {
-				day,
-				dessertId: row.dessertId,
-				action: audit.action,
-				previousQuantity: direction === "deduct" ? row.newQuantity + quantity : row.newQuantity - quantity,
-				newQuantity: row.newQuantity,
-				orderId: audit.orderId,
-				userId: audit.userId,
-				note: audit.note,
-				createdAt: now,
-			};
-		}),
-	);
 }
 
 export function getOrderInventoryRestorationsFromAudits(
@@ -583,7 +453,11 @@ function createCompletedOrderEffect(data: CreateCompletedOrderInput, userId: str
 					const insertedItems = await tx
 						.insert(orderItemsTable)
 						.values(buildCartLineOrderItemInserts(order.id, resolvedLines))
-						.returning({ id: orderItemsTable.id });
+						.returning({
+							id: orderItemsTable.id,
+							dessertId: orderItemsTable.dessertId,
+							comboId: orderItemsTable.comboId,
+						});
 
 					const modifierInserts = buildOrderItemModifierInserts(resolvedLines, insertedItems);
 

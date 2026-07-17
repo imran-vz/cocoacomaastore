@@ -1,5 +1,5 @@
 import { MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
-import { sanitizeCustomerName } from "@/lib/sanitize";
+import { normalizeDeliveryCost, serializeOrderSubmission } from "@/lib/order-submission";
 import type {
 	CartComboInput,
 	CartDessertInput,
@@ -247,26 +247,11 @@ function getOrderRequestLines(cart: CartLine[]) {
 	);
 }
 
-function normalizeDeliveryCost(deliveryCost: string | number): string {
-	const value = typeof deliveryCost === "number" ? deliveryCost : Number.parseFloat(deliveryCost || "0");
-	return value.toFixed(2);
-}
-
 export function fingerprintOrderSubmission(input: OrderSubmissionInput): string {
-	const lines = getOrderRequestLines(input.cart)
-		.map((line) => ({
-			baseDessertId: line.baseDessertId,
-			comboId: line.comboId ?? null,
-			quantity: line.quantity,
-		}))
-		.sort(
-			(a, b) => a.baseDessertId - b.baseDessertId || (a.comboId ?? -1) - (b.comboId ?? -1) || a.quantity - b.quantity,
-		);
-
-	return JSON.stringify({
-		customerName: sanitizeCustomerName(input.customerName),
-		deliveryCost: normalizeDeliveryCost(input.deliveryCost),
-		lines,
+	return serializeOrderSubmission({
+		customerName: input.customerName,
+		deliveryCost: input.deliveryCost,
+		lines: getOrderRequestLines(input.cart),
 	});
 }
 

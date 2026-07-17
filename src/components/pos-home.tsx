@@ -4,13 +4,12 @@ import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Search, X } from "lucide-react";
-import { use, useCallback, useEffect, useMemo, useReducer, useRef } from "react";
+import { use, useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 
 import { toggleOutOfStock } from "@/app/desserts/actions";
 import type { UpiAccount } from "@/db/schema";
-import type { GetOrderSubmissionId, OrderSubmissionIdentity } from "@/lib/pos-cart-behaviour";
-import { applyPosCartEvent, initialPosCartState, resolveOrderSubmissionIdentity } from "@/lib/pos-cart-behaviour";
+import { applyPosCartEvent, initialPosCartState } from "@/lib/pos-cart-behaviour";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDessertStore } from "@/store/dessert-store";
@@ -18,6 +17,7 @@ import { cartFormSchema } from "./form-schema/cart";
 import { MobileCartSheet } from "./mobile-cart-sheet";
 import { ProductGrid } from "./product-grid";
 import { TabletCartSidebar } from "./tablet-cart-sidebar";
+import { useSaveCartOrder } from "./use-save-cart-order";
 
 type InventoryRow = {
 	dessertId: number;
@@ -64,7 +64,6 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 	});
 
 	const [cartState, dispatchCart] = useReducer(applyPosCartEvent, initialPosCartState);
-	const submissionIdentityRef = useRef<OrderSubmissionIdentity | null>(null);
 	const cart = cartState.cart;
 	const inventoryByDessertId = useMemo(() => {
 		const next: Record<number, number> = {};
@@ -117,9 +116,9 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		[localDesserts, inventoryByDessertId],
 	);
 
-	const refreshInventory = async () => {
+	const refreshInventory = useCallback(async () => {
 		await refetchInventory();
-	};
+	}, [refetchInventory]);
 
 	useEffect(() => {
 		if (cartState.lastError) toast.error(cartState.lastError.message);
@@ -151,20 +150,11 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 	);
 
 	const clearCart = useCallback(() => {
-		submissionIdentityRef.current = null;
 		dispatchCart({ type: "clear" });
 		form.reset();
 	}, [form]);
 
-	const getSubmissionId = useCallback<GetOrderSubmissionId>((input) => {
-		const identity = resolveOrderSubmissionIdentity(
-			submissionIdentityRef.current,
-			input,
-			globalThis.crypto.randomUUID(),
-		);
-		submissionIdentityRef.current = identity;
-		return identity.submissionId;
-	}, []);
+	const { isSaving, saveOrder } = useSaveCartOrder({ cart, clearCart, refreshInventory });
 
 	const handleToggleStock = useCallback(
 		async (e: React.MouseEvent, dessert: Dessert) => {
@@ -261,9 +251,8 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 								total={total}
 								upiAccounts={upiAccountsList}
 								customerName={customerName}
-								onOrderSaved={refreshInventory}
-								clearCart={clearCart}
-								getSubmissionId={getSubmissionId}
+								onSaveOrder={saveOrder}
+								isSaving={isSaving}
 							/>
 						</div>
 
@@ -276,9 +265,9 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 								form={form}
 								total={total}
 								upiAccounts={upiAccountsList}
-								onOrderSaved={refreshInventory}
 								clearCart={clearCart}
-								getSubmissionId={getSubmissionId}
+								onSaveOrder={saveOrder}
+								isSaving={isSaving}
 								customerName={customerName}
 								deliveryCost={deliveryCostAmount}
 							/>

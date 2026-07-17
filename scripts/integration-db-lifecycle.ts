@@ -33,7 +33,14 @@ async function main() {
 	}
 }
 
-main().catch(() => {
-	console.error("Integration database lifecycle failed.");
+function getSafeErrorMessage(error: unknown) {
+	if (!(error instanceof Error)) return "Unknown error";
+	return error.message
+		.replace(/postgres(?:ql)?:\/\/\S+/gi, "[redacted database URL]")
+		.replace(/password=\S+/gi, "password=[redacted]");
+}
+
+main().catch((error) => {
+	console.error(`Integration database lifecycle failed: ${getSafeErrorMessage(error)}`);
 	process.exitCode = 1;
 });

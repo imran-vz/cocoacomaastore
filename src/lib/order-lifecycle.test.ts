@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+	buildOrderItemModifierInserts,
 	canCancelOrderOnOperatingDay,
 	fingerprintOrderRequest,
 	getCartLineInventoryDeductions,
@@ -170,6 +171,28 @@ describe("order-lifecycle", () => {
 				}),
 			).toThrow("supported amount");
 		});
+	});
+
+	test("matches inserted order items by line identity rather than return order", () => {
+		const lines = resolveOrderLinesFromCatalog({
+			lines: [
+				{ baseDessertId: base.id, comboId: combo.id, quantity: 1 },
+				{ baseDessertId: 11, comboId: 31, quantity: 1 },
+			],
+			desserts: [base, { ...base, id: 11 }, modifier],
+			combos: [combo, { ...combo, id: 31, baseDessertId: 11 }],
+			comboItems: [comboItem, { ...comboItem, comboId: 31 }],
+		});
+
+		expect(
+			buildOrderItemModifierInserts(lines, [
+				{ id: 200, dessertId: 11, comboId: 31 },
+				{ id: 100, dessertId: base.id, comboId: combo.id },
+			]),
+		).toEqual([
+			{ orderItemId: 100, dessertId: modifier.id, dessertName: modifier.name, quantity: 2 },
+			{ orderItemId: 200, dessertId: modifier.id, dessertName: modifier.name, quantity: 2 },
+		]);
 	});
 
 	test("aggregates resolved base quantities and ignores unlimited stock", () => {

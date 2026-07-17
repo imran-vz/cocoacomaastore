@@ -53,8 +53,6 @@ export type OrderSubmissionIdentity = {
 	submissionId: string;
 };
 
-export type GetOrderSubmissionId = (input: OrderSubmissionInput) => string;
-
 export type OrderSaveAcknowledgement = {
 	orderId: number;
 	replayed: boolean;
