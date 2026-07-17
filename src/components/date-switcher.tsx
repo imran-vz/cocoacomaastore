@@ -4,6 +4,8 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatLocalDateKey } from "@/lib/local-date";
 import { cn } from "@/lib/utils";
 
 interface DateSwitcherProps {
@@ -12,13 +14,6 @@ interface DateSwitcherProps {
 	minDate?: Date;
 	maxDate?: Date;
 	className?: string;
-}
-
-function formatDateForInput(date: Date): string {
-	const y = date.getFullYear();
-	const m = String(date.getMonth() + 1).padStart(2, "0");
-	const d = String(date.getDate()).padStart(2, "0");
-	return `${y}-${m}-${d}`;
 }
 
 function formatDateDisplay(date: Date): string {
@@ -185,101 +180,88 @@ export function DateSwitcher({ selectedDate, onDateChange, minDate, maxDate, cla
 				<ChevronLeft className="size-4" />
 			</Button>
 
-			<div className="relative">
-				<Button
-					variant="outline"
-					className="min-w-36 justify-start gap-2 font-medium"
-					aria-expanded={isCalendarOpen}
-					aria-haspopup="dialog"
-					onClick={() => setIsCalendarOpen((open) => !open)}
-				>
-					<CalendarDays className="size-4 text-muted-foreground" />
-					<span>{isToday ? "Today" : formatDateDisplay(selectedDate)}</span>
-				</Button>
+			<Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+				<PopoverTrigger
+					render={
+						<Button variant="outline" className="min-w-36 justify-start gap-2 font-medium">
+							<CalendarDays className="size-4 text-muted-foreground" />
+							<span>{isToday ? "Today" : formatDateDisplay(selectedDate)}</span>
+						</Button>
+					}
+				/>
 
-				{isCalendarOpen ? (
-					<div
-						className="absolute top-10 right-0 z-50 w-76 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg"
-						role="dialog"
-						aria-label="Choose date"
-						onKeyDown={(event) => {
-							if (event.key === "Escape") {
-								setIsCalendarOpen(false);
-							}
-						}}
-					>
-						<div className="mb-3 flex items-center justify-between gap-2">
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								onClick={goToPreviousMonth}
-								disabled={!canGoPrevMonth}
-								aria-label="Previous month"
-							>
-								<ChevronLeft className="size-4" />
-							</Button>
-							<p className="text-sm font-semibold">{formatMonthDisplay(visibleMonth)}</p>
-							<Button
-								variant="ghost"
-								size="icon-sm"
-								onClick={goToNextMonth}
-								disabled={!canGoNextMonth}
-								aria-label="Next month"
-							>
-								<ChevronRight className="size-4" />
-							</Button>
-						</div>
-
-						<div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-muted-foreground">
-							{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-								<div key={day} className="py-1">
-									{day}
-								</div>
-							))}
-						</div>
-						<div className="mt-1 grid grid-cols-7 gap-1">
-							{calendarDays.map((date) => {
-								const isSelected = isSameDay(date, selectedDate);
-								const isOutsideMonth = date.getMonth() !== visibleMonth.getMonth();
-								const disabled = isDateDisabled(date);
-
-								return (
-									<button
-										key={formatDateForInput(date)}
-										type="button"
-										className={cn(
-											"flex h-8 items-center justify-center rounded-md text-sm transition-colors",
-											isOutsideMonth && "text-muted-foreground/45",
-											disabled && "cursor-not-allowed text-muted-foreground/30",
-											!disabled && "hover:bg-muted",
-											isSelected && "bg-primary text-primary-foreground hover:bg-primary",
-										)}
-										disabled={disabled}
-										onClick={() => selectCalendarDate(date)}
-										aria-current={isSelected ? "date" : undefined}
-									>
-										{date.getDate()}
-									</button>
-								);
-							})}
-						</div>
-
-						<div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-							<input
-								type="date"
-								value={formatDateForInput(selectedDate)}
-								onChange={handleDateInputChange}
-								max={formatDateForInput(effectiveMaxDate)}
-								min={minDate ? formatDateForInput(minDate) : undefined}
-								className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-							/>
-							<Button variant="ghost" size="sm" onClick={goToToday} disabled={isToday}>
-								Today
-							</Button>
-						</div>
+				<PopoverContent align="end" aria-label="Choose date" className="w-76 p-3">
+					<div className="mb-3 flex items-center justify-between gap-2">
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={goToPreviousMonth}
+							disabled={!canGoPrevMonth}
+							aria-label="Previous month"
+						>
+							<ChevronLeft className="size-4" />
+						</Button>
+						<p className="text-sm font-semibold">{formatMonthDisplay(visibleMonth)}</p>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={goToNextMonth}
+							disabled={!canGoNextMonth}
+							aria-label="Next month"
+						>
+							<ChevronRight className="size-4" />
+						</Button>
 					</div>
-				) : null}
-			</div>
+
+					<div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-muted-foreground">
+						{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+							<div key={day} className="py-1">
+								{day}
+							</div>
+						))}
+					</div>
+					<div className="mt-1 grid grid-cols-7 gap-1">
+						{calendarDays.map((date) => {
+							const isSelected = isSameDay(date, selectedDate);
+							const isOutsideMonth = date.getMonth() !== visibleMonth.getMonth();
+							const disabled = isDateDisabled(date);
+
+							return (
+								<button
+									key={formatLocalDateKey(date)}
+									type="button"
+									className={cn(
+										"flex h-8 items-center justify-center rounded-md text-sm transition-colors",
+										isOutsideMonth && "text-muted-foreground/45",
+										disabled && "cursor-not-allowed text-muted-foreground/30",
+										!disabled && "hover:bg-muted",
+										isSelected && "bg-primary text-primary-foreground hover:bg-primary",
+									)}
+									disabled={disabled}
+									onClick={() => selectCalendarDate(date)}
+									aria-current={isSelected ? "date" : undefined}
+								>
+									{date.getDate()}
+								</button>
+							);
+						})}
+					</div>
+
+					<div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+						<input
+							type="date"
+							value={formatLocalDateKey(selectedDate)}
+							onChange={handleDateInputChange}
+							max={formatLocalDateKey(effectiveMaxDate)}
+							min={minDate ? formatLocalDateKey(minDate) : undefined}
+							className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+						/>
+						<Button variant="ghost" size="sm" onClick={goToToday} disabled={isToday}>
+							Today
+						</Button>
+					</div>
+				</PopoverContent>
+			</Popover>
 
 			<Button
 				variant="outline"

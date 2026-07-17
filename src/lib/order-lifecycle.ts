@@ -20,6 +20,7 @@ import {
 import { isDatabaseUnavailableError } from "@/lib/errors";
 import { applyOrderInventoryMovement, type OrderInventoryMovement } from "@/lib/inventory/order-inventory-movement";
 import { getAnalyticsDay, getDayKey, getEndOfDayIST, getStartOfDayIST } from "@/lib/ist-date";
+import { parseMoneyCents } from "@/lib/money";
 import { buildOrderInvoiceModel, type OrderInvoiceModel } from "@/lib/order-invoice-model";
 import { ORDER_CANCELLATION_AUDIT_PREFIX } from "@/lib/order-limits";
 import { serializeOrderSubmission } from "@/lib/order-submission";
@@ -167,11 +168,6 @@ function invalidateOrderMutationCachesEffect(tags: readonly string[] = OrderTags
 	return updateTagsEffect(tags);
 }
 
-function parseDeliveryCostCents(deliveryCost: string) {
-	const [whole, fraction = ""] = deliveryCost.split(".");
-	return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-}
-
 export function fingerprintOrderRequest(data: CreateCompletedOrderInput) {
 	return createHash("sha256").update(serializeOrderSubmission(data)).digest("hex");
 }
@@ -179,7 +175,7 @@ export function fingerprintOrderRequest(data: CreateCompletedOrderInput) {
 function computeOrderTotal(lines: readonly ResolvedOrderLine[], deliveryCost: string) {
 	const totalCents = lines.reduce(
 		(total, line) => total + line.quantity * line.unitPrice * 100,
-		parseDeliveryCostCents(deliveryCost),
+		parseMoneyCents(deliveryCost),
 	);
 	if (!Number.isSafeInteger(totalCents) || totalCents > MAX_ORDER_TOTAL_CENTS) {
 		throw new Error("Order total exceeds the supported amount");

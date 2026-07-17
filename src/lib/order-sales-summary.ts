@@ -1,19 +1,23 @@
+import { parseMoneyCents } from "@/lib/money";
 import type { SerializedOrderDetails } from "@/lib/order-lifecycle";
 
-type OrderSalesSummaryInput = Pick<SerializedOrderDetails, "status" | "total"> & {
+type OrderSalesSummaryInput = Pick<SerializedOrderDetails, "deliveryCost" | "status" | "total"> & {
 	orderItems: ReadonlyArray<{ quantity: number }>;
 };
 
-export function summarizeOrderSales(orders: readonly OrderSalesSummaryInput[]): { itemsSold: number; revenue: number } {
+export function summarizeOrderSales(orders: readonly OrderSalesSummaryInput[]): {
+	itemsSold: number;
+	netRevenue: number;
+} {
 	let itemsSold = 0;
-	let revenue = 0;
+	let netRevenueCents = 0;
 
 	for (const order of orders) {
 		if (order.status === "cancelled") continue;
 
 		for (const item of order.orderItems) itemsSold += item.quantity;
-		revenue += Number(order.total);
+		netRevenueCents += parseMoneyCents(order.total) - parseMoneyCents(order.deliveryCost);
 	}
 
-	return { itemsSold, revenue };
+	return { itemsSold, netRevenue: netRevenueCents / 100 };
 }

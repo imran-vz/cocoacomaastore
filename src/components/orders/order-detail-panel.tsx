@@ -1,16 +1,16 @@
+import type { ReactNode } from "react";
+import { OrderInvoiceButton } from "@/components/order-invoice-button";
 import { cn } from "@/lib/utils";
-import type { ManagerOrderViewModel } from "../orders-view-model";
-import type { CancelOrderHandler } from "../use-manager-orders-controller";
-import { OrderActions } from "./order-actions";
 import { OrderLineItems } from "./order-line-items";
+import type { OrderViewModel } from "./orders-view-model";
 
 export function OrderDetailPanel({
 	order,
-	onCancelOrder,
+	cancelAction,
 	className,
 }: {
-	order: ManagerOrderViewModel;
-	onCancelOrder: CancelOrderHandler;
+	order: OrderViewModel;
+	cancelAction?: ReactNode;
 	className?: string;
 }) {
 	return (
@@ -30,7 +30,10 @@ export function OrderDetailPanel({
 				</div>
 			</div>
 
-			<OrderActions order={order} onCancelOrder={onCancelOrder} />
+			<div className={cn("grid gap-2", cancelAction && "sm:grid-cols-2")}>
+				<OrderInvoiceButton order={order.source} className="h-11 md:h-8" />
+				{cancelAction}
+			</div>
 		</div>
 	);
 }

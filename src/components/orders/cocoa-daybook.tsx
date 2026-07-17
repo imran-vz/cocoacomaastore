@@ -1,37 +1,86 @@
 "use client";
 
 import { ChevronDown } from "lucide-react";
-import { Fragment, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { OrderDetailPanel } from "../components/order-detail-panel";
-import { OrderStatusBadge } from "../components/order-status-badge";
-import { OrdersEmptyState } from "../components/orders-empty-state";
-import { OrdersSummary } from "../components/orders-summary";
-import type { ManagerOrdersViewModel } from "../orders-view-model";
-import type { CancelOrderHandler } from "../use-manager-orders-controller";
+import { OrderDetailPanel } from "./order-detail-panel";
+import { OrderStatusBadge } from "./order-status-badge";
+import { OrdersEmptyState } from "./orders-empty-state";
+import { OrdersSummary, type OrdersSummaryMetric } from "./orders-summary";
+import type { OrdersViewModel, OrderViewModel } from "./orders-view-model";
+
+export function DaybookTableColumns() {
+	return (
+		<TableHeader className="bg-muted/50">
+			<TableRow className="hover:bg-transparent">
+				<TableHead className="w-28">Time</TableHead>
+				<TableHead className="w-24">Order</TableHead>
+				<TableHead>Details</TableHead>
+				<TableHead className="w-20 text-right">Qty</TableHead>
+				<TableHead className="w-28 text-right">Total</TableHead>
+				<TableHead className="w-32 text-right">Status</TableHead>
+			</TableRow>
+		</TableHeader>
+	);
+}
 
 export function CocoaDaybook({
 	model,
-	onCancelOrder,
+	additionalMetric,
+	renderCancelAction,
+	targetOrderId,
+	emptyState,
 }: {
-	model: ManagerOrdersViewModel;
-	onCancelOrder: CancelOrderHandler;
+	model: OrdersViewModel;
+	additionalMetric?: OrdersSummaryMetric;
+	renderCancelAction?: (order: OrderViewModel) => ReactNode;
+	targetOrderId?: number | null;
+	emptyState?: { title?: string; description?: string };
 }) {
 	const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+	const mobileTargetRowRef = useRef<HTMLLIElement | null>(null);
+	const tableTargetRowRef = useRef<HTMLTableRowElement | null>(null);
+	const appliedTargetOrderIdRef = useRef<number | null>(null);
+	const pendingScrollOrderIdRef = useRef<number | null>(null);
+
+	// Deep links expand and reveal their order once; afterwards normal toggling wins.
+	useEffect(() => {
+		if (targetOrderId == null || appliedTargetOrderIdRef.current === targetOrderId) return;
+		if (!model.orders.some((order) => order.id === targetOrderId)) return;
+
+		appliedTargetOrderIdRef.current = targetOrderId;
+		pendingScrollOrderIdRef.current = targetOrderId;
+		setExpandedOrderId(targetOrderId);
+	}, [targetOrderId, model.orders]);
+
+	// Runs after the expanded row has committed, so the scroll centers on final geometry.
+	useEffect(() => {
+		if (expandedOrderId == null || pendingScrollOrderIdRef.current !== expandedOrderId) return;
+
+		pendingScrollOrderIdRef.current = null;
+		const visibleRow = [mobileTargetRowRef.current, tableTargetRowRef.current].find(
+			(element) => element && element.offsetParent !== null,
+		);
+		visibleRow?.scrollIntoView({ behavior: "smooth", block: "center" });
+	}, [expandedOrderId]);
 
 	const toggleOrder = (orderId: number) => {
 		setExpandedOrderId((current) => (current === orderId ? null : orderId));
 	};
 
+	// Cancelled orders never offer cancellation; the renderer only decides role policy.
+	const renderCancelActionFor = (order: OrderViewModel) =>
+		order.isCancelled ? undefined : renderCancelAction?.(order);
+
 	if (model.orders.length === 0) {
-		return <OrdersEmptyState className="mx-auto max-w-6xl" />;
+		return <OrdersEmptyState className="mx-auto max-w-6xl" {...emptyState} />;
 	}
 
 	return (
 		<section className="mx-auto max-w-6xl space-y-3" aria-label="Cocoa Daybook order layout">
-			<OrdersSummary model={model} />
+			<OrdersSummary model={model} additionalMetric={additionalMetric} />
 
 			<div className="overflow-hidden rounded-xl border bg-card md:hidden">
 				<ul className="divide-y">
@@ -40,7 +89,7 @@ export function CocoaDaybook({
 						const contentId = `daybook-mobile-${order.id}`;
 
 						return (
-							<li key={order.id}>
+							<li key={order.id} ref={order.id === targetOrderId ? mobileTargetRowRef : undefined}>
 								<button
 									type="button"
 									aria-expanded={isExpanded}
@@ -89,7 +138,7 @@ export function CocoaDaybook({
 
 								{isExpanded && (
 									<div id={contentId} className="border-t bg-muted/20 px-3 py-3">
-										<OrderDetailPanel order={order} onCancelOrder={onCancelOrder} />
+										<OrderDetailPanel order={order} cancelAction={renderCancelActionFor(order)} />
 									</div>
 								)}
 							</li>
@@ -100,16 +149,7 @@ export function CocoaDaybook({
 
 			<div className="hidden overflow-hidden rounded-xl border bg-card shadow-xs md:block">
 				<Table>
-					<TableHeader className="bg-muted/50">
-						<TableRow className="hover:bg-transparent">
-							<TableHead className="w-28">Time</TableHead>
-							<TableHead className="w-24">Order</TableHead>
-							<TableHead>Details</TableHead>
-							<TableHead className="w-20 text-right">Qty</TableHead>
-							<TableHead className="w-28 text-right">Total</TableHead>
-							<TableHead className="w-32 text-right">Status</TableHead>
-						</TableRow>
-					</TableHeader>
+					<DaybookTableColumns />
 					<TableBody>
 						{model.orders.map((order) => {
 							const isExpanded = expandedOrderId === order.id;
@@ -117,7 +157,10 @@ export function CocoaDaybook({
 
 							return (
 								<Fragment key={order.id}>
-									<TableRow data-state={isExpanded ? "selected" : undefined}>
+									<TableRow
+										ref={order.id === targetOrderId ? tableTargetRowRef : undefined}
+										data-state={isExpanded ? "selected" : undefined}
+									>
 										<TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
 											{order.timeLabel}
 										</TableCell>
@@ -166,7 +209,11 @@ export function CocoaDaybook({
 									{isExpanded && (
 										<TableRow id={contentId} className="hover:bg-transparent">
 											<TableCell colSpan={6} className="whitespace-normal bg-muted/20 p-4">
-												<OrderDetailPanel order={order} onCancelOrder={onCancelOrder} className="mx-auto max-w-3xl" />
+												<OrderDetailPanel
+													order={order}
+													cancelAction={renderCancelActionFor(order)}
+													className="mx-auto max-w-3xl"
+												/>
 											</TableCell>
 										</TableRow>
 									)}

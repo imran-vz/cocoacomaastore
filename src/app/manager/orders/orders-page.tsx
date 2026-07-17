@@ -1,11 +1,12 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
+import { CocoaDaybook } from "@/components/orders/cocoa-daybook";
+import { OrderCancelAction } from "@/components/orders/order-cancel-action";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SerializedOrders } from "@/lib/order-lifecycle";
 import { cn } from "@/lib/utils";
-import { CocoaDaybook } from "./designs/cocoa-daybook";
 import { useManagerOrdersController } from "./use-manager-orders-controller";
 
 export default function OrdersPage({ initialOrders }: { initialOrders: SerializedOrders }) {
@@ -34,7 +35,10 @@ export default function OrdersPage({ initialOrders }: { initialOrders: Serialize
 				</div>
 			</header>
 
-			<CocoaDaybook model={model} onCancelOrder={cancelOrder} />
+			<CocoaDaybook
+				model={model}
+				renderCancelAction={(order) => <OrderCancelAction order={order} onCancelOrder={cancelOrder} />}
+			/>
 		</div>
 	);
 }

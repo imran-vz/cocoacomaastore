@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { CancelOrderHandler } from "@/components/orders/order-cancel-action";
 import type { SerializedOrders } from "@/lib/order-lifecycle";
 import { cancelOrder } from "./actions";
 import { buildManagerOrdersViewModel } from "./orders-view-model";
@@ -18,8 +19,6 @@ async function fetchManagerOrders(signal?: AbortSignal): Promise<SerializedOrder
 
 	return response.json();
 }
-
-export type CancelOrderHandler = (orderId: number, reason?: string) => Promise<void>;
 
 export function useManagerOrdersController(initialOrders: SerializedOrders) {
 	const queryClient = useQueryClient();

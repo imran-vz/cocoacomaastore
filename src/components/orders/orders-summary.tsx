@@ -1,15 +1,31 @@
+import type { LucideIcon } from "lucide-react";
 import { PackageCheck, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ManagerOrdersViewModel } from "../orders-view-model";
+import type { OrdersViewModel } from "./orders-view-model";
 
-export function OrdersSummary({ model, className }: { model: ManagerOrdersViewModel; className?: string }) {
-	const metrics = [
+export type OrdersSummaryMetric = {
+	label: string;
+	value: string | number;
+	icon: LucideIcon;
+};
+
+export function OrdersSummary({
+	model,
+	additionalMetric,
+	className,
+}: {
+	model: OrdersViewModel;
+	additionalMetric?: OrdersSummaryMetric;
+	className?: string;
+}) {
+	const metrics: OrdersSummaryMetric[] = [
 		{ label: "Orders placed", value: model.totalOrders, icon: ShoppingBag },
 		{ label: "Items sold", value: model.itemsSold, icon: PackageCheck },
+		...(additionalMetric ? [additionalMetric] : []),
 	];
 
 	return (
-		<dl className={cn("grid grid-cols-2 gap-4 border-y py-3", className)}>
+		<dl className={cn("grid gap-4 border-y py-3", additionalMetric ? "grid-cols-3" : "grid-cols-2", className)}>
 			{metrics.map((metric) => (
 				<div key={metric.label} className="min-w-0">
 					<dt className="flex items-center gap-1.5 text-[0.68rem] font-semibold tracking-wide text-muted-foreground uppercase sm:text-xs">

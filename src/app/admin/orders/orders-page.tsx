@@ -1,166 +1,41 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { Package, User } from "lucide-react";
-import { parseAsInteger, useQueryState } from "nuqs";
-import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
-
+import { IndianRupee } from "lucide-react";
+import { use } from "react";
 import { DateSwitcher } from "@/components/date-switcher";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CocoaDaybook } from "@/components/orders/cocoa-daybook";
+import { CocoaDaybookSkeleton } from "@/components/orders/cocoa-daybook-skeleton";
+import { OrderCancelAction } from "@/components/orders/order-cancel-action";
 import type { SerializedOrders } from "@/lib/order-lifecycle";
-import { summarizeOrderSales } from "@/lib/order-sales-summary";
-import { OrderCardsSkeleton } from "../loading-skeletons";
-import { OrderCard } from "./order-card";
-
-function formatDateString(date: Date): string {
-	const y = date.getFullYear();
-	const m = String(date.getMonth() + 1).padStart(2, "0");
-	const d = String(date.getDate()).padStart(2, "0");
-	return `${y}-${m}-${d}`;
-}
-
-async function fetchAdminOrders(dateString: string, signal?: AbortSignal): Promise<SerializedOrders> {
-	const response = await fetch(`/api/admin/orders?date=${encodeURIComponent(dateString)}`, {
-		cache: "no-store",
-		signal,
-	});
-
-	if (!response.ok) {
-		throw new Error(`Failed to fetch admin orders (${response.status})`);
-	}
-
-	return response.json();
-}
+import { useAdminOrdersController } from "./use-admin-orders-controller";
 
 export default function AdminOrdersPage({ initialOrders }: { initialOrders: Promise<SerializedOrders> }) {
 	const initialOrdersData = use(initialOrders);
-	const [initialDateString] = useState(() => formatDateString(new Date()));
-	const [selectedDate, setSelectedDate] = useState<Date>(() => {
-		const d = new Date();
-		d.setHours(0, 0, 0, 0);
-		return d;
-	});
-	const selectedDateString = useMemo(() => formatDateString(selectedDate), [selectedDate]);
-	const {
-		data: queriedOrders,
-		error,
-		isFetching: isLoading,
-	} = useQuery({
-		queryKey: ["admin-orders", selectedDateString],
-		queryFn: ({ signal }) => fetchAdminOrders(selectedDateString, signal),
-		initialData: selectedDateString === initialDateString ? initialOrdersData : undefined,
-		placeholderData: (previousData) => previousData,
-		staleTime: 60_000,
-		gcTime: 10 * 60_000,
-	});
-
-	// Use nuqs to manage the orderId query parameter
-	const [targetOrderId, _setTargetOrderId] = useQueryState("orderId", parseAsInteger);
-
-	const orderRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-
-	const handleDateChange = useCallback((date: Date) => {
-		setSelectedDate(date);
-	}, []);
-
-	if (error) {
-		console.error("Failed to fetch orders:", error);
-	}
-
-	const orders = queriedOrders ?? [];
-
-	// Scroll to order if query param exists
-	useEffect(() => {
-		if (targetOrderId && !isLoading && orders.length > 0) {
-			const orderElement = orderRefs.current.get(targetOrderId);
-			if (orderElement) {
-				// Small delay to ensure rendering is complete
-				setTimeout(() => {
-					orderElement.scrollIntoView({ behavior: "smooth", block: "center" });
-					// Optional: Clear the query param after scrolling if desired,
-					// but keeping it allows sharing/refreshing.
-					// If we want to highlight it temporarily, we could do that here.
-				}, 100);
-			}
-		}
-	}, [targetOrderId, isLoading, orders]);
-
-	const salesSummary = summarizeOrderSales(orders);
+	const { model, isLoading, selectedDate, handleDateChange, targetOrderId, canCancelOrders, cancelOrder } =
+		useAdminOrdersController(initialOrdersData);
 
 	return (
 		<div className="space-y-4">
-			{/* Header */}
-			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+			<header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-2xl font-bold">Orders</h1>
-					<p className="text-sm text-muted-foreground">View and manage orders</p>
+					<h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Orders</h1>
+					<p className="mt-1 text-sm text-muted-foreground">View and manage orders</p>
 				</div>
 				<DateSwitcher selectedDate={selectedDate} onDateChange={handleDateChange} />
-			</div>
+			</header>
 
-			{/* Stats */}
-			<div className="grid grid-cols-3 gap-3">
-				<Card className="p-3">
-					<div className="flex flex-col items-center justify-center text-center">
-						<Package className="size-4 text-muted-foreground mb-1" />
-						{isLoading ? (
-							<Skeleton className="h-7 w-8 mb-1" />
-						) : (
-							<p className="text-xl font-bold tabular-nums">{orders.length}</p>
-						)}
-						<p className="text-xs text-muted-foreground">Orders</p>
-					</div>
-				</Card>
-				<Card className="p-3">
-					<div className="flex flex-col items-center justify-center text-center">
-						<User className="size-4 text-muted-foreground mb-1" />
-						{isLoading ? (
-							<Skeleton className="h-7 w-8 mb-1" />
-						) : (
-							<p className="text-xl font-bold tabular-nums">{salesSummary.itemsSold}</p>
-						)}
-						<p className="text-xs text-muted-foreground">Items</p>
-					</div>
-				</Card>
-				<Card className="p-3">
-					<div className="flex flex-col items-center justify-center text-center">
-						<span className="text-muted-foreground mb-1 text-sm font-medium">₹</span>
-						{isLoading ? (
-							<Skeleton className="h-7 w-12 mb-1" />
-						) : (
-							<p className="text-xl font-bold tabular-nums">{salesSummary.revenue.toFixed(0)}</p>
-						)}
-						<p className="text-xs text-muted-foreground">Revenue</p>
-					</div>
-				</Card>
-			</div>
-
-			{/* Orders list */}
 			{isLoading ? (
-				<OrderCardsSkeleton rows={3} />
-			) : orders.length > 0 ? (
-				<div className="space-y-3">
-					{orders.map((order) => (
-						<div
-							key={order.id}
-							ref={(el) => {
-								if (el) orderRefs.current.set(order.id, el);
-								else orderRefs.current.delete(order.id);
-							}}
-						>
-							<OrderCard order={order} initialExpanded={order.id === targetOrderId} />
-						</div>
-					))}
-				</div>
+				<CocoaDaybookSkeleton metricCount={3} />
 			) : (
-				<Card className="p-8">
-					<div className="flex flex-col items-center justify-center text-center text-muted-foreground">
-						<Package className="size-12 mb-3 opacity-50" />
-						<p className="font-medium">No orders</p>
-						<p className="text-sm">No orders found for the selected date</p>
-					</div>
-				</Card>
+				<CocoaDaybook
+					model={model}
+					additionalMetric={{ label: "Net revenue", value: model.netRevenueLabel, icon: IndianRupee }}
+					targetOrderId={targetOrderId}
+					renderCancelAction={(order) =>
+						canCancelOrders ? <OrderCancelAction order={order} onCancelOrder={cancelOrder} /> : null
+					}
+					emptyState={{ title: "No orders", description: "No orders found for the selected date" }}
+				/>
 			)}
 		</div>
 	);

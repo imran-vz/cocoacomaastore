@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
-import type { ManagerOrderViewModel } from "../orders-view-model";
+import type { OrderViewModel } from "./orders-view-model";
 
-export function OrderLineItems({ order, className }: { order: ManagerOrderViewModel; className?: string }) {
+export function OrderLineItems({ order, className }: { order: OrderViewModel; className?: string }) {
 	return (
 		<ul className={cn("divide-y", className)}>
 			{order.lines.map((line) => (

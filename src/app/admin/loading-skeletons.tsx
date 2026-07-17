@@ -1,4 +1,5 @@
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
+import { CocoaDaybookSkeleton } from "@/components/orders/cocoa-daybook-skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,7 +24,6 @@ const dashboardStatSlots = ["orders", "revenue", "items", "average"];
 const listSlots = ["first", "second", "third", "fourth", "fifth"];
 const dessertControlSlots = ["top", "up", "down", "bottom"];
 const comboSlots = ["primary", "secondary", "tertiary"];
-const orderStatSlots = ["orders", "items", "revenue"];
 const analyticsStatSlots = ["total-revenue", "total-orders", "month-revenue"];
 const passwordFieldSlots = ["current", "new", "confirm"];
 const revenueDistributionSlots = ["one", "two", "three", "four", "five", "six", "seven", "eight"];
@@ -404,53 +404,14 @@ function ComboSectionSkeleton({ titleWidth, muted = false }: { titleWidth: strin
 export function OrdersSkeleton({ includeMain = true }: { includeMain?: boolean } = {}) {
 	const content = (
 		<div className="space-y-4">
-			<PageHeaderSkeleton titleWidth="w-24" subtitleWidth="w-44" actionWidth="w-36" />
-			<div className="grid grid-cols-3 gap-3">
-				{orderStatSlots.map((slot) => (
-					<Card key={slot} className="p-3">
-						<div className="flex flex-col items-center gap-2 text-center">
-							<Skeleton className="size-4 rounded" />
-							<Skeleton className="h-7 w-12" />
-							<Skeleton className="h-3 w-14" />
-						</div>
-					</Card>
-				))}
-			</div>
-			<OrderCardsSkeleton />
+			<PageHeaderSkeleton titleWidth="w-24" subtitleWidth="w-44" actionWidth="w-64" />
+			<CocoaDaybookSkeleton metricCount={3} />
 		</div>
 	);
 
 	if (!includeMain) return content;
 
 	return <AdminPageShell>{content}</AdminPageShell>;
-}
-
-export function OrderCardsSkeleton({ rows = 4 }: { rows?: number }) {
-	return (
-		<div className="space-y-3">
-			{rowSlots(rows).map((slot) => (
-				<Card key={`order-card-${slot}`} className="border-l-4 border-l-transparent">
-					<div className="p-4">
-						<div className="flex items-start justify-between gap-3">
-							<div className="min-w-0 flex-1 space-y-2">
-								<div className="flex items-center gap-2">
-									<Skeleton className="h-5 w-14 rounded-full" />
-									<Skeleton className="size-3 rounded" />
-									<Skeleton className="h-4 w-20" />
-								</div>
-								<Skeleton className="h-6 w-44 max-w-full" />
-								<Skeleton className="h-4 w-72 max-w-full" />
-							</div>
-							<div className="flex flex-col items-end gap-2">
-								<Skeleton className="h-6 w-16" />
-								<Skeleton className="h-5 w-14 rounded-full" />
-							</div>
-						</div>
-					</div>
-				</Card>
-			))}
-		</div>
-	);
 }
 
 export function AnalyticsSkeleton({ includeMain = true }: { includeMain?: boolean } = {}) {

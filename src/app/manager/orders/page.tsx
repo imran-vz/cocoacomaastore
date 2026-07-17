@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { CocoaDaybookSkeleton } from "@/components/orders/cocoa-daybook-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getOrders } from "./actions";
 import OrdersPage from "./orders-page";
@@ -25,19 +26,7 @@ function OrdersSkeleton() {
 				</div>
 			</div>
 
-			<div className="mx-auto max-w-6xl space-y-3">
-				<div className="grid grid-cols-2 gap-4 border-y py-3">
-					<Skeleton className="h-10" />
-					<Skeleton className="h-10" />
-				</div>
-
-				<div className="space-y-2">
-					<Skeleton className="h-20 rounded-xl" />
-					<Skeleton className="h-20 rounded-xl" />
-					<Skeleton className="h-20 rounded-xl" />
-					<Skeleton className="h-20 rounded-xl" />
-				</div>
-			</div>
+			<CocoaDaybookSkeleton />
 		</div>
 	);
 }
