@@ -174,6 +174,119 @@
 	}
 }
 
+/* Sonner toast — soft tints, inline close button, bottom timer bar.
+   Kept out of @layer so it wins over sonner's unlayered injected styles. */
+@keyframes toast-timer {
+	from {
+		transform: scaleX(1);
+	}
+	to {
+		transform: scaleX(0);
+	}
+}
+
+.toaster [data-sonner-toast].cn-toast {
+	/* must match the default `duration` on <Toaster/>; per-toast durations
+	   need a matching --toast-duration in the toast's `style` */
+	--toast-duration: 4000ms;
+	--toast-tint: var(--popover);
+	--toast-border: var(--border);
+	--toast-fg: var(--popover-foreground);
+	--toast-accent: var(--muted-foreground);
+	background: var(--toast-tint);
+	border: 1px solid var(--toast-border);
+	color: var(--toast-fg);
+	padding-right: 38px;
+}
+
+.toaster [data-sonner-toast].cn-toast[data-type="success"] {
+	--toast-tint: oklch(0.97 0.035 155);
+	--toast-border: oklch(0.9 0.06 155);
+	--toast-fg: oklch(0.38 0.09 155);
+	--toast-accent: oklch(0.58 0.13 155);
+}
+
+.toaster [data-sonner-toast].cn-toast[data-type="info"] {
+	--toast-tint: oklch(0.97 0.02 245);
+	--toast-border: oklch(0.9 0.045 245);
+	--toast-fg: oklch(0.4 0.09 250);
+	--toast-accent: oklch(0.56 0.15 250);
+}
+
+.toaster [data-sonner-toast].cn-toast[data-type="warning"] {
+	--toast-tint: oklch(0.98 0.04 90);
+	--toast-border: oklch(0.9 0.075 90);
+	--toast-fg: oklch(0.45 0.09 65);
+	--toast-accent: oklch(0.72 0.13 78);
+}
+
+.toaster [data-sonner-toast].cn-toast[data-type="error"] {
+	--toast-tint: oklch(0.97 0.02 25);
+	--toast-border: oklch(0.9 0.05 25);
+	--toast-fg: oklch(0.44 0.13 27);
+	--toast-accent: oklch(0.6 0.17 27);
+}
+
+.toaster [data-sonner-toast].cn-toast [data-icon] {
+	color: var(--toast-accent);
+}
+
+.toaster [data-sonner-toast].cn-toast [data-description] {
+	color: color-mix(in oklab, var(--toast-fg) 75%, transparent);
+}
+
+/* Timer bar (::after is sonner's hover bridge, so use ::before) */
+.toaster [data-sonner-toast].cn-toast::before {
+	content: "";
+	position: absolute;
+	inset: auto 0 0 0;
+	height: 3px;
+	background: var(--toast-accent);
+	border-bottom-left-radius: inherit;
+	border-bottom-right-radius: inherit;
+	transform-origin: left;
+	animation: toast-timer var(--toast-duration) linear forwards;
+	pointer-events: none;
+}
+
+/* Sonner repurposes ::before as a swipe/removal hit-area (styles.css sets
+   left/right -100%, bottom 50%, scaleY(3) etc.) — keep the timer bar pinned */
+.toaster [data-sonner-toast].cn-toast[data-swiping]::before,
+.toaster [data-sonner-toast].cn-toast[data-removed]::before {
+	inset: auto 0 0 0;
+	height: 3px;
+	transform: none;
+	z-index: auto;
+}
+
+/* Sonner pauses dismissal while the stack is hovered/expanded — mirror it */
+[data-sonner-toaster].toaster:hover [data-sonner-toast].cn-toast::before,
+.toaster [data-sonner-toast].cn-toast[data-expanded="true"]::before {
+	animation-play-state: paused;
+}
+
+.toaster [data-sonner-toast].cn-toast[data-type="loading"]::before {
+	display: none;
+}
+
+.toaster [data-sonner-toast].cn-toast [data-close-button] {
+	position: absolute;
+	left: auto;
+	right: 8px;
+	top: 50%;
+	width: 24px;
+	height: 24px;
+	transform: translateY(-50%);
+	background: transparent;
+	border: none;
+	color: var(--toast-accent);
+}
+
+.toaster [data-sonner-toast].cn-toast [data-close-button]:hover {
+	background: color-mix(in oklab, var(--toast-accent) 14%, transparent);
+	color: var(--toast-fg);
+}
+
 /* Custom scrollbar for webkit browsers */
 @layer utilities {
 	.min-h-app {

@@ -69,11 +69,7 @@ export default function RootLayout({
 					<QueryProvider>
 						<Navbar />
 						{children}
-						<Toaster
-							position="top-center"
-							richColors
-							mobileOffset={50}
-						/>
+						<Toaster position="top-center" mobileOffset={50} />
 					</QueryProvider>
 				</NuqsAdapter>
 			</body>

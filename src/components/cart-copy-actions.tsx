@@ -36,7 +36,7 @@ export function CartCopyActions({
 		const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
 		await navigator.clipboard.writeText(getOrderCopyText(cart, total, deliveryCostAmount));
 		setCopiedOrder(true);
-		toast.info("Order copied!", { duration: 1000 });
+		toast.info("Order copied!", { duration: 1000, style: { "--toast-duration": "1000ms" } as React.CSSProperties });
 		setTimeout(() => setCopiedOrder(false), 2000);
 	};
 
@@ -45,7 +45,7 @@ export function CartCopyActions({
 		try {
 			await copyQrSvgToClipboard(qrCodeRef.current);
 			setCopiedQr(true);
-			toast.info("QR copied!", { duration: 1000 });
+			toast.info("QR copied!", { duration: 1000, style: { "--toast-duration": "1000ms" } as React.CSSProperties });
 			setTimeout(() => setCopiedQr(false), 2000);
 		} catch (error) {
 			console.error("Failed to copy QR:", error);
