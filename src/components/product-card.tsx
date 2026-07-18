@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useAnimation } from "framer-motion";
+import { motion } from "framer-motion";
 import { Check, Plus } from "lucide-react";
 import { useCallback, useState } from "react";
 import type { Dessert } from "@/lib/types";
@@ -22,43 +22,17 @@ export function ProductCard({
 	compact = false,
 }: ProductCardProps) {
 	const [showAdded, setShowAdded] = useState(false);
-	const overlayControls = useAnimation();
-	const buttonControls = useAnimation();
 
 	const inventoryQty = dessert.inventoryQuantity;
 	const isInventoryOutOfStock = !dessert.hasUnlimitedStock && inventoryQty !== undefined && inventoryQty <= 0;
 	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock;
 
-	const handleAddToCart = useCallback(async () => {
+	const handleAddToCart = useCallback(() => {
 		if (isUnavailable) return;
-
-		// Add to cart immediately
 		onAddToCart(dessert);
-
-		// Show added feedback
 		setShowAdded(true);
-
-		// Run overlay animation
-		overlayControls.stop();
-		overlayControls.set({ scaleX: 0, originX: 0 });
-		await overlayControls.start({
-			scaleX: 1,
-			transition: { duration: 0.2, ease: "easeOut" },
-		});
-		await overlayControls.start({
-			scaleX: 0,
-			originX: 1,
-			transition: { duration: 0.2, ease: "easeIn" },
-		});
-
-		// Button bounce
-		buttonControls.start({
-			scale: [1, 1.2, 1],
-			transition: { duration: 0.3 },
-		});
-
 		setTimeout(() => setShowAdded(false), 600);
-	}, [dessert, isUnavailable, onAddToCart, overlayControls, buttonControls]);
+	}, [dessert, isUnavailable, onAddToCart]);
 
 	const getStockBadge = () => {
 		if (isUnavailable) {
@@ -112,13 +86,6 @@ export function ProductCard({
 					compact ? "p-2.5" : "p-4",
 				)}
 			>
-				{/* Success overlay */}
-				<motion.div
-					className="absolute inset-0 bg-green-500/15 pointer-events-none rounded-2xl"
-					initial={{ scaleX: 0 }}
-					animate={overlayControls}
-				/>
-
 				<div className="relative z-10 flex flex-col flex-1">
 					{/* Header: Name & Price */}
 					<div className={cn("flex items-start justify-between gap-2", compact ? "mb-1" : "mb-1.5")}>
@@ -152,8 +119,7 @@ export function ProductCard({
 						{getStockBadge()}
 
 						{!isUnavailable && (
-							<motion.div
-								animate={buttonControls}
+							<div
 								className={cn(
 									"ml-auto flex items-center justify-center rounded-full transition-colors",
 									compact ? "size-7" : "size-9",
@@ -165,7 +131,7 @@ export function ProductCard({
 								) : (
 									<Plus className={cn(compact ? "size-3.5" : "size-5")} />
 								)}
-							</motion.div>
+							</div>
 						)}
 					</div>
 				</div>
@@ -230,37 +196,16 @@ interface ComboCardProps {
 
 export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProps) {
 	const [showAdded, setShowAdded] = useState(false);
-	const overlayControls = useAnimation();
-	const buttonControls = useAnimation();
 
 	// Compute display price
 	const modifierTotal = combo.items.reduce((sum, item) => sum + item.dessert.price * item.quantity, 0);
 	const displayPrice = combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
 
-	const handleAddToCart = useCallback(async () => {
+	const handleAddToCart = useCallback(() => {
 		onAddToCart();
-
 		setShowAdded(true);
-
-		overlayControls.stop();
-		overlayControls.set({ scaleX: 0, originX: 0 });
-		await overlayControls.start({
-			scaleX: 1,
-			transition: { duration: 0.2, ease: "easeOut" },
-		});
-		await overlayControls.start({
-			scaleX: 0,
-			originX: 1,
-			transition: { duration: 0.2, ease: "easeIn" },
-		});
-
-		buttonControls.start({
-			scale: [1, 1.2, 1],
-			transition: { duration: 0.3 },
-		});
-
 		setTimeout(() => setShowAdded(false), 600);
-	}, [onAddToCart, overlayControls, buttonControls]);
+	}, [onAddToCart]);
 
 	const comboDescription =
 		combo.baseDessert.name +
@@ -290,13 +235,6 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 					compact ? "p-2.5" : "p-4",
 				)}
 			>
-				{/* Success overlay */}
-				<motion.div
-					className="absolute inset-0 bg-green-500/15 pointer-events-none rounded-2xl"
-					initial={{ scaleX: 0 }}
-					animate={overlayControls}
-				/>
-
 				<div className="relative z-10 flex flex-col h-full">
 					{/* Header */}
 					<div className="flex items-center justify-between gap-2 mb-1">
@@ -325,8 +263,7 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 
 					{/* Add Button */}
 					<div className={cn("flex justify-end mt-auto", compact ? "pt-1.5" : "pt-2")}>
-						<motion.div
-							animate={buttonControls}
+						<div
 							className={cn(
 								"flex items-center justify-center rounded-full transition-colors",
 								compact ? "size-7" : "size-9",
@@ -338,7 +275,7 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 							) : (
 								<Plus className={cn(compact ? "size-3.5" : "size-5")} />
 							)}
-						</motion.div>
+						</div>
 					</div>
 				</div>
 			</motion.button>
