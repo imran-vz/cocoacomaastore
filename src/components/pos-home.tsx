@@ -285,7 +285,9 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 									removeFromCart={removeFromCart}
 									form={form}
 									total={total}
+									upiAccounts={upiAccountsList}
 									customerName={customerName}
+									deliveryCost={deliveryCost}
 									onSaveOrder={saveOrder}
 									isSaving={isSaving}
 								/>
@@ -299,6 +301,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 									removeFromCart={removeFromCart}
 									form={form}
 									total={total}
+									upiAccounts={upiAccountsList}
 									clearCart={clearCart}
 									onSaveOrder={saveOrder}
 									isSaving={isSaving}

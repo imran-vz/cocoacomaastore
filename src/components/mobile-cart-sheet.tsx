@@ -4,9 +4,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronUp, Loader2, ShoppingBag, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import type { UpiAccount } from "@/db/schema";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -20,7 +22,9 @@ interface MobileCartSheetProps {
 	// biome-ignore lint/suspicious/noExplicitAny: TanStack form has complex generics
 	form: any;
 	total: number;
+	upiAccounts: UpiAccount[];
 	customerName: string;
+	deliveryCost: string;
 	onSaveOrder: SaveCartOrder;
 	isSaving: boolean;
 }
@@ -31,7 +35,9 @@ export function MobileCartSheet({
 	removeFromCart,
 	form,
 	total,
+	upiAccounts,
 	customerName,
+	deliveryCost,
 	onSaveOrder,
 	isSaving,
 }: MobileCartSheetProps) {
@@ -255,9 +261,9 @@ export function MobileCartSheet({
 									</AnimatePresence>
 								</div>
 
-								<p className="mt-4 border-t pt-4 text-center text-xs text-muted-foreground">
-									Save the order to generate its final receipt and UPI QR.
-								</p>
+								<div className="mt-4 border-t pt-4">
+									<CartCopyActions cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
+								</div>
 							</div>
 
 							<div className="shrink-0 p-4 border-t bg-background">

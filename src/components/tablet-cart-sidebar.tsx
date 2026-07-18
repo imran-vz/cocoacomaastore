@@ -2,8 +2,10 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, ShoppingBag, Trash2 } from "lucide-react";
+import type { UpiAccount } from "@/db/schema";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";
+import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -18,6 +20,7 @@ interface TabletCartSidebarProps {
 	// biome-ignore lint/suspicious/noExplicitAny: TanStack form has complex generics
 	form: any;
 	total: number;
+	upiAccounts: UpiAccount[];
 	clearCart: () => void;
 	onSaveOrder: SaveCartOrder;
 	isSaving: boolean;
@@ -31,6 +34,7 @@ export function TabletCartSidebar({
 	removeFromCart,
 	form,
 	total,
+	upiAccounts,
 	clearCart,
 	onSaveOrder,
 	isSaving,
@@ -170,9 +174,7 @@ export function TabletCartSidebar({
 				</div>
 
 				{cart.length > 0 && (
-					<p className="text-center text-[11px] text-muted-foreground">
-						Save the order to generate its final receipt and UPI QR.
-					</p>
+					<CartCopyActions cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
 				)}
 
 				<Button

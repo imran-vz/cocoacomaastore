@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "improve-animations": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/improve-animations/SKILL.md",
+      "computedHash": "32f23d860467841f5b07cef198fb53efc70f2adaaa6144cf1a3434d782aed246"
+    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
