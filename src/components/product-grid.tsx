@@ -2,6 +2,7 @@
 
 import { IconCake } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { tweenFast } from "@/lib/motion";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { ComboCard, ProductCard } from "./product-card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
@@ -79,7 +80,7 @@ export function ProductGrid({
 									initial={{ opacity: 0 }}
 									animate={{ opacity: 1 }}
 									exit={{ opacity: 0, scale: 0.95 }}
-									transition={{ duration: 0.15, ease: "easeOut" }}
+									transition={tweenFast}
 								>
 									<ComboCard combo={combo} onAddToCart={() => onAddComboToCart(combo)} compact />
 								</motion.div>
@@ -105,7 +106,7 @@ export function ProductGrid({
 									initial={{ opacity: 0 }}
 									animate={{ opacity: 1 }}
 									exit={{ opacity: 0, scale: 0.95 }}
-									transition={{ duration: 0.15, ease: "easeOut" }}
+									transition={tweenFast}
 								>
 									<ProductCard
 										dessert={dessert}

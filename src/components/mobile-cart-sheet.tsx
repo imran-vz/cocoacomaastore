@@ -5,6 +5,7 @@ import { ChevronUp, Loader2, ShoppingBag, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { UpiAccount } from "@/db/schema";
+import { springSheet, tweenEnter } from "@/lib/motion";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -99,7 +100,7 @@ export function MobileCartSheet({
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
-						transition={{ duration: 0.2 }}
+						transition={tweenEnter}
 						className="fixed inset-0 bg-black/30 z-40 md:hidden"
 						onClick={handleClose}
 					/>
@@ -114,7 +115,7 @@ export function MobileCartSheet({
 						initial={{ y: 100, opacity: 0 }}
 						animate={{ y: 0, opacity: 1 }}
 						exit={{ y: 100, opacity: 0 }}
-						transition={{ type: "spring", stiffness: 400, damping: 35 }}
+						transition={springSheet}
 						className="fixed bottom-0 inset-x-0 z-50 md:hidden p-4 pb-6"
 					>
 						<button
@@ -158,7 +159,7 @@ export function MobileCartSheet({
 						initial={{ y: "100%" }}
 						animate={{ y: 0 }}
 						exit={{ y: "100%" }}
-						transition={{ type: "spring", stiffness: 400, damping: 35 }}
+						transition={springSheet}
 						className="fixed inset-x-0 bottom-0 z-50 md:hidden"
 						style={{ maxHeight: "85vh" }}
 					>

@@ -5,6 +5,7 @@ import { Minus, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { useLongPress } from "@/hooks/use-long-press";
+import { springSnappy } from "@/lib/motion";
 import { MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
 import { getCartLineView } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
@@ -85,7 +86,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 			initial={isTablet ? { opacity: 0, y: -10 } : { opacity: 0, x: -20 }}
 			animate={isTablet ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
 			exit={{ opacity: 0, x: 20 }}
-			transition={{ type: "spring", stiffness: 500, damping: 40 }}
+			transition={springSnappy}
 			className={cn(
 				"bg-card rounded-xl p-3 border",
 				isTablet ? "group relative hover:border-primary/20 transition-colors" : "shadow-sm",

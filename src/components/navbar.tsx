@@ -18,6 +18,7 @@ import { toast } from "sonner";
 
 import { revalidateAllCaches } from "@/app/cache/actions";
 import { authClient, signOut } from "@/lib/auth-client";
+import { tweenEnter } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "./ui/avatar";
 import {
@@ -51,7 +52,7 @@ export default function Navbar() {
 		<motion.header
 			initial={{ y: -20, opacity: 0 }}
 			animate={{ y: 0, opacity: 1 }}
-			transition={{ duration: 0.3, ease: "easeOut" }}
+			transition={tweenEnter}
 			className={cn("sticky top-0 z-50 h-13", "bg-background/95 backdrop-blur-md", "md:border-b md:border-border/50")}
 		>
 			<div className="h-full flex items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">

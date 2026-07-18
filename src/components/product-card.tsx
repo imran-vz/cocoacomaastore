@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Check, Plus } from "lucide-react";
 import { useCallback, useState } from "react";
+import { tweenEnter } from "@/lib/motion";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +69,7 @@ export function ProductCard({
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
 			exit={{ opacity: 0, scale: 0.95 }}
-			transition={{ duration: 0.2 }}
+			transition={tweenEnter}
 			className="relative select-none h-full"
 		>
 			<motion.button
@@ -221,7 +222,7 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 			initial={{ opacity: 0, scale: 0.95 }}
 			animate={{ opacity: 1, scale: 1 }}
 			exit={{ opacity: 0, scale: 0.95 }}
-			transition={{ duration: 0.2 }}
+			transition={tweenEnter}
 			className="relative select-none h-full"
 		>
 			<motion.button
