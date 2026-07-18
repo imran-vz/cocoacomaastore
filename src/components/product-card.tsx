@@ -77,7 +77,7 @@ export function ProductCard({
 				disabled={isUnavailable}
 				whileTap={!isUnavailable ? { scale: 0.97 } : undefined}
 				className={cn(
-					"w-full h-full text-left rounded-2xl bg-card border-2 overflow-hidden transition-all duration-200",
+					"w-full h-full text-left rounded-2xl bg-card border-2 overflow-hidden transition-[border-color,box-shadow] duration-200",
 					"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 					"flex flex-col",
 					isUnavailable
@@ -229,7 +229,7 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 				onClick={handleAddToCart}
 				whileTap={{ scale: 0.97 }}
 				className={cn(
-					"w-full h-full text-left rounded-2xl bg-linear-to-br from-primary/5 to-primary/10 border-2 border-primary/20 overflow-hidden transition-all duration-200",
+					"w-full h-full text-left rounded-2xl bg-linear-to-br from-primary/5 to-primary/10 border-2 border-primary/20 overflow-hidden transition-[border-color,box-shadow] duration-200",
 					"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 					"hover:border-primary/40 hover:shadow-md active:border-primary/50",
 					compact ? "p-2.5" : "p-4",

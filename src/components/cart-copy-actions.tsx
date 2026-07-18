@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Check, ChevronDown, Copy, ReceiptIndianRupee } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
@@ -69,66 +69,65 @@ export function CartCopyActions({
 				<span className="font-medium">Online Order (Instagram)</span>
 				<ChevronDown className={cn("size-4 transition-transform duration-200", isOpen && "rotate-180")} />
 			</button>
-			<AnimatePresence>
-				{isOpen && (
-					<motion.div
-						initial={{ height: 0, opacity: 0 }}
-						animate={{ height: "auto", opacity: 1 }}
-						exit={{ height: 0, opacity: 0 }}
-						className="overflow-hidden"
-					>
-						<div className="space-y-2 pt-2">
-							{upiAccounts.length > 1 && (
-								<div className="px-1">
-									<select
-										value={selectedUpiId}
-										onChange={(event) => setSelectedUpiId(event.target.value)}
-										className="w-full text-xs border rounded-lg px-2 py-1.5 bg-muted"
-									>
-										{upiAccounts.map((account) => (
-											<option key={account.id} value={account.id.toString()}>
-												{account.label}
-											</option>
-										))}
-									</select>
-								</div>
-							)}
-
-							<div className="grid grid-cols-2 gap-2">
-								<motion.button
-									type="button"
-									whileTap={{ scale: 0.95 }}
-									onClick={copyOrderDetails}
-									className={cn(
-										"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-all",
-										copiedOrder ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
-									)}
-								>
-									{copiedOrder ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-									<span>{copiedOrder ? "Copied!" : "Copy Order"}</span>
-								</motion.button>
-
-								<motion.button
-									type="button"
-									whileTap={{ scale: 0.95 }}
-									onClick={copyQrCode}
-									disabled={!upiPaymentText}
-									className={cn(
-										"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-all",
-										copiedQr ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
-										!upiPaymentText && "opacity-50",
-									)}
-								>
-									{copiedQr ? <Check className="size-3.5" /> : <ReceiptIndianRupee className="size-3.5" />}
-									<span>{copiedQr ? "Copied!" : "Copy QR"}</span>
-								</motion.button>
-							</div>
-
-							{upiPaymentText && <QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />}
-						</div>
-					</motion.div>
+			<div
+				inert={!isOpen}
+				className={cn(
+					"grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+					isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
 				)}
-			</AnimatePresence>
+			>
+				<div className="overflow-hidden">
+					<div className="space-y-2 pt-2">
+						{upiAccounts.length > 1 && (
+							<div className="px-1">
+								<select
+									value={selectedUpiId}
+									onChange={(event) => setSelectedUpiId(event.target.value)}
+									className="w-full text-xs border rounded-lg px-2 py-1.5 bg-muted"
+								>
+									{upiAccounts.map((account) => (
+										<option key={account.id} value={account.id.toString()}>
+											{account.label}
+										</option>
+									))}
+								</select>
+							</div>
+						)}
+
+						<div className="grid grid-cols-2 gap-2">
+							<motion.button
+								type="button"
+								whileTap={{ scale: 0.95 }}
+								onClick={copyOrderDetails}
+								className={cn(
+									"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-colors",
+									copiedOrder ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
+								)}
+							>
+								{copiedOrder ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+								<span>{copiedOrder ? "Copied!" : "Copy Order"}</span>
+							</motion.button>
+
+							<motion.button
+								type="button"
+								whileTap={{ scale: 0.95 }}
+								onClick={copyQrCode}
+								disabled={!upiPaymentText}
+								className={cn(
+									"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-colors",
+									copiedQr ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
+									!upiPaymentText && "opacity-50",
+								)}
+							>
+								{copiedQr ? <Check className="size-3.5" /> : <ReceiptIndianRupee className="size-3.5" />}
+								<span>{copiedQr ? "Copied!" : "Copy QR"}</span>
+							</motion.button>
+						</div>
+
+						{upiPaymentText && <QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />}
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }

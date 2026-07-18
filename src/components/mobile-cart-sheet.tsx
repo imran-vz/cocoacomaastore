@@ -177,60 +177,59 @@ export function MobileCartSheet({
 
 							<div className="h-px bg-border mx-4 shrink-0" />
 							<div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 min-h-0">
-								<AnimatePresence>
-									{showForm && (
-										<motion.div
-											initial={{ height: 0, opacity: 0 }}
-											animate={{ height: "auto", opacity: 1 }}
-											exit={{ height: 0, opacity: 0 }}
-											className="overflow-hidden"
-										>
-											<div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b">
-												<form.Field name="name">
-													{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
-													{(field: any) => (
-														<div className="space-y-1.5">
-															<Label htmlFor={field.name} className="text-xs font-medium text-muted-foreground">
-																Customer
-															</Label>
-															<Input
-																id={field.name}
-																placeholder="Guest"
-																value={field.state.value}
-																onChange={(e) => field.handleChange(e.target.value)}
-																onBlur={field.handleBlur}
-																className="h-10"
-															/>
-														</div>
-													)}
-												</form.Field>
-
-												<form.Field name="deliveryCost">
-													{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
-													{(field: any) => (
-														<div className="space-y-1.5">
-															<Label htmlFor={field.name} className="text-xs font-medium text-muted-foreground">
-																Delivery (₹)
-															</Label>
-															<Input
-																id={field.name}
-																placeholder="0"
-																type="number"
-																step="0.01"
-																min="0"
-																max={MAX_DELIVERY_COST}
-																value={field.state.value}
-																onChange={(e) => field.handleChange(e.target.value)}
-																onBlur={field.handleBlur}
-																className="h-10"
-															/>
-														</div>
-													)}
-												</form.Field>
-											</div>
-										</motion.div>
+								<div
+									inert={!showForm}
+									className={cn(
+										"grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+										showForm ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
 									)}
-								</AnimatePresence>
+								>
+									<div className="overflow-hidden">
+										<div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b">
+											<form.Field name="name">
+												{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
+												{(field: any) => (
+													<div className="space-y-1.5">
+														<Label htmlFor={field.name} className="text-xs font-medium text-muted-foreground">
+															Customer
+														</Label>
+														<Input
+															id={field.name}
+															placeholder="Guest"
+															value={field.state.value}
+															onChange={(e) => field.handleChange(e.target.value)}
+															onBlur={field.handleBlur}
+															className="h-10"
+														/>
+													</div>
+												)}
+											</form.Field>
+
+											<form.Field name="deliveryCost">
+												{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
+												{(field: any) => (
+													<div className="space-y-1.5">
+														<Label htmlFor={field.name} className="text-xs font-medium text-muted-foreground">
+															Delivery (₹)
+														</Label>
+														<Input
+															id={field.name}
+															placeholder="0"
+															type="number"
+															step="0.01"
+															min="0"
+															max={MAX_DELIVERY_COST}
+															value={field.state.value}
+															onChange={(e) => field.handleChange(e.target.value)}
+															onBlur={field.handleBlur}
+															className="h-10"
+														/>
+													</div>
+												)}
+											</form.Field>
+										</div>
+									</div>
+								</div>
 
 								<button
 									type="button"

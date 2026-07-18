@@ -242,7 +242,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 													"w-full h-10 md:h-11 pl-10 pr-10 rounded-xl border-2 bg-background",
 													"text-sm placeholder:text-muted-foreground",
 													"focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20",
-													"transition-all duration-200",
+													"transition-[border-color,box-shadow] duration-200",
 												)}
 											/>
 											<AnimatePresence>
