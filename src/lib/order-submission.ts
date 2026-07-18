@@ -12,7 +12,7 @@ export function normalizeDeliveryCost(deliveryCost: string | number): string {
 	return value.toFixed(2);
 }
 
-export function normalizeOrderSubmission(payload: OrderSubmissionPayload) {
+function normalizeOrderSubmission(payload: OrderSubmissionPayload) {
 	return {
 		customerName: sanitizeCustomerName(payload.customerName),
 		deliveryCost: normalizeDeliveryCost(payload.deliveryCost),

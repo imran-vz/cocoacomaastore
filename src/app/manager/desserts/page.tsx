@@ -3,8 +3,9 @@ import { Suspense } from "react";
 
 import { getCachedDesserts } from "@/app/desserts/actions";
 import { getCachedTodayInventory } from "@/app/manager/inventory/actions";
+import ManageDessertsInventory from "@/components/manage-desserts-inventory";
 import { Skeleton } from "@/components/ui/skeleton";
-import ManageDessertsInventory from "./manage-desserts-inventory";
+import { upsertInventoryWithAudit } from "@/lib/role-actions/manager-inventory";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,12 @@ export default async function DessertsPage() {
 					</div>
 				}
 			>
-				<ManageDessertsInventory initialDesserts={desserts} initialInventory={inventory} />
+				<ManageDessertsInventory
+					initialDesserts={desserts}
+					initialInventory={inventory}
+					onSaveInventory={upsertInventoryWithAudit}
+					maxWidth="max-w-4xl"
+				/>
 			</Suspense>
 		</main>
 	);

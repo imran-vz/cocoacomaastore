@@ -58,4 +58,4 @@ function Button({ className, variant = "default", size = "default", type = "butt
 	return <button type={type} data-slot="button" className={mergedClassName} {...props} />;
 }
 
-export { Button, buttonVariants };
+export { Button };

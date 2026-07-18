@@ -8,6 +8,8 @@ type AppAuth = typeof import("@/lib/auth").auth;
 const FIRST_ADMIN_LOCK_NAMESPACE = 1_129_273_921;
 const FIRST_ADMIN_LOCK_KEY = 1_096_042_701;
 
+// Consumed via dynamic import() from scripts/seed-admin.ts and the integration tests.
+// fallow-ignore-next-line unused-export
 export function createBootstrapAdminDependencies(db: AppDatabase, auth: AppAuth): BootstrapAdminDependencies {
 	return {
 		withFirstAdminLock: (run) =>

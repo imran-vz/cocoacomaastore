@@ -84,18 +84,6 @@ export const updateDessertSequenceSchema = z.object({
 	newScore: z.number().int(),
 });
 
-export const batchUpdateDessertSequencesSchema = z.object({
-	updates: z
-		.array(
-			z.object({
-				id: z.number().int().positive(),
-				newScore: z.number().int(),
-			}),
-		)
-		.min(1)
-		.max(1000),
-});
-
 // ============================================================================
 // Manager Validation
 // ============================================================================
@@ -192,18 +180,3 @@ export const updateComboItemsSchema = z.object({
 	comboId: z.number().int().positive(),
 	items: z.array(comboItemSchema).max(20),
 });
-
-// ============================================================================
-// Helper Types
-// ============================================================================
-
-export type CreateOrderWithLinesInput = z.infer<typeof createOrderWithLinesSchema>;
-export type CreateDessertInput = z.infer<typeof createDessertSchema>;
-export type UpdateDessertInput = z.infer<typeof updateDessertSchema>;
-export type CreateManagerInput = z.infer<typeof createManagerSchema>;
-export type UpsertInventoryInput = z.infer<typeof upsertInventorySchema>;
-export type CreateUpiAccountInput = z.infer<typeof createUpiAccountSchema>;
-export type UpdateUpiAccountInput = z.infer<typeof updateUpiAccountSchema>;
-export type CreateComboInput = z.infer<typeof createComboSchema>;
-export type UpdateComboInput = z.infer<typeof updateComboSchema>;
-export type UpdateComboItemsInput = z.infer<typeof updateComboItemsSchema>;

@@ -3,14 +3,14 @@
 import { Check, ChevronDown, Copy, ReceiptIndianRupee } from "lucide-react";
 import { motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
+import { useSelectedUpiAccount } from "@/components/use-selected-upi-account";
 import type { UpiAccount } from "@/db/schema";
 import { copyQrSvgToClipboard } from "@/lib/copy-qr-to-clipboard";
 import { getOrderCopyText, getUpiPaymentText } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useUpiStore } from "@/store/upi-store";
 
 export function CartCopyActions({
 	cart,
@@ -27,14 +27,8 @@ export function CartCopyActions({
 	const [copiedOrder, setCopiedOrder] = useState(false);
 	const [copiedQr, setCopiedQr] = useState(false);
 	const qrCodeRef = useRef<SVGSVGElement>(null);
-	const { selectedUpiId, setSelectedUpiId } = useUpiStore();
+	const { selectedAccount, selectedUpiId, setSelectedUpiId } = useSelectedUpiAccount(upiAccounts);
 
-	useEffect(() => {
-		const isValid = upiAccounts.some((account) => account.id.toString() === selectedUpiId);
-		if (!isValid && upiAccounts.length > 0) setSelectedUpiId(upiAccounts[0].id.toString());
-	}, [selectedUpiId, setSelectedUpiId, upiAccounts]);
-
-	const selectedAccount = upiAccounts.find((account) => account.id.toString() === selectedUpiId) ?? upiAccounts[0];
 	const upiPaymentText = selectedAccount ? getUpiPaymentText(total, cart, selectedAccount.upiId) : "";
 
 	const copyOrderDetails = async () => {

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-
-import { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts } from "@/app/admin/combos/actions";
 import { adminRouteGuard } from "@/lib/auth/guards";
+import { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts } from "@/lib/role-actions/admin-combos";
 
 export async function GET() {
 	const authError = await adminRouteGuard();

@@ -17,8 +17,6 @@ export const CacheTag = {
 	upiAccountsAdmin: "upi-accounts-admin",
 } as const;
 
-export type CacheTag = (typeof CacheTag)[keyof typeof CacheTag];
-
 // ============================================================================
 // Domain tag groups — what to invalidate when a domain mutates
 // ============================================================================
@@ -27,20 +25,20 @@ export const OrderTags = {
 	mutation: [CacheTag.orders, CacheTag.inventory, CacheTag.dashboard, CacheTag.analytics] as const,
 } as const;
 
-export const ComboTags = {
+const ComboTags = {
 	mutation: [CacheTag.combos] as const,
 	dessertRead: [CacheTag.desserts] as const,
 } as const;
 
-export const DessertTags = {
+const DessertTags = {
 	mutation: [CacheTag.desserts] as const,
 } as const;
 
-export const InventoryTags = {
+const InventoryTags = {
 	mutation: [CacheTag.inventory] as const,
 } as const;
 
-export const ManagerTags = {
+const _ManagerTags = {
 	mutation: [CacheTag.managers] as const,
 } as const;
 
@@ -108,10 +106,6 @@ export function updateNextCacheEffect({
 // Pre-built domain invalidation effects
 // ============================================================================
 
-export function updateOrderTagsEffect() {
-	return updateTagsEffect(OrderTags.mutation);
-}
-
 export function updateComboTagsEffect() {
 	return updateTagsEffect(ComboTags.mutation);
 }
@@ -122,16 +116,4 @@ export function updateDessertTagsEffect() {
 
 export function updateInventoryTagsEffect() {
 	return updateTagsEffect(InventoryTags.mutation);
-}
-
-export function updateManagerTagsEffect() {
-	return updateTagsEffect(ManagerTags.mutation);
-}
-
-export function updateUpiTagsEffect() {
-	return updateTagsEffect(UpiTags.mutation);
-}
-
-export function updateAllCacheTagsEffect() {
-	return updateTagsEffect(AllCacheTags);
 }

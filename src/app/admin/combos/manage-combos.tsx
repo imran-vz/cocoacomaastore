@@ -1,39 +1,18 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Package, Pencil, Plus } from "lucide-react";
-import { use, useEffect } from "react";
 
 import { ComboFormDialog } from "@/components/combo-form-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { type ComboServerActions, useManageCombos } from "@/components/use-manage-combos";
 import type { BaseDessert, ModifierDessert } from "@/lib/combo-service";
+import { createCombo, deleteCombo, toggleCombo, updateCombo, updateComboItems } from "@/lib/role-actions/admin-combos";
 import type { ComboWithDetails } from "@/lib/types";
-import { useComboStore } from "@/store/combo-store";
-import { createCombo, deleteCombo, toggleCombo, updateCombo, updateComboItems } from "./actions";
 
-const combosQueryKey = ["admin-combos"] as const;
-
-type CombosPayload = {
-	combos: ComboWithDetails[];
-	baseDesserts: BaseDessert[];
-	modifierDesserts: ModifierDessert[];
-};
-
-async function fetchCombosPayload(signal?: AbortSignal): Promise<CombosPayload> {
-	const response = await fetch("/api/admin/combos", {
-		cache: "no-store",
-		signal,
-	});
-
-	if (!response.ok) {
-		throw new Error(`Failed to fetch admin combos (${response.status})`);
-	}
-
-	return response.json();
-}
+const comboActions: ComboServerActions = { createCombo, updateCombo, deleteCombo, toggleCombo, updateComboItems };
 
 function getDisplayPrice(combo: ComboWithDetails) {
 	if (combo.overridePrice !== null) return combo.overridePrice;
@@ -50,46 +29,9 @@ export default function ManageCombos({
 	baseDesserts: Promise<BaseDessert[]>;
 	modifierDesserts: Promise<ModifierDessert[]>;
 }) {
-	const initialPayload = {
-		combos: use(initialCombos),
-		baseDesserts: use(baseDesserts),
-		modifierDesserts: use(modifierDesserts),
-	};
-	const queryClient = useQueryClient();
-	const { data, error } = useQuery({
-		queryKey: combosQueryKey,
-		queryFn: ({ signal }) => fetchCombosPayload(signal),
-		initialData: initialPayload,
-		staleTime: 60_000,
-		gcTime: 10 * 60_000,
-	});
+	const { filteredCombos, searchTerm, toggleLoadingIds, setSearchTerm, openCreateModal, openEditModal, handleToggle } =
+		useManageCombos({ role: "admin", initialCombos, baseDesserts, modifierDesserts, actions: comboActions });
 
-	const { combos, searchTerm, toggleLoadingIds, init, setSearchTerm, openCreateModal, openEditModal, handleToggle } =
-		useComboStore();
-
-	useEffect(() => {
-		init(data.combos, data.baseDesserts, data.modifierDesserts, {
-			createCombo,
-			updateCombo,
-			deleteCombo,
-			toggleCombo,
-			updateComboItems,
-			refetchCombos: async () => {
-				const latest = await queryClient.fetchQuery({
-					queryKey: combosQueryKey,
-					queryFn: ({ signal }) => fetchCombosPayload(signal),
-					staleTime: 0,
-				});
-				return latest.combos;
-			},
-		});
-	}, [data, init, queryClient]);
-
-	if (error) {
-		console.error("Failed to fetch admin combos:", error);
-	}
-
-	const filteredCombos = combos.filter((combo) => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
 	const enabledCombos = filteredCombos.filter((c) => c.enabled);
 	const disabledCombos = filteredCombos.filter((c) => !c.enabled);
 	const renderComboCard = (combo: ComboWithDetails, isDisabled = false) => (

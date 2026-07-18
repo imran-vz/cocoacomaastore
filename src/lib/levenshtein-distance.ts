@@ -1,3 +1,6 @@
+// Vendored Myers bit-parallel Levenshtein; the near-identical main-block and
+// final-block passes are inherent to the algorithm.
+// fallow-ignore-file code-duplication
 const patternMatchVectors = new Uint32Array(0x10000);
 
 const calculateDistanceShortStrings = (longerString: string, shorterString: string): number => {

@@ -1,0 +1,36 @@
+{
+	"$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+	"entry": [
+		"drizzle.integration.config.ts",
+		"vitest.integration.config.ts",
+		"trigger.config.ts",
+		"scripts/*.ts"
+	],
+	"ignoreDependencies": ["shadcn", "@trigger.dev/build"],
+	"ignoreExports": [
+		{
+			"file": "src/app/admin/orders/actions.ts",
+			"exports": ["*"]
+		},
+		{
+			"file": "src/app/manager/orders/actions.ts",
+			"exports": ["*"]
+		},
+		{
+			"file": "src/lib/combo-service.ts",
+			"exports": ["*"]
+		},
+		{
+			"file": "src/lib/role-actions/admin-combos.ts",
+			"exports": ["*"]
+		},
+		{
+			"file": "src/lib/role-actions/manager-combos.ts",
+			"exports": ["*"]
+		},
+		{
+			"file": "src/lib/order-lifecycle.ts",
+			"exports": ["*"]
+		}
+	]
+}

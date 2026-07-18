@@ -214,10 +214,3 @@ export function recomputeMonthAnalyticsEffect(date: Date) {
 		});
 	});
 }
-
-export function recomputeAnalyticsForDateEffect(date: Date) {
-	return Effect.gen(function* () {
-		yield* recomputeDayAnalyticsEffect(date);
-		yield* recomputeMonthAnalyticsEffect(date);
-	});
-}

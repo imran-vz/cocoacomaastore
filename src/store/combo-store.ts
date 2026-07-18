@@ -23,7 +23,7 @@ interface ComboFormData {
 	items: Array<{ dessertId: number; quantity: number }>;
 }
 
-interface ComboActions {
+export interface ComboActions {
 	createCombo: (data: {
 		name: string;
 		baseDessertId: number;

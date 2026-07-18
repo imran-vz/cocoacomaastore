@@ -1,6 +1,10 @@
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getCachedAllCombos, getCachedBaseDesserts, getCachedModifierDesserts } from "./actions";
+import {
+	getCachedAllCombos,
+	getCachedBaseDesserts,
+	getCachedModifierDesserts,
+} from "@/lib/role-actions/manager-combos";
 import ManageCombos from "./manage-combos";
 
 export const dynamic = "force-dynamic";

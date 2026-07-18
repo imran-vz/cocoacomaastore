@@ -5,9 +5,8 @@ import type { SetStateAction } from "react";
 import { use, useCallback } from "react";
 import { DessertsTable } from "@/components/desserts-table";
 import { useInventory } from "@/components/use-inventory";
-import type { TodayInventoryRow } from "@/lib/daily-inventory";
+import type { InventoryUpdate, InventoryWriteResult, TodayInventoryRow } from "@/lib/daily-inventory";
 import type { Dessert } from "@/lib/types";
-import { upsertInventoryWithAudit } from "./actions";
 
 const dessertsQueryKey = ["desserts", { shouldShowDisabled: true }] as const;
 const inventoryQueryKey = ["inventory", "today"] as const;
@@ -38,12 +37,18 @@ async function fetchTodayInventory(signal?: AbortSignal): Promise<TodayInventory
 	return response.json();
 }
 
-export default function ManageDesserts({
+export default function ManageDessertsInventory({
 	initialDesserts,
 	initialInventory,
+	onSaveInventory,
+	subtitle,
+	maxWidth,
 }: {
 	initialDesserts: Promise<Dessert[]>;
 	initialInventory: Promise<TodayInventoryRow[]>;
+	onSaveInventory: (updates: InventoryUpdate[]) => Promise<InventoryWriteResult>;
+	subtitle?: string;
+	maxWidth: string;
 }) {
 	const dessertsData = use(initialDesserts);
 	const inventoryData = use(initialInventory);
@@ -104,7 +109,7 @@ export default function ManageDesserts({
 	const inventory = useInventory({
 		desserts,
 		initialInventory: inventoryRows,
-		onSave: upsertInventoryWithAudit,
+		onSave: onSaveInventory,
 		onRefetch: refetchAll,
 	});
 
@@ -115,8 +120,8 @@ export default function ManageDesserts({
 			onRefetch={refreshDesserts}
 			inventory={inventory}
 			title="Desserts & Inventory"
-			subtitle="Manage your dessert inventory, stock, and visibility"
-			maxWidth="max-w-none"
+			subtitle={subtitle}
+			maxWidth={maxWidth}
 		/>
 	);
 }

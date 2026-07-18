@@ -39,7 +39,7 @@ type AnalyticsOverview = {
 	initialMonth: string;
 };
 
-export type MonthlyChartRow = {
+type MonthlyChartRow = {
 	month: string;
 	monthKey: string;
 	revenue: number | null;

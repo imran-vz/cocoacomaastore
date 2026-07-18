@@ -7,10 +7,9 @@ import { db } from "@/db";
 import { dessertsTable } from "@/db/schema";
 import { requireSession as requireAuth } from "@/lib/auth/guards";
 import { sanitizeDescription } from "@/lib/sanitize";
-import { bulkUpdateSequences, initializeSequence, updateSequence } from "@/lib/sequence";
+import { initializeSequence, updateSequence } from "@/lib/sequence";
 import type { Dessert } from "@/lib/types";
 import {
-	batchUpdateDessertSequencesSchema,
 	createDessertSchema,
 	deleteDessertSchema,
 	toggleDessertSchema,
@@ -178,24 +177,6 @@ export async function updateDessertSequence(id: number, newScore: number) {
 
 	const duration = performance.now() - start;
 	console.log(`updateDessertSequence: ${duration.toFixed(2)}ms`);
-	await runNextAppEffect(updateDessertTagsEffect());
-}
-
-export async function batchUpdateDessertSequences(updates: Array<{ id: number; newScore: number }>) {
-	await requireAuth();
-
-	// Validate input
-	const { updates: validatedUpdates } = batchUpdateDessertSequencesSchema.parse({ updates });
-
-	const start = performance.now();
-
-	// Use bulk update with a single SQL query instead of multiple queries
-	await bulkUpdateSequences(validatedUpdates.map(({ id, newScore }) => ({ id, sequence: newScore })));
-
-	const duration = performance.now() - start;
-	console.log(`batchUpdateDessertSequences: ${updates.length} updates in ${duration.toFixed(2)}ms`);
-
-	// Only revalidate once at the end
 	await runNextAppEffect(updateDessertTagsEffect());
 }
 

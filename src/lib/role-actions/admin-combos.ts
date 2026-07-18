@@ -1,5 +1,11 @@
 "use server";
 
+// Next.js requires each "use server" module to export its actions as top-level
+// async functions, so the admin and manager variants repeat the same wrapper
+// shape around createComboActions; the guard passed to the factory is the only
+// difference.
+// fallow-ignore-file code-duplication
+
 import { requireAdmin } from "@/lib/auth/guards";
 import { createComboActions } from "./combo-actions";
 

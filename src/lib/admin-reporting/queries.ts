@@ -59,7 +59,7 @@ function unstable_cache<T extends Callback>(
 
 	return next_unstable_cache(cb, keyParts, options as { revalidate?: number | false; tags?: string[] });
 }
-export const ADMIN_REPORTING_TAGS = DashboardTags;
+const ADMIN_REPORTING_TAGS = DashboardTags;
 
 // Get dashboard stats for a specific day
 async function getDashboardStats(date: Date): Promise<DashboardStats> {
@@ -284,6 +284,30 @@ async function getMissingDailyRevenueDays(endDate: Date, days = 7): Promise<stri
 	return missing;
 }
 
+// Live completed-order count and revenue for one IST day, straight from the orders table
+// (analytics rows only exist for past days).
+async function getLiveDayTotals(day: Date) {
+	const dayStartISTParam = timestampParam(getStartOfDayIST(day));
+	const dayEndISTParam = timestampParam(getEndOfDayIST(day));
+
+	const [todayData] = await db
+		.select({
+			count: sql<number>`count(*)::int`,
+			revenue: sql<string>`coalesce(sum(total), 0)`,
+		})
+		.from(ordersTable)
+		.where(
+			and(
+				eq(ordersTable.status, "completed"),
+				eq(ordersTable.isDeleted, false),
+				gte(ordersTable.createdAt, dayStartISTParam),
+				lt(ordersTable.createdAt, dayEndISTParam),
+			),
+		);
+
+	return { revenue: Number(todayData?.revenue ?? 0), orders: todayData?.count ?? 0 };
+}
+
 async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]> {
 	const start = performance.now();
 
@@ -327,35 +351,15 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 
 	// If endDate is today, fetch live data from orders table
 	if (isEndDateToday) {
-		const dayStartIST = getStartOfDayIST(endDate);
-		const dayEndIST = getEndOfDayIST(endDate);
-		const dayStartISTParam = timestampParam(dayStartIST);
-		const dayEndISTParam = timestampParam(dayEndIST);
+		const todayTotals = await getLiveDayTotals(endDate);
 
-		const [todayData] = await db
-			.select({
-				count: sql<number>`count(*)::int`,
-				revenue: sql<string>`coalesce(sum(total), 0)`,
-			})
-			.from(ordersTable)
-			.where(
-				and(
-					eq(ordersTable.status, "completed"),
-					eq(ordersTable.isDeleted, false),
-					gte(ordersTable.createdAt, dayStartISTParam),
-					lt(ordersTable.createdAt, dayEndISTParam),
-				),
-			);
-
-		// Add today's data to the results
 		dailyData.push({
 			date: new Date(todayUTC).toLocaleDateString("en-IN", {
 				day: "numeric",
 				month: "short",
 				timeZone: "Asia/Kolkata",
 			}),
-			revenue: Number(todayData?.revenue ?? 0),
-			orders: todayData?.count ?? 0,
+			...todayTotals,
 		});
 	}
 
@@ -363,52 +367,6 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 	console.log(`getDailyRevenue: ${duration.toFixed(2)}ms`);
 
 	return dailyData;
-}
-
-// Cached exports with date parameter
-export async function getCachedDashboardStats(dateString?: string) {
-	await requireAdmin();
-	const date = dateString ? new Date(dateString) : new Date();
-	const dayKey = getDayKey(date);
-
-	return unstable_cache(() => getDashboardStats(date), ["dashboard-stats", dayKey], {
-		revalidate: 60, // Revalidate every minute
-		tags: ["orders", "dashboard"],
-	})();
-}
-
-export async function getCachedStockPerDessert(dateString?: string) {
-	await requireAdmin();
-	const date = dateString ? new Date(dateString) : new Date();
-	const day = getAnalyticsDay(date);
-	const dayKey = getDayKey(date);
-
-	return unstable_cache(() => getStockPerDessert(day), ["stock-per-dessert", dayKey], {
-		revalidate: 60,
-		tags: ["inventory", "desserts", "dashboard"],
-	})();
-}
-
-export async function getCachedAuditLogs(dateString?: string) {
-	await requireAdmin();
-	const date = dateString ? new Date(dateString) : new Date();
-	const dayKey = getDayKey(date);
-
-	return unstable_cache(() => getAuditLogs(date), ["audit-logs", dayKey], {
-		revalidate: 60,
-		tags: DashboardTags.auditLogs,
-	})();
-}
-
-export async function getCachedDailyRevenue(dateString?: string) {
-	await requireAdmin();
-	const date = dateString ? new Date(dateString) : new Date();
-	const dayKey = getDayKey(date);
-
-	return unstable_cache(() => getDailyRevenue(date, 7), ["daily-revenue", dayKey], {
-		revalidate: 60 * 5, // Revalidate every 5 minutes
-		tags: ["orders", "dashboard"],
-	})();
 }
 
 // Get monthly revenue for the past N months
@@ -433,14 +391,6 @@ async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
 		grossRevenue: Number(r.grossRevenue),
 		orderCount: r.orderCount,
 	}));
-}
-
-export async function getCachedMonthlyRevenue(months = 6) {
-	await requireAdmin();
-	return unstable_cache(() => getMonthlyRevenue(months), ["monthly-revenue", String(months)], {
-		revalidate: 60 * 60, // Revalidate every hour
-		tags: DashboardTags.monthlyRevenue,
-	})();
 }
 
 function isValidMonthKey(month: string): boolean {
@@ -492,31 +442,9 @@ async function getWeeklyRevenue(month: string): Promise<WeeklyRevenue[]> {
 	}));
 
 	if (isCurrentMonth) {
-		const dayStartIST = getStartOfDayIST(new Date());
-		const dayEndIST = getEndOfDayIST(new Date());
-		const dayStartISTParam = timestampParam(dayStartIST);
-		const dayEndISTParam = timestampParam(dayEndIST);
+		const todayTotals = await getLiveDayTotals(new Date());
 
-		const [todayData] = await db
-			.select({
-				count: sql<number>`count(*)::int`,
-				revenue: sql<string>`coalesce(sum(total), 0)`,
-			})
-			.from(ordersTable)
-			.where(
-				and(
-					eq(ordersTable.status, "completed"),
-					eq(ordersTable.isDeleted, false),
-					gte(ordersTable.createdAt, dayStartISTParam),
-					lt(ordersTable.createdAt, dayEndISTParam),
-				),
-			);
-
-		dailyRows.push({
-			day: todayUTC,
-			revenue: Number(todayData?.revenue ?? 0),
-			orders: todayData?.count ?? 0,
-		});
+		dailyRows.push({ day: todayUTC, ...todayTotals });
 	}
 
 	const weeks: WeeklyRevenue[] = [];
@@ -682,14 +610,6 @@ async function getAvailableMonths(): Promise<string[]> {
 		.orderBy(desc(analyticsMonthlyRevenueTable.month));
 
 	return results.map((r) => r.month);
-}
-
-export async function getCachedAvailableMonths() {
-	await requireAdmin();
-	return unstable_cache(() => getAvailableMonths(), ["available-months"], {
-		revalidate: 60 * 60 * 24, // Revalidate daily
-		tags: DashboardTags.availableMonths,
-	})();
 }
 
 async function getDashboardReport(dateString?: string): Promise<AdminDashboardReport> {

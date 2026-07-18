@@ -1,3 +1,5 @@
+// Vendored shadcn/ui kit: unused exports are intentional surface for future use.
+// fallow-ignore-file unused-export
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";

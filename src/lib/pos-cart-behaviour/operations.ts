@@ -26,14 +26,14 @@ function generateCartLineId(): string {
 	return `cl_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function capitalizeCartText(str: string) {
+function capitalizeCartText(str: string) {
 	return str
 		.split(" ")
 		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 		.join(" ");
 }
 
-export function getCartInventoryUsage(cart: CartLine[]): Map<number, number> {
+function getCartInventoryUsage(cart: CartLine[]): Map<number, number> {
 	const usage = new Map<number, number>();
 	for (const line of cart) {
 		const current = usage.get(line.baseDessertId) ?? 0;
@@ -137,7 +137,7 @@ export function addComboToCart(
 	};
 }
 
-export function removeCartLine(cart: CartLine[], cartLineId: string): CartLine[] {
+function removeCartLine(cart: CartLine[], cartLineId: string): CartLine[] {
 	return cart.filter((line) => line.cartLineId !== cartLineId);
 }
 

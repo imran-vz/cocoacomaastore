@@ -4,8 +4,9 @@ import { Suspense } from "react";
 import { getCachedDesserts } from "@/app/desserts/actions";
 import { getCachedTodayInventory } from "@/app/manager/inventory/actions";
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
+import ManageDessertsInventory from "@/components/manage-desserts-inventory";
+import { upsertInventoryWithAudit } from "@/lib/role-actions/admin-inventory";
 import { DessertsSkeleton } from "../loading-skeletons";
-import ManageDesserts from "./manage-desserts";
 
 export const dynamic = "force-dynamic"; // forces dynamic rendering
 
@@ -23,7 +24,13 @@ export default async function page() {
 	return (
 		<AdminPageShell>
 			<Suspense fallback={<DessertsSkeleton includeMain={false} />}>
-				<ManageDesserts initialDesserts={desserts} initialInventory={inventory} />
+				<ManageDessertsInventory
+					initialDesserts={desserts}
+					initialInventory={inventory}
+					onSaveInventory={upsertInventoryWithAudit}
+					subtitle="Manage your dessert inventory, stock, and visibility"
+					maxWidth="max-w-none"
+				/>
 			</Suspense>
 		</AdminPageShell>
 	);

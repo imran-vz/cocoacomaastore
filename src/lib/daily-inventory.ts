@@ -60,15 +60,6 @@ export async function getInventoryForDay(day: Date): Promise<TodayInventoryRow[]
 	return rows;
 }
 
-export async function getBaseInventoryQuantity(baseDessertId: number, day = getDailyInventoryDay()) {
-	const [inventory] = await db
-		.select({ quantity: dailyDessertInventoryTable.quantity })
-		.from(dailyDessertInventoryTable)
-		.where(and(eq(dailyDessertInventoryTable.dessertId, baseDessertId), eq(dailyDessertInventoryTable.day, day)));
-
-	return inventory?.quantity ?? 0;
-}
-
 export function setInventoryWithAuditEffect({
 	day,
 	updates,

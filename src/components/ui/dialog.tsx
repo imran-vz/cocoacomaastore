@@ -1,3 +1,5 @@
+// Vendored shadcn/ui kit: unused exports are intentional surface for future use.
+// fallow-ignore-file unused-export
 "use client";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";

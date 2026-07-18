@@ -1,5 +1,5 @@
 import { performance } from "node:perf_hooks";
-import { and, eq } from "drizzle-orm";
+import { and, eq, type SQL } from "drizzle-orm";
 import { Effect } from "effect";
 import { unstable_cache } from "next/cache";
 
@@ -15,14 +15,21 @@ import { Database } from "@/server/effect/services/db";
 // Read Operations
 // ============================================================================
 
-export async function getAllCombos(): Promise<ComboWithDetails[]> {
-	const start = performance.now();
-
-	const combos = await db.query.dessertCombosTable.findMany({
-		where: eq(dessertCombosTable.isDeleted, false),
-		orderBy: (combos, { asc }) => [asc(combos.sequence)],
+const comboDetailsWith = {
+	baseDessert: {
+		columns: {
+			id: true,
+			name: true,
+			price: true,
+			enabled: true,
+			isDeleted: true,
+			isOutOfStock: true,
+			hasUnlimitedStock: true,
+		},
+	},
+	items: {
 		with: {
-			baseDessert: {
+			dessert: {
 				columns: {
 					id: true,
 					name: true,
@@ -30,30 +37,36 @@ export async function getAllCombos(): Promise<ComboWithDetails[]> {
 					enabled: true,
 					isDeleted: true,
 					isOutOfStock: true,
-					hasUnlimitedStock: true,
-				},
-			},
-			items: {
-				with: {
-					dessert: {
-						columns: {
-							id: true,
-							name: true,
-							price: true,
-							enabled: true,
-							isDeleted: true,
-							isOutOfStock: true,
-						},
-					},
 				},
 			},
 		},
+	},
+} as const;
+
+async function queryCombos(label: string, where: SQL | undefined): Promise<ComboWithDetails[]> {
+	const start = performance.now();
+
+	const combos = await db.query.dessertCombosTable.findMany({
+		where,
+		orderBy: (combos, { asc }) => [asc(combos.sequence)],
+		with: comboDetailsWith,
 	});
 
 	const duration = performance.now() - start;
-	console.log(`getAllCombos: ${duration.toFixed(2)}ms`);
+	console.log(`${label}: ${duration.toFixed(2)}ms`);
 
 	return combos as ComboWithDetails[];
+}
+
+async function getAllCombos(): Promise<ComboWithDetails[]> {
+	return queryCombos("getAllCombos", eq(dessertCombosTable.isDeleted, false));
+}
+
+export async function getEnabledCombos(): Promise<ComboWithDetails[]> {
+	return queryCombos(
+		"getEnabledCombos",
+		and(eq(dessertCombosTable.isDeleted, false), eq(dessertCombosTable.enabled, true)),
+	);
 }
 
 export const getCachedAllCombos = unstable_cache(getAllCombos, ["all-combos"], {
@@ -61,7 +74,7 @@ export const getCachedAllCombos = unstable_cache(getAllCombos, ["all-combos"], {
 	tags: [CacheTag.combos],
 });
 
-export async function getBaseDesserts() {
+async function getBaseDesserts() {
 	const start = performance.now();
 
 	const desserts = await db.query.dessertsTable.findMany({
@@ -86,7 +99,7 @@ export const getCachedBaseDesserts = unstable_cache(getBaseDesserts, ["base-dess
 	tags: [CacheTag.desserts],
 });
 
-export async function getModifierDesserts() {
+async function getModifierDesserts() {
 	const start = performance.now();
 
 	const modifiers = await db.query.dessertsTable.findMany({
