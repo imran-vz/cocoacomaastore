@@ -84,7 +84,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 			layout
 			initial={isTablet ? { opacity: 0, y: -10 } : { opacity: 0, x: -20 }}
 			animate={isTablet ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
-			exit={{ opacity: 0, x: 20, height: 0, marginBottom: 0 }}
+			exit={{ opacity: 0, x: 20 }}
 			transition={{ type: "spring", stiffness: 500, damping: 40 }}
 			className={cn(
 				"bg-card rounded-xl p-3 border",
@@ -95,7 +95,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 				<motion.button
 					type="button"
 					onClick={() => removeFromCart(line.cartLineId)}
-					whileTap={{ scale: 0.9 }}
+					whileTap={{ scale: 0.96 }}
 					className={cn(
 						"absolute -top-2 -right-2 size-6 rounded-full",
 						"bg-destructive text-white shadow-md",
@@ -125,7 +125,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 				{isTablet && <p className="text-[10px] text-muted-foreground font-mono">{lineView.unitPriceText}</p>}
 				<div className="flex items-center bg-muted rounded-lg overflow-hidden">
 					<motion.button
-						whileTap={{ scale: isTablet ? 0.85 : 0.9 }}
+						whileTap={{ scale: 0.96 }}
 						type="button"
 						className={cn(
 							"flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors",
@@ -139,7 +139,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 						{line.quantity}
 					</span>
 					<motion.button
-						whileTap={{ scale: isTablet ? 0.85 : 0.9 }}
+						whileTap={{ scale: 0.96 }}
 						type="button"
 						disabled={line.quantity >= MAX_ORDER_LINE_QUANTITY}
 						aria-label="Increase quantity"
@@ -154,7 +154,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 				</div>
 				{!isTablet && (
 					<motion.button
-						whileTap={{ scale: 0.9 }}
+						whileTap={{ scale: 0.96 }}
 						type="button"
 						onClick={() => removeFromCart(line.cartLineId)}
 						className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
