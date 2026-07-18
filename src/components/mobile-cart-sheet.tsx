@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronUp, Loader2, ShoppingBag, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { UpiAccount } from "@/db/schema";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
@@ -44,6 +44,16 @@ export function MobileCartSheet({
 	const [isOpen, setIsOpen] = useState(false);
 	const [shouldRender, setShouldRender] = useState(false);
 	const [showForm, setShowForm] = useState(false);
+
+	const [totalTicked, setTotalTicked] = useState(false);
+	const prevTotalRef = useRef(total);
+	useEffect(() => {
+		if (prevTotalRef.current === total) return;
+		prevTotalRef.current = total;
+		setTotalTicked(true);
+		const timer = setTimeout(() => setTotalTicked(false), 300);
+		return () => clearTimeout(timer);
+	}, [total]);
 
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
 
@@ -127,7 +137,14 @@ export function MobileCartSheet({
 								</div>
 							</div>
 							<div className="flex items-center gap-2">
-								<p className="text-lg font-bold">₹{total.toFixed(0)}</p>
+								<p
+									className={cn(
+										"text-lg font-bold tabular-nums transition-colors duration-300 ease-out motion-reduce:transition-none",
+										totalTicked && "text-primary",
+									)}
+								>
+									₹{total.toFixed(0)}
+								</p>
 								<ChevronUp className="size-5 text-muted-foreground" />
 							</div>
 						</button>
@@ -167,7 +184,14 @@ export function MobileCartSheet({
 										</div>
 									</div>
 									<div className="flex items-center gap-2">
-										<p className="text-lg font-bold">₹{total.toFixed(0)}</p>
+										<p
+											className={cn(
+												"text-lg font-bold tabular-nums transition-colors duration-300 ease-out motion-reduce:transition-none",
+												totalTicked && "text-primary",
+											)}
+										>
+											₹{total.toFixed(0)}
+										</p>
 										<ChevronUp
 											className={cn("size-5 text-muted-foreground transition-transform", isOpen && "rotate-180")}
 										/>
