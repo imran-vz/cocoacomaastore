@@ -55,13 +55,9 @@ export function TabletCartSidebar({
 						<div className="relative">
 							<ShoppingBag className="size-5 text-primary" />
 							{itemCount > 0 && (
-								<motion.span
-									initial={{ scale: 0 }}
-									animate={{ scale: 1 }}
-									className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full size-4 flex items-center justify-center"
-								>
+								<span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full size-4 flex items-center justify-center">
 									{itemCount > 99 ? "99" : itemCount}
-								</motion.span>
+								</span>
 							)}
 						</div>
 						<h2 className="font-semibold text-sm">Cart</h2>
@@ -163,14 +159,7 @@ export function TabletCartSidebar({
 			<div className="shrink-0 p-3 bg-background border-t space-y-3">
 				<div className="flex items-center justify-between px-1">
 					<span className="text-sm text-muted-foreground">Total</span>
-					<motion.span
-						key={total}
-						initial={{ scale: 1.1 }}
-						animate={{ scale: 1 }}
-						className="text-xl font-bold text-primary"
-					>
-						₹{total.toFixed(0)}
-					</motion.span>
+					<span className="text-xl font-bold text-primary tabular-nums">₹{total.toFixed(0)}</span>
 				</div>
 
 				{cart.length > 0 && (
