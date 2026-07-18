@@ -239,52 +239,9 @@ function isTrendRowDrillable({
 	return !isWeeklyTrend && !isTrendTransitioning && !!row.monthKey && row.revenue !== null;
 }
 
-function getTrendMobileRowClass(isSelected: boolean, canDrillIn: boolean) {
-	if (isSelected) return "border-primary/50 bg-primary/5";
-	if (canDrillIn) return "hover:bg-muted/40";
-	return "cursor-default";
-}
-
-function TrendMobileRow({
-	row,
-	maxRevenue,
-	isWeeklyTrend,
-	isTrendTransitioning,
-	selectedTrendMonth,
-	onMonthSelect,
-}: {
-	row: TrendChartRow;
-	maxRevenue: number;
-	isWeeklyTrend: boolean;
-	isTrendTransitioning: boolean;
-	selectedTrendMonth: string | null;
-	onMonthSelect: (month: string) => void;
-}) {
-	const revenue = Number(row.revenue ?? 0);
-	const percent = Math.max(8, Math.round((revenue / maxRevenue) * 100));
-	const isSelected = row.monthKey === selectedTrendMonth;
-	const canDrillIn = isTrendRowDrillable({ isTrendTransitioning, isWeeklyTrend, row });
-	const rowClass = getTrendMobileRowClass(isSelected, canDrillIn);
-
-	return (
-		<button
-			type="button"
-			onClick={canDrillIn ? () => onMonthSelect(row.monthKey ?? "") : undefined}
-			disabled={!canDrillIn}
-			className={`w-full rounded-lg border bg-card px-3 py-3 text-left transition-colors ${rowClass}`}
-		>
-			<div className="mb-2 flex items-center justify-between gap-3">
-				<div className="min-w-0">
-					<p className="truncate text-sm font-medium">{row.label}</p>
-					<p className="text-xs text-muted-foreground tabular-nums">{row.subtitle}</p>
-				</div>
-				<p className="shrink-0 text-sm font-semibold tabular-nums">{formatCurrency(revenue)}</p>
-			</div>
-			<div className="h-2 overflow-hidden rounded-full bg-muted">
-				<div className="h-full rounded-full bg-[#f2b38d]" style={{ width: `${percent}%` }} />
-			</div>
-		</button>
-	);
+function getTrendBarLabel(row: TrendChartRow, isWeeklyTrend: boolean) {
+	if (isWeeklyTrend) return row.label.replace(/^Business Week\s*/i, "W");
+	return row.label.split(" ")[0];
 }
 
 function TrendMobileRows({
@@ -293,7 +250,6 @@ function TrendMobileRows({
 	maxRevenue,
 	isWeeklyTrend,
 	isTrendTransitioning,
-	selectedTrendMonth,
 	onMonthSelect,
 }: {
 	rows: TrendChartRow[];
@@ -301,33 +257,92 @@ function TrendMobileRows({
 	maxRevenue: number;
 	isWeeklyTrend: boolean;
 	isTrendTransitioning: boolean;
-	selectedTrendMonth: string | null;
 	onMonthSelect: (month: string) => void;
 }) {
+	const [selectedKey, setSelectedKey] = useState<string | null>(null);
+	const selectedRow = rows.find((row) => row.key === selectedKey) ?? bestRow ?? rows[0];
+	const totalRevenue = rows.reduce((sum, row) => sum + Number(row.revenue ?? 0), 0);
+
+	if (!selectedRow) {
+		return <p className="py-8 text-center text-sm text-muted-foreground md:hidden">No revenue data yet</p>;
+	}
+
+	const selectedRevenue = Number(selectedRow.revenue ?? 0);
+	const canDrillIn = isTrendRowDrillable({ isTrendTransitioning, isWeeklyTrend, row: selectedRow });
+	const isBest = selectedRow.key === bestRow?.key && selectedRevenue > 0;
+
 	return (
-		<div className="relative space-y-3 transition-opacity md:hidden">
-			<div className="grid grid-cols-2 gap-2">
-				<div className="rounded-lg border bg-muted/30 px-3 py-2.5">
-					<p className="text-xs font-medium text-muted-foreground">Best {isWeeklyTrend ? "week" : "month"}</p>
-					<p className="mt-1 truncate text-base font-semibold">{bestRow?.label ?? "No data"}</p>
-				</div>
-				<div className="rounded-lg border bg-muted/30 px-3 py-2.5">
-					<p className="text-xs font-medium text-muted-foreground">{isWeeklyTrend ? "Weeks" : "Months"} shown</p>
-					<p className="mt-1 text-base font-semibold tabular-nums">{rows.length}</p>
-				</div>
+		<div className="relative space-y-4 transition-opacity md:hidden">
+			<div className="flex h-40 items-end gap-1.5">
+				{rows.map((row) => {
+					const revenue = Number(row.revenue ?? 0);
+					const isSelected = row.key === selectedRow.key;
+
+					return (
+						<button
+							key={row.key}
+							type="button"
+							aria-pressed={isSelected}
+							aria-label={`${row.label}, ${formatCurrency(revenue)}, ${row.orders ?? 0} orders`}
+							onClick={() => setSelectedKey(row.key)}
+							className="flex h-full flex-1 flex-col items-center gap-2"
+						>
+							<div className="flex w-full flex-1 items-end justify-center">
+								{revenue > 0 ? (
+									<div
+										className={`w-full max-w-[30px] rounded-t-md bg-[#f2b38d] transition-opacity ${isSelected ? "opacity-100" : "opacity-40"}`}
+										style={{ height: `${Math.round((revenue / maxRevenue) * 100)}%` }}
+									/>
+								) : (
+									<div
+										className={`h-1.5 w-full max-w-[30px] rounded-full transition-colors ${isSelected ? "bg-muted-foreground/50" : "bg-muted"}`}
+									/>
+								)}
+							</div>
+							<span
+								className={`text-[10px] font-semibold tabular-nums ${isSelected ? "text-foreground" : "text-muted-foreground"}`}
+							>
+								{getTrendBarLabel(row, isWeeklyTrend)}
+							</span>
+						</button>
+					);
+				})}
 			</div>
-			<div className="space-y-2">
-				{rows.map((row) => (
-					<TrendMobileRow
-						key={row.key}
-						row={row}
-						maxRevenue={maxRevenue}
-						isWeeklyTrend={isWeeklyTrend}
-						isTrendTransitioning={isTrendTransitioning}
-						selectedTrendMonth={selectedTrendMonth}
-						onMonthSelect={onMonthSelect}
-					/>
-				))}
+			<div className="rounded-xl border bg-muted/30 px-4 py-3.5">
+				<div className="flex items-baseline justify-between gap-3">
+					<div className="min-w-0">
+						<p className="truncate text-sm font-semibold">{selectedRow.label}</p>
+						{isWeeklyTrend && <p className="text-xs text-muted-foreground tabular-nums">{selectedRow.subtitle}</p>}
+					</div>
+					<p className="shrink-0 text-lg font-bold tabular-nums text-[#c9702e] dark:text-[#f0a06a]">
+						{formatCurrency(selectedRevenue)}
+					</p>
+				</div>
+				<div className="mt-1 flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+					<p className="tabular-nums">
+						{selectedRow.orders ?? 0} order{selectedRow.orders === 1 ? "" : "s"}
+					</p>
+					{isBest ? (
+						<p className="font-semibold text-[#12877f]">Best {isWeeklyTrend ? "week" : "month"}</p>
+					) : (
+						<p className="tabular-nums">
+							{selectedRevenue > 0 && totalRevenue > 0
+								? `${Math.round((selectedRevenue / totalRevenue) * 100)}% of ${isWeeklyTrend ? "month" : "year"}`
+								: "no revenue"}
+						</p>
+					)}
+				</div>
+				{canDrillIn && (
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="mt-3 w-full"
+						onClick={() => onMonthSelect(selectedRow.monthKey ?? "")}
+					>
+						View weekly breakdown
+					</Button>
+				)}
 			</div>
 		</div>
 	);
@@ -343,7 +358,6 @@ function RevenueTrendCard({
 	mobileRows,
 	bestRow,
 	maxRevenue,
-	selectedTrendMonth,
 	trendChartData,
 	onMonthSelect,
 	onClearMonth,
@@ -357,7 +371,6 @@ function RevenueTrendCard({
 	mobileRows: TrendChartRow[];
 	bestRow: TrendChartRow | null;
 	maxRevenue: number;
-	selectedTrendMonth: string | null;
 	trendChartData: TrendChartRow[];
 	onMonthSelect: (month: string) => void;
 	onClearMonth: () => void;
@@ -410,7 +423,6 @@ function RevenueTrendCard({
 							maxRevenue={maxRevenue}
 							isWeeklyTrend={isWeeklyTrend}
 							isTrendTransitioning={isTrendTransitioning}
-							selectedTrendMonth={selectedTrendMonth}
 							onMonthSelect={onMonthSelect}
 						/>
 						<DesktopChartSlot fallbackClassName="hidden h-80 md:block">
@@ -876,7 +888,6 @@ export function AnalyticsContent({
 				mobileRows={trendRows.mobileTrendRows}
 				bestRow={trendRows.bestTrendRow}
 				maxRevenue={trendRows.maxTrendRevenue}
-				selectedTrendMonth={trendSelection.selectedTrendMonth}
 				trendChartData={trendRows.trendChartData}
 				onMonthSelect={trendSelection.handleTrendMonthSelect}
 				onClearMonth={trendSelection.handleTrendMonthClear}
