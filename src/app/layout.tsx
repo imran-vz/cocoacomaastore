@@ -72,13 +72,6 @@ export default function RootLayout({
 						<Toaster
 							position="top-center"
 							richColors
-							icons={{
-								success: "👍",
-								error: "🚫",
-								info: "💡",
-								warning: "⚠️",
-								loading: "🔄",
-							}}
 							mobileOffset={50}
 						/>
 					</QueryProvider>

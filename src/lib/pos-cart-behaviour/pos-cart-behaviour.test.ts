@@ -7,8 +7,6 @@ import {
 	fingerprintOrderSubmission,
 	getCartLineView,
 	getOrderCopyText,
-	getReceiptCopyText,
-	getReceiptUpiPaymentText,
 	getUpiPaymentText,
 	initialPosCartState,
 	reconcileAcknowledgedCart,
@@ -285,14 +283,6 @@ describe("POS cart behaviour", () => {
 				{ customerName: "Ada", deliveryCost: "25" },
 			),
 		).toEqual({ customerName: "Grace", deliveryCost: "30" });
-	});
-
-	it("builds saved receipt copy and UPI data from authoritative cents", () => {
-		expect(getReceiptCopyText(receipt)).toContain("Total: ₹425.00");
-		expect(getReceiptCopyText(receipt)).toContain("Order #42");
-		const upi = getReceiptUpiPaymentText(receipt, "store@upi");
-		expect(upi).toContain("am=425.00");
-		expect(upi).toContain("Order+42");
 	});
 
 	it("acknowledges and closes an order before refresh and reports refresh failure as a warning", async () => {

@@ -3,11 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createOrderWithLines } from "@/app/manager/orders/actions";
-import type {
-	OrderSaveAcknowledgement,
-	OrderSubmissionIdentity,
-	SubmittedOrderSnapshot,
-} from "@/lib/pos-cart-behaviour";
+import type { OrderSubmissionIdentity, SubmittedOrderSnapshot } from "@/lib/pos-cart-behaviour";
 import { completeAcknowledgedOrder, resolveOrderSubmissionIdentity, saveCartOrder } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 
@@ -40,9 +36,6 @@ export function useSaveCartOrder({
 	const submissionIdentityRef = useRef<OrderSubmissionIdentity | null>(null);
 	const inFlightRef = useRef(false);
 	const [isSaving, setIsSaving] = useState(false);
-	const [completedOrder, setCompletedOrder] = useState<OrderSaveAcknowledgement | null>(null);
-
-	const dismissCompletedOrder = useCallback(() => setCompletedOrder(null), []);
 
 	const saveOrder = useCallback<SaveCartOrder>(
 		async ({ customerName, deliveryCost, closeCart }) => {
@@ -86,8 +79,11 @@ export function useSaveCartOrder({
 					refreshInventory,
 				});
 				submissionIdentityRef.current = null;
-				setCompletedOrder(result);
-				toast.success(result.replayed ? "Order already saved" : "Order saved!");
+				// Free the button as soon as the server confirms; the inventory
+				// refetch in `completion` only gates the warning toasts below.
+				inFlightRef.current = false;
+				setIsSaving(false);
+				toast.success(result.replayed ? `Order #${result.orderId} already saved` : `Order #${result.orderId} saved!`);
 
 				const acknowledgement = await completion;
 				if (result.refreshWarning) {
@@ -106,5 +102,5 @@ export function useSaveCartOrder({
 		[acknowledgeSubmittedOrder, cart, intentVersion, refreshInventory],
 	);
 
-	return { completedOrder, dismissCompletedOrder, isSaving, saveOrder };
+	return { isSaving, saveOrder };
 }

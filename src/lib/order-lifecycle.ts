@@ -89,6 +89,64 @@ async function loadPersistedOrderDetails(tx: OrderTransaction, orderId: number) 
 	return mapPersistedOrderDetails(order);
 }
 
+/** Identity of an order line within one submission: its base dessert plus combo (or direct sale). */
+function orderLineReference(dessertId: number, comboId: number | null | undefined) {
+	return `${dessertId}:${comboId ?? "direct"}`;
+}
+
+/** Matches each resolved line to the id of the order item row inserted for it. */
+function matchInsertedOrderItems(insertedItems: readonly InsertedOrderItem[]) {
+	const idByReference = new Map(
+		insertedItems.map((item) => [orderLineReference(item.dessertId, item.comboId), item.id]),
+	);
+	return (line: ResolvedOrderLine) => {
+		const id = idByReference.get(orderLineReference(line.baseDessertId, line.comboId));
+		if (id === undefined) throw new Error("Inserted order item could not be matched to its request line");
+		return id;
+	};
+}
+
+/**
+ * Assembles the receipt for a freshly created order from the rows returned by
+ * its own inserts, so the transaction does not need a read-back query.
+ */
+function buildCreatedOrderDetails(
+	order: Order,
+	resolvedLines: readonly ResolvedOrderLine[],
+	insertedItems: readonly InsertedOrderItem[],
+	insertedModifiers: readonly OrderItemModifier[],
+): OrderDetails {
+	const { isDeleted: _, requestFingerprint: __, submissionId: ___, ...orderFields } = order;
+
+	const itemIdForLine = matchInsertedOrderItems(insertedItems);
+	const modifiersByItemId = new Map<number, OrderItemModifierWithDessert[]>();
+	for (const modifier of insertedModifiers) {
+		const modifiers = modifiersByItemId.get(modifier.orderItemId) ?? [];
+		modifiers.push({
+			id: modifier.id,
+			quantity: modifier.quantity,
+			dessert: { id: modifier.dessertId, name: modifier.dessertName },
+		});
+		modifiersByItemId.set(modifier.orderItemId, modifiers);
+	}
+
+	return {
+		...orderFields,
+		orderItems: resolvedLines.map((line) => {
+			const itemId = itemIdForLine(line);
+			return {
+				id: itemId,
+				quantity: line.quantity,
+				unitPrice: line.unitPrice.toFixed(2),
+				comboId: line.comboId,
+				comboName: line.comboName,
+				dessert: { id: line.baseDessertId, name: line.baseDessertName },
+				modifiers: modifiersByItemId.get(itemId) ?? [],
+			};
+		}),
+	};
+}
+
 export type GetOrdersReturnType = OrderDetails[];
 
 export type SerializedOrderDetails = Omit<OrderDetails, "createdAt"> & {
@@ -212,7 +270,7 @@ export function resolveOrderLinesFromCatalog({
 
 	const references = new Set<string>();
 	return lines.map((line) => {
-		const reference = `${line.baseDessertId}:${line.comboId ?? "direct"}`;
+		const reference = orderLineReference(line.baseDessertId, line.comboId);
 		if (references.has(reference)) {
 			throw new Error("Duplicate order line reference");
 		}
@@ -290,10 +348,12 @@ async function resolveAndLockOrderLines(tx: OrderTransaction, lines: readonly Or
 	const comboIds = [...new Set(lines.flatMap((line) => (line.comboId === undefined ? [] : [line.comboId])))].sort(
 		(a, b) => a - b,
 	);
-	const combos =
+	// Both selects depend only on comboIds — issue them together so they pipeline
+	// on the transaction's connection instead of paying two roundtrips.
+	const [combos, comboItems] = await Promise.all([
 		comboIds.length === 0
 			? []
-			: await tx
+			: tx
 					.select({
 						id: dessertCombosTable.id,
 						name: dessertCombosTable.name,
@@ -305,16 +365,10 @@ async function resolveAndLockOrderLines(tx: OrderTransaction, lines: readonly Or
 					.from(dessertCombosTable)
 					.where(inArray(dessertCombosTable.id, comboIds))
 					.orderBy(asc(dessertCombosTable.id))
-					.for("no key update");
-
-	if (combos.length !== comboIds.length) {
-		throw new Error("Combo is missing or inactive");
-	}
-
-	const comboItems =
+					.for("no key update"),
 		comboIds.length === 0
 			? []
-			: await tx
+			: tx
 					.select({
 						comboId: dessertComboItemsTable.comboId,
 						dessertId: dessertComboItemsTable.dessertId,
@@ -323,7 +377,12 @@ async function resolveAndLockOrderLines(tx: OrderTransaction, lines: readonly Or
 					.from(dessertComboItemsTable)
 					.where(inArray(dessertComboItemsTable.comboId, comboIds))
 					.orderBy(asc(dessertComboItemsTable.comboId), asc(dessertComboItemsTable.dessertId))
-					.for("no key update");
+					.for("no key update"),
+	]);
+
+	if (combos.length !== comboIds.length) {
+		throw new Error("Combo is missing or inactive");
+	}
 
 	const dessertIds = [
 		...new Set([...lines.map((line) => line.baseDessertId), ...comboItems.map((item) => item.dessertId)]),
@@ -385,13 +444,10 @@ export function buildOrderItemModifierInserts(
 	lines: readonly ResolvedOrderLine[],
 	insertedItems: readonly InsertedOrderItem[],
 ) {
-	const insertedItemByReference = new Map(
-		insertedItems.map((item) => [`${item.dessertId}:${item.comboId ?? "direct"}`, item.id]),
-	);
+	const itemIdForLine = matchInsertedOrderItems(insertedItems);
 
 	return lines.flatMap((line) => {
-		const insertedItemId = insertedItemByReference.get(`${line.baseDessertId}:${line.comboId ?? "direct"}`);
-		if (insertedItemId === undefined) throw new Error("Inserted order item could not be matched to its request line");
+		const insertedItemId = itemIdForLine(line);
 
 		return line.modifiers.map((modifier) => ({
 			orderItemId: insertedItemId,
@@ -495,41 +551,39 @@ function createCompletedOrderEffect(data: CreateCompletedOrderInput, userId: str
 					const resolvedLines = await resolveAndLockOrderLines(tx, data.lines);
 					const inventoryDeductions = getCartLineInventoryDeductions(resolvedLines);
 					const total = computeOrderTotal(resolvedLines, data.deliveryCost);
-					const [order] = await tx
-						.update(ordersTable)
-						.set({ total })
-						.where(eq(ordersTable.id, claimedOrder.id))
-						.returning();
-
-					const insertedItems = await tx
-						.insert(orderItemsTable)
-						.values(buildCartLineOrderItemInserts(order.id, resolvedLines))
-						.returning({
+					// The total update and item inserts only depend on the claimed order id,
+					// so they pipeline on the transaction's connection in one roundtrip.
+					const [[order], insertedItems] = await Promise.all([
+						tx.update(ordersTable).set({ total }).where(eq(ordersTable.id, claimedOrder.id)).returning(),
+						tx.insert(orderItemsTable).values(buildCartLineOrderItemInserts(claimedOrder.id, resolvedLines)).returning({
 							id: orderItemsTable.id,
 							dessertId: orderItemsTable.dessertId,
 							comboId: orderItemsTable.comboId,
-						});
+						}),
+					]);
 
 					const modifierInserts = buildOrderItemModifierInserts(resolvedLines, insertedItems);
 
-					if (modifierInserts.length > 0) {
-						await tx.insert(orderItemModifiersTable).values(modifierInserts);
-					}
+					const [insertedModifiers] = await Promise.all([
+						modifierInserts.length > 0 ? tx.insert(orderItemModifiersTable).values(modifierInserts).returning() : [],
+						applyOrderInventoryMovement({
+							tx,
+							day,
+							now,
+							movements: inventoryDeductions,
+							direction: "deduct",
+							audit: {
+								action: "order_deducted",
+								orderId: claimedOrder.id,
+								userId,
+							},
+						}),
+					]);
 
-					await applyOrderInventoryMovement({
-						tx,
-						day,
-						now,
-						movements: inventoryDeductions,
-						direction: "deduct",
-						audit: {
-							action: "order_deducted",
-							orderId: order.id,
-							userId,
-						},
-					});
-
-					return { order: await loadPersistedOrderDetails(tx, order.id), replayed: false } as const;
+					return {
+						order: buildCreatedOrderDetails(order, resolvedLines, insertedItems, insertedModifiers),
+						replayed: false,
+					} as const;
 				}),
 			)
 			.pipe(

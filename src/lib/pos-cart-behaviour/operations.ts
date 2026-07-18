@@ -1,4 +1,3 @@
-import type { OrderInvoiceModel } from "@/lib/order-invoice-model";
 import { MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
 import { normalizeDeliveryCost, serializeOrderSubmission } from "@/lib/order-submission";
 import type {
@@ -268,33 +267,6 @@ export function getOrderCopyText(cart: CartLine[], total: number, deliveryCost: 
 		.join("\n");
 	const deliveryLine = deliveryCost > 0 ? `\nDelivery: ₹${deliveryCost.toFixed(2)}` : "";
 	return `${orderItemsText}${deliveryLine}\n------\nTotal: ₹${total.toFixed(2)}`;
-}
-
-function formatReceiptMoney(cents: number) {
-	return (cents / 100).toFixed(2);
-}
-
-export function getReceiptCopyText(receipt: OrderInvoiceModel) {
-	const lines = receipt.lines
-		.map(
-			(line) =>
-				`${line.name}${line.details ? ` (${line.details})` : ""} × ${line.quantity} = ₹${formatReceiptMoney(line.lineTotalCents)}`,
-		)
-		.join("\n");
-	const delivery = receipt.deliveryCents > 0 ? `\nDelivery: ₹${formatReceiptMoney(receipt.deliveryCents)}` : "";
-	return `Order #${receipt.id}\n${receipt.customerName}\n${lines}${delivery}\n------\nTotal: ₹${formatReceiptMoney(receipt.totalCents)}`;
-}
-
-export function getReceiptUpiPaymentText(receipt: OrderInvoiceModel, upiId: string) {
-	const transactionNote = `Order ${receipt.id}: ${receipt.lines
-		.map((line) => line.name)
-		.join(", ")
-		.slice(0, 60)}`;
-	const params = new URLSearchParams();
-	params.set("am", formatReceiptMoney(receipt.totalCents));
-	params.set("pn", "Cocoa Comaa");
-	params.set("tn", transactionNote);
-	return `upi://pay?pa=${upiId}&${params.toString()}`;
 }
 
 function getOrderRequestLines(cart: CartLine[]) {
