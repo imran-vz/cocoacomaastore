@@ -11,7 +11,13 @@ export function OrdersEmptyState({
 	description?: string;
 }) {
 	return (
-		<div className={cn("rounded-xl border border-dashed bg-card px-5 py-12 text-center", className)}>
+		<div
+			className={cn(
+				"rounded-xl border border-dashed bg-card px-5 py-12 text-center",
+				"animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out motion-reduce:animate-none",
+				className,
+			)}
+		>
 			<div className="mx-auto grid size-12 place-items-center rounded-full bg-muted">
 				<Package className="size-6 text-muted-foreground" aria-hidden="true" />
 			</div>
