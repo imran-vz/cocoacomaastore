@@ -70,25 +70,16 @@ export function ProductGrid({
 			{/* Combos Section */}
 			{filteredCombos.length > 0 && onAddComboToCart && (
 				<section>
-					<motion.h2
-						initial={{ opacity: 0, x: -10 }}
-						animate={{ opacity: 1, x: 0 }}
-						className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 px-1"
-					>
-						🎁 Combos
-					</motion.h2>
+					<h2 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 px-1">🎁 Combos</h2>
 					<div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
 						<AnimatePresence mode="popLayout">
-							{filteredCombos.map((combo, index) => (
+							{filteredCombos.map((combo) => (
 								<motion.div
 									key={combo.id}
-									initial={{ opacity: 0, y: 20 }}
-									animate={{
-										opacity: 1,
-										y: 0,
-										transition: { delay: index * 0.05 },
-									}}
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
 									exit={{ opacity: 0, scale: 0.95 }}
+									transition={{ duration: 0.15, ease: "easeOut" }}
 								>
 									<ComboCard combo={combo} onAddToCart={() => onAddComboToCart(combo)} compact />
 								</motion.div>
@@ -102,26 +93,19 @@ export function ProductGrid({
 			{availableDesserts.length > 0 && (
 				<section>
 					{filteredCombos.length > 0 && (
-						<motion.h2
-							initial={{ opacity: 0, x: -10 }}
-							animate={{ opacity: 1, x: 0 }}
-							className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1"
-						>
+						<h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
 							All Items
-						</motion.h2>
+						</h2>
 					)}
 					<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
 						<AnimatePresence mode="popLayout">
-							{availableDesserts.map((dessert, index) => (
+							{availableDesserts.map((dessert) => (
 								<motion.div
 									key={dessert.id}
-									initial={{ opacity: 0, y: 20 }}
-									animate={{
-										opacity: 1,
-										y: 0,
-										transition: { delay: index * 0.03 },
-									}}
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
 									exit={{ opacity: 0, scale: 0.95 }}
+									transition={{ duration: 0.15, ease: "easeOut" }}
 								>
 									<ProductCard
 										dessert={dessert}
