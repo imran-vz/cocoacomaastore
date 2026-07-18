@@ -57,11 +57,7 @@ export default function Navbar() {
 			<div className="h-full flex items-center justify-between px-4 md:px-6 max-w-7xl mx-auto">
 				{/* Logo */}
 				<Link href="/manager" className="flex items-center gap-2 group">
-					<motion.div
-						whileHover={{ rotate: [0, -10, 10, -5, 0] }}
-						transition={{ duration: 0.5 }}
-						className="flex size-9 items-center justify-center rounded-lg bg-background ring-1 ring-border/60"
-					>
+					<div className="flex size-9 items-center justify-center rounded-lg bg-background ring-1 ring-border/60">
 						<Image
 							src="/logo.png"
 							alt="Cocoa Comaa"
@@ -70,7 +66,7 @@ export default function Navbar() {
 							height={32}
 							className="size-8 rounded-md object-contain"
 						/>
-					</motion.div>
+					</div>
 					<span className="text-lg font-bold text-primary group-hover:text-primary/80 transition-colors">
 						Cocoa Comaa
 					</span>
