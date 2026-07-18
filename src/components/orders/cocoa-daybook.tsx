@@ -137,7 +137,10 @@ export function CocoaDaybook({
 								</button>
 
 								{isExpanded && (
-									<div id={contentId} className="border-t bg-muted/20 px-3 py-3">
+									<div
+										id={contentId}
+										className="overflow-hidden border-t bg-muted/20 px-3 py-3 animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-out motion-reduce:animate-none"
+									>
 										<OrderDetailPanel order={order} cancelAction={renderCancelActionFor(order)} />
 									</div>
 								)}
@@ -208,12 +211,14 @@ export function CocoaDaybook({
 									</TableRow>
 									{isExpanded && (
 										<TableRow id={contentId} className="hover:bg-transparent">
-											<TableCell colSpan={6} className="whitespace-normal bg-muted/20 p-4">
-												<OrderDetailPanel
-													order={order}
-													cancelAction={renderCancelActionFor(order)}
-													className="mx-auto max-w-3xl"
-												/>
+											<TableCell colSpan={6} className="overflow-hidden whitespace-normal bg-muted/20 p-4">
+												<div className="animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-out motion-reduce:animate-none">
+													<OrderDetailPanel
+														order={order}
+														cancelAction={renderCancelActionFor(order)}
+														className="mx-auto max-w-3xl"
+													/>
+												</div>
 											</TableCell>
 										</TableRow>
 									)}
