@@ -1,7 +1,7 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, ShoppingBag, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import type { UpiAccount } from "@/db/schema";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";

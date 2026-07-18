@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Check, ChevronDown, Copy, ReceiptIndianRupee } from "lucide-react";
+import { motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";

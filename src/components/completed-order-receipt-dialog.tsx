@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, type Variants } from "framer-motion";
 import { Check, Copy, ReceiptIndianRupee } from "lucide-react";
+import { motion, type Variants } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";

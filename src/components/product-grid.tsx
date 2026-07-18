@@ -1,7 +1,7 @@
 "use client";
 
 import { IconCake } from "@tabler/icons-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { tweenFast } from "@/lib/motion";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { ComboCard, ProductCard } from "./product-card";

@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Check, Plus } from "lucide-react";
+import { motion } from "motion/react";
 import { useCallback, useState } from "react";
 import { tweenEnter } from "@/lib/motion";
 import type { Dessert } from "@/lib/types";

@@ -1,7 +1,7 @@
 // Shared Framer Motion transition configs. Use these instead of inline
 // stiffness/damping/duration literals in components.
 
-import type { Transition } from "framer-motion";
+import type { Transition } from "motion/react";
 
 /** Snappy spring for small in-layout elements (cart lines, list rows). */
 export const springSnappy: Transition = {

@@ -2,8 +2,8 @@
 
 import { useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
-import { AnimatePresence, motion } from "framer-motion";
 import { Search, X } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { use, useCallback, useEffect, useMemo, useReducer } from "react";
 import { toast } from "sonner";
 

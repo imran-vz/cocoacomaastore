@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Minus, Plus, Trash2, X } from "lucide-react";
+import { motion } from "motion/react";
 import { useEffect, useRef } from "react";
 
 import { useLongPress } from "@/hooks/use-long-press";
