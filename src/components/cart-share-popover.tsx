@@ -115,21 +115,21 @@ export function CartSharePopover({
 						<pre
 							ref={attachOrderText}
 							onScroll={(event) => updateShadows(event.currentTarget)}
-							className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-3 font-mono text-xs leading-relaxed"
+							className="max-h-40 overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-lg bg-muted/50 p-3 font-mono text-xs leading-relaxed"
 						>
 							{orderText}
 						</pre>
 						<div
 							aria-hidden
 							className={cn(
-								"pointer-events-none absolute inset-x-0 top-0 h-6 rounded-t-lg bg-gradient-to-b from-foreground/15 to-transparent transition-opacity duration-200",
+								"pointer-events-none absolute inset-x-0 top-0 h-6 rounded-t-lg bg-linear-to-b from-foreground/15 to-transparent transition-opacity duration-200",
 								showTopShadow ? "opacity-100" : "opacity-0",
 							)}
 						/>
 						<div
 							aria-hidden
 							className={cn(
-								"pointer-events-none absolute inset-x-0 bottom-0 h-6 rounded-b-lg bg-gradient-to-t from-foreground/15 to-transparent transition-opacity duration-200",
+								"pointer-events-none absolute inset-x-0 bottom-0 h-6 rounded-b-lg bg-linear-to-t from-foreground/15 to-transparent transition-opacity duration-200",
 								showBottomShadow ? "opacity-100" : "opacity-0",
 							)}
 						/>
