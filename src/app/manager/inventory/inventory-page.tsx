@@ -1,12 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { use, useCallback } from "react";
-import { Button } from "@/components/ui/button";
+import { use, useCallback, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useInventory } from "@/components/use-inventory";
+import { getInventorySaveLabel, useInventory } from "@/components/use-inventory";
 import type { TodayInventoryRow } from "@/lib/daily-inventory";
 import type { Dessert } from "@/lib/types";
 import { upsertTodayInventory } from "./actions";
@@ -56,6 +55,38 @@ export default function InventoryPage({
 		onSave: upsertTodayInventory,
 		onRefetch,
 	});
+	const [saveButton, SaveButton] = useReactiveButton({
+		label: "Save",
+		loading: { label: "Saving..." },
+		success: { label: "Saved" },
+		feedbackStyle: "brand",
+	});
+	const { setLoading, setSuccess, setError, reset } = saveButton;
+	const { saveSuccessCount, saveError, isSaving } = inventory;
+
+	// Loading is driven by the inventory hook's isSaving flag. When a save ends
+	// without producing a success (failure paths report through saveError to
+	// flash an error below), return the button to idle first.
+	useEffect(() => {
+		if (isSaving) setLoading();
+		else reset({ ifStatus: "loading" });
+	}, [isSaving, setLoading, reset]);
+
+	// Flash the reported message on the button when a save fails. The id bumps
+	// on every failure so repeated identical failures still re-trigger the flash.
+	useEffect(() => {
+		if (saveError) setError(saveError.message);
+	}, [saveError, setError]);
+
+	// Flash success once a save completes; clearing the count (e.g. on edit)
+	// dismisses a still-visible success flash.
+	useEffect(() => {
+		if (saveSuccessCount === null) {
+			reset({ ifStatus: "success" });
+			return;
+		}
+		setSuccess(getInventorySaveLabel(saveSuccessCount));
+	}, [saveSuccessCount, reset, setSuccess]);
 
 	if (inventoryError) {
 		console.error("Failed to fetch today's inventory:", inventoryError);
@@ -68,9 +99,7 @@ export default function InventoryPage({
 					<h1 className="text-2xl font-bold">Inventory</h1>
 					<p className="text-sm text-muted-foreground">Today: {inventory.todayLabel}</p>
 				</div>
-				<Button onClick={inventory.onSaveInventory} disabled={inventory.isSaving || !inventory.hasChanges}>
-					{inventory.isSaving ? <Spinner /> : "Save"}
-				</Button>
+				<SaveButton onClick={inventory.onSaveInventory} disabled={!inventory.hasChanges} />
 			</div>
 
 			<div className="overflow-x-auto">

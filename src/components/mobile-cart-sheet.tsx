@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronUp, Loader2, ShoppingBag, X } from "lucide-react";
+import { ChevronUp, ShoppingBag, X } from "lucide-react";
 import { AnimatePresence, motion, type PanInfo, useDragControls } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -12,9 +12,9 @@ import { cn } from "@/lib/utils";
 import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
 import { CartSharePopover } from "./cart-share-popover";
-import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import type { ReactiveButtonComponent, ReactiveButtonControls } from "./ui/reactive-button";
 import type { SaveCartOrder } from "./use-save-cart-order";
 
 // Swipe past either threshold (distance in px, or flick velocity in px/s)
@@ -33,7 +33,8 @@ interface MobileCartSheetProps {
 	customerName: string;
 	deliveryCost: string;
 	onSaveOrder: SaveCartOrder;
-	isSaving: boolean;
+	saveControls: ReactiveButtonControls;
+	SaveButton: ReactiveButtonComponent;
 }
 
 export function MobileCartSheet({
@@ -46,11 +47,13 @@ export function MobileCartSheet({
 	customerName,
 	deliveryCost,
 	onSaveOrder,
-	isSaving,
+	saveControls,
+	SaveButton,
 }: MobileCartSheetProps) {
 	const [isOpen, setIsOpen] = useState(false);
 	const [shouldRender, setShouldRender] = useState(false);
 	const [showForm, setShowForm] = useState(false);
+	const openSessionRef = useRef(0);
 
 	const [totalTicked, setTotalTicked] = useState(false);
 	const prevTotalRef = useRef(total);
@@ -65,6 +68,7 @@ export function MobileCartSheet({
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
 
 	const handleToggle = useCallback(() => {
+		openSessionRef.current += 1;
 		setIsOpen((prev) => {
 			if (!prev) setShouldRender(true);
 			return !prev;
@@ -83,18 +87,21 @@ export function MobileCartSheet({
 
 	const handleExpandedDragEnd = useCallback((_event: unknown, info: PanInfo) => {
 		if (info.offset.y > SWIPE_DISTANCE || info.velocity.y > SWIPE_VELOCITY) {
+			openSessionRef.current += 1;
 			setIsOpen(false);
 		}
 	}, []);
 
 	const handleCollapsedDragEnd = useCallback((_event: unknown, info: PanInfo) => {
 		if (info.offset.y < -SWIPE_DISTANCE || info.velocity.y < -SWIPE_VELOCITY) {
+			openSessionRef.current += 1;
 			setShouldRender(true);
 			setIsOpen(true);
 		}
 	}, []);
 
 	const handleClose = useCallback(() => {
+		openSessionRef.current += 1;
 		setIsOpen(false);
 	}, []);
 
@@ -103,21 +110,28 @@ export function MobileCartSheet({
 	}, []);
 
 	const handleSaveOrder = async () => {
+		const openSession = openSessionRef.current;
 		await onSaveOrder({
 			customerName,
 			deliveryCost: form.state.values.deliveryCost || "0",
-			closeCart: () => setIsOpen(false),
+			closeCart: () => {
+				if (openSessionRef.current === openSession) setIsOpen(false);
+			},
 		});
 	};
 
 	useEffect(() => {
-		if (cart.length === 0 && isOpen) {
+		if (cart.length === 0 && isOpen && saveControls.status !== "success") {
 			setIsOpen(false);
 		}
+	}, [cart.length, isOpen, saveControls.status]);
+
+	useEffect(() => {
+		if (cart.length === 0 && !isOpen) setShouldRender(false);
 	}, [cart.length, isOpen]);
 
-	// Don't render if cart is empty and not animating out
-	if (cart.length === 0 && !shouldRender) {
+	// Keep save feedback state mounted without showing an empty collapsed cart or blocker.
+	if (cart.length === 0 && !isOpen) {
 		return null;
 	}
 
@@ -339,13 +353,11 @@ export function MobileCartSheet({
 							</div>
 
 							<div className="shrink-0 p-4 border-t bg-background">
-								<Button
+								<SaveButton
 									onClick={handleSaveOrder}
-									disabled={isSaving}
+									disabled={cart.length === 0}
 									className="w-full h-12 text-base font-semibold rounded-xl"
-								>
-									{isSaving ? <Loader2 className="size-5 animate-spin" /> : `Save Order · ₹${total.toFixed(0)}`}
-								</Button>
+								/>
 							</div>
 						</div>
 					</motion.div>

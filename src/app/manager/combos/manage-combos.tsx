@@ -3,6 +3,7 @@
 import { Package, Pencil, Plus } from "lucide-react";
 
 import { ComboFormDialog } from "@/components/combo-form-dialog";
+import { ActionFeedbackCheckOverlay } from "@/components/ui/action-feedback";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,8 +31,16 @@ export default function ManageCombos({
 	baseDesserts: Promise<BaseDessert[]>;
 	modifierDesserts: Promise<ModifierDessert[]>;
 }) {
-	const { filteredCombos, searchTerm, toggleLoadingIds, setSearchTerm, openCreateModal, openEditModal, handleToggle } =
-		useManageCombos({ role: "manager", initialCombos, baseDesserts, modifierDesserts, actions: comboActions });
+	const {
+		filteredCombos,
+		searchTerm,
+		toggleLoadingIds,
+		setSearchTerm,
+		openCreateModal,
+		openEditModal,
+		handleToggle,
+		getToggleFeedback,
+	} = useManageCombos({ role: "manager", initialCombos, baseDesserts, modifierDesserts, actions: comboActions });
 
 	return (
 		<div className="space-y-6">
@@ -53,48 +62,57 @@ export default function ManageCombos({
 			/>
 
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{filteredCombos.map((combo) => (
-					<Card key={combo.id} className={cn("gap-0", !combo.enabled && "opacity-60 bg-muted")}>
-						<CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-							<CardTitle className="text-base font-semibold">{combo.name}</CardTitle>
-							<div className="flex items-center gap-2">
-								<Switch
-									checked={combo.enabled}
-									onCheckedChange={() => handleToggle(combo)}
-									disabled={toggleLoadingIds.has(combo.id)}
-									aria-label="Toggle combo"
-								/>
-								<Button variant="ghost" size="icon" className="size-8" onClick={() => openEditModal(combo)}>
-									<Pencil className="size-4" />
-									<span className="sr-only">Edit combo</span>
-								</Button>
-							</div>
-						</CardHeader>
-						<CardContent>
-							<div className="text-sm text-muted-foreground space-y-1">
-								<p>Base: {combo.baseDessert.name}</p>
-								<p>Price: {combo.overridePrice ? `₹${combo.overridePrice} (Override)` : "Auto-calculated"}</p>
-								<div className="mt-2">
-									<p className="font-medium text-foreground text-xs mb-1">Items:</p>
-									<div className="flex flex-wrap gap-1">
-										{combo.items.length > 0 ? (
-											combo.items.map((item) => (
-												<span
-													key={item.dessertId}
-													className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground"
-												>
-													{item.quantity}x {item.dessert.name}
-												</span>
-											))
-										) : (
-											<span className="text-xs italic">No items</span>
-										)}
+				{filteredCombos.map((combo) => {
+					const toggleFeedback = getToggleFeedback(combo.id);
+					return (
+						<Card key={combo.id} className={cn("gap-0", !combo.enabled && "opacity-60 bg-muted")}>
+							<CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+								<CardTitle className="text-base font-semibold">{combo.name}</CardTitle>
+								<div className="flex items-center gap-2">
+									<div className="relative rounded-full">
+										<Switch
+											checked={combo.enabled}
+											onCheckedChange={() => handleToggle(combo)}
+											disabled={toggleLoadingIds.has(combo.id) || toggleFeedback.phase !== "idle"}
+											aria-label={`Toggle ${combo.name}`}
+										/>
+										<ActionFeedbackCheckOverlay
+											phase={toggleFeedback.phase}
+											announcement={toggleFeedback.announcement}
+										/>
+									</div>
+									<Button variant="ghost" size="icon" className="size-8" onClick={() => openEditModal(combo)}>
+										<Pencil className="size-4" />
+										<span className="sr-only">Edit combo</span>
+									</Button>
+								</div>
+							</CardHeader>
+							<CardContent>
+								<div className="text-sm text-muted-foreground space-y-1">
+									<p>Base: {combo.baseDessert.name}</p>
+									<p>Price: {combo.overridePrice ? `₹${combo.overridePrice} (Override)` : "Auto-calculated"}</p>
+									<div className="mt-2">
+										<p className="font-medium text-foreground text-xs mb-1">Items:</p>
+										<div className="flex flex-wrap gap-1">
+											{combo.items.length > 0 ? (
+												combo.items.map((item) => (
+													<span
+														key={item.dessertId}
+														className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground"
+													>
+														{item.quantity}x {item.dessert.name}
+													</span>
+												))
+											) : (
+												<span className="text-xs italic">No items</span>
+											)}
+										</div>
 									</div>
 								</div>
-							</div>
-						</CardContent>
-					</Card>
-				))}
+							</CardContent>
+						</Card>
+					);
+				})}
 				{filteredCombos.length === 0 && (
 					<div className="col-span-full text-center py-12 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
 						<Package className="size-10 mx-auto mb-3 opacity-20" />

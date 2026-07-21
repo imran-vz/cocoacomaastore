@@ -3,7 +3,6 @@ import { Geist_Mono, Nunito_Sans } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import Navbar from "@/components/navbar";
 import { QueryProvider } from "@/components/query-provider";
-import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 import "./globals.css";
@@ -69,7 +68,6 @@ export default function RootLayout({
 					<QueryProvider>
 						<Navbar />
 						{children}
-						<Toaster position="top-center" mobileOffset={50} />
 					</QueryProvider>
 				</NuqsAdapter>
 			</body>

@@ -10,10 +10,12 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./
 interface ProductGridProps {
 	desserts: Dessert[];
 	combos?: ComboWithDetails[];
-	onAddToCart: (dessert: Dessert) => void;
-	onAddComboToCart?: (combo: ComboWithDetails) => void;
-	onToggleStock?: (e: React.MouseEvent, dessert: Dessert) => void;
+	onAddToCart: (dessert: Dessert) => boolean;
+	onAddComboToCart?: (combo: ComboWithDetails) => boolean;
+	onToggleStock?: (dessert: Dessert) => Promise<string>;
+	onToggleStockComplete?: (dessertId: number) => void;
 	stockToggleLoadingIds?: Set<number>;
+	pinnedStockState?: Map<number, boolean>;
 	searchQuery?: string;
 }
 
@@ -23,12 +25,14 @@ export function ProductGrid({
 	onAddToCart,
 	onAddComboToCart,
 	onToggleStock,
+	onToggleStockComplete,
 	stockToggleLoadingIds = new Set(),
+	pinnedStockState = new Map(),
 	searchQuery = "",
 }: ProductGridProps) {
 	// Helper to check if dessert is unavailable
 	const isUnavailable = (dessert: Dessert) =>
-		dessert.isOutOfStock ||
+		(pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock) ||
 		(!dessert.hasUnlimitedStock && (dessert.inventoryQuantity === undefined || dessert.inventoryQuantity <= 0));
 
 	// Filter desserts based on search
@@ -79,7 +83,7 @@ export function ProductGrid({
 									key={combo.id}
 									initial={{ opacity: 0 }}
 									animate={{ opacity: 1 }}
-									exit={{ opacity: 0, scale: 0.95 }}
+									exit={{ opacity: 0, scale: 0.95, pointerEvents: "none" }}
 									transition={tweenFast}
 								>
 									<ComboCard combo={combo} onAddToCart={() => onAddComboToCart(combo)} compact />
@@ -112,7 +116,9 @@ export function ProductGrid({
 										dessert={dessert}
 										onAddToCart={onAddToCart}
 										onToggleStock={onToggleStock}
+										onToggleStockComplete={onToggleStockComplete}
 										isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+										stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
 										compact
 									/>
 								</motion.div>
@@ -146,7 +152,9 @@ export function ProductGrid({
 												dessert={dessert}
 												onAddToCart={onAddToCart}
 												onToggleStock={onToggleStock}
+												onToggleStockComplete={onToggleStockComplete}
 												isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+												stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
 												compact
 											/>
 										))}

@@ -6,17 +6,15 @@ import {
 	IconFileDescription,
 	IconLogout,
 	IconMenu2,
-	IconRefresh,
 	IconSettings,
 } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTransition } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 
-import { revalidateAllCaches } from "@/app/cache/actions";
+import { CacheRefreshMenuItem, useCacheRefreshController } from "@/components/cache-refresh-menu-item";
 import { authClient, signOut } from "@/lib/auth-client";
 import { tweenEnter } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -32,7 +30,8 @@ import {
 export default function Navbar() {
 	const { data: session } = authClient.useSession();
 	const pathname = usePathname();
-	const [isRefreshing, startRefreshTransition] = useTransition();
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const cacheRefresh = useCacheRefreshController();
 
 	// Hide navbar on admin routes (admin has its own sidebar)
 	if (pathname.startsWith("/admin")) {
@@ -75,7 +74,7 @@ export default function Navbar() {
 
 				{/* Right Side - User Menu */}
 				{session?.user.id && (
-					<DropdownMenu>
+					<DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
 						<DropdownMenuTrigger
 							render={
 								<motion.button
@@ -132,23 +131,7 @@ export default function Navbar() {
 
 							<DropdownMenuSeparator />
 
-							<DropdownMenuItem
-								onClick={() => {
-									startRefreshTransition(async () => {
-										try {
-											await revalidateAllCaches();
-											toast.success("Cache refreshed");
-										} catch {
-											toast.error("Failed to refresh cache");
-										}
-									});
-								}}
-								disabled={isRefreshing}
-								className="cursor-pointer"
-							>
-								<IconRefresh className={cn("size-4", isRefreshing && "animate-spin")} />
-								{isRefreshing ? "Refreshing..." : "Refresh Data"}
-							</DropdownMenuItem>
+							<CacheRefreshMenuItem button={cacheRefresh.RefreshButton} onRefresh={cacheRefresh.refresh} />
 
 							<DropdownMenuItem
 								render={

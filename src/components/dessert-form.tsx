@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { ReactiveButtonComponent, ReactiveButtonControls } from "@/components/ui/reactive-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { distance } from "@/lib/levenshtein-distance";
@@ -20,7 +21,10 @@ type DessertFormProps = {
 	initialData?: Dessert;
 	onSubmit: onSubmit;
 	onDelete?: () => Promise<void>;
-	isLoading?: boolean;
+	/** Controls for the shared submit button (state lives in the parent). */
+	submitControls: ReactiveButtonControls;
+	/** Stable reactive submit button, configured by the parent. */
+	SubmitButton: ReactiveButtonComponent;
 	existingNames?: string[];
 };
 
@@ -70,7 +74,14 @@ function getNameHint(input: string, existingNames: string[]): NameHint | null {
 	return null;
 }
 
-export function DessertForm({ initialData, onSubmit, onDelete, isLoading, existingNames = [] }: DessertFormProps) {
+export function DessertForm({
+	initialData,
+	onSubmit,
+	onDelete,
+	submitControls,
+	SubmitButton,
+	existingNames = [],
+}: DessertFormProps) {
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const [pendingValues, setPendingValues] = useState<Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted"> | null>(
 		null,
@@ -259,13 +270,11 @@ export function DessertForm({ initialData, onSubmit, onDelete, isLoading, existi
 						className={cn("flex-1", initialData ? "" : "invisible")}
 						variant="outline"
 						onClick={onDelete}
-						disabled={isLoading}
+						disabled={submitControls.isBusy || submitControls.status === "success"}
 					>
 						Delete Dessert
 					</Button>
-					<Button type="submit" className="flex-1" disabled={isLoading}>
-						{initialData ? "Update Dessert" : "Add Dessert"}
-					</Button>
+					<SubmitButton type="submit" className="flex-1" />
 				</div>
 			</form>
 

@@ -285,20 +285,19 @@ describe("POS cart behaviour", () => {
 		).toEqual({ customerName: "Grace", deliveryCost: "30" });
 	});
 
-	it("acknowledges and closes an order before refresh and reports refresh failure as a warning", async () => {
+	it("acknowledges an order before refresh without closing presentation state", async () => {
 		const events: string[] = [];
 		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 		const result = await completeAcknowledgedOrder({
 			acknowledgement: { orderId: 42, receipt, replayed: false, refreshWarning: false },
 			acknowledgeSubmittedOrder: () => events.push("acknowledge"),
-			closeCart: () => events.push("close"),
 			refreshInventory: () => {
 				events.push("refresh");
 				throw new Error("refresh unavailable");
 			},
 		});
 
-		expect(events).toEqual(["acknowledge", "close", "refresh"]);
+		expect(events).toEqual(["acknowledge", "refresh"]);
 		expect(result).toEqual({ orderId: 42, receipt, replayed: false, refreshWarning: true });
 		errorSpy.mockRestore();
 	});

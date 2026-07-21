@@ -1,10 +1,9 @@
 "use client";
 
-import { IconDotsVertical, IconLogout, IconRefresh, IconSettings } from "@tabler/icons-react";
+import { IconDotsVertical, IconLogout, IconSettings } from "@tabler/icons-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
-import { revalidateAllCaches } from "@/app/cache/actions";
+import { useState } from "react";
+import { CacheRefreshMenuItem, useCacheRefreshController } from "@/components/cache-refresh-menu-item";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
 	DropdownMenu,
@@ -15,9 +14,9 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
 import { signOut } from "@/lib/auth-client";
-import { Spinner } from "./ui/spinner";
 
 export function NavUser({
 	user,
@@ -27,14 +26,19 @@ export function NavUser({
 		email: string;
 	};
 }) {
-	const [isLoading, setIsLoading] = useState(false);
-	const [isRefreshing, startRefreshTransition] = useTransition();
+	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const cacheRefresh = useCacheRefreshController();
+	const [logout, LogoutButton] = useReactiveButton({
+		label: "Log out",
+		icon: IconLogout,
+		loading: { label: "Logging out..." },
+	});
 	const { isMobile } = useSidebar();
 
 	return (
 		<SidebarMenu>
 			<SidebarMenuItem>
-				<DropdownMenu>
+				<DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
 					<DropdownMenuTrigger
 						render={
 							<SidebarMenuButton
@@ -73,22 +77,7 @@ export function NavUser({
 							</DropdownMenuLabel>
 						</DropdownMenuGroup>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={() => {
-								startRefreshTransition(async () => {
-									try {
-										await revalidateAllCaches();
-										toast.success("Cache refreshed");
-									} catch {
-										toast.error("Failed to refresh cache");
-									}
-								});
-							}}
-							disabled={isRefreshing}
-						>
-							<IconRefresh className={isRefreshing ? "animate-spin" : undefined} />
-							{isRefreshing ? "Refreshing..." : "Refresh Data"}
-						</DropdownMenuItem>
+						<CacheRefreshMenuItem button={cacheRefresh.RefreshButton} onRefresh={cacheRefresh.refresh} />
 
 						<DropdownMenuItem
 							render={
@@ -100,26 +89,19 @@ export function NavUser({
 						/>
 
 						<DropdownMenuSeparator />
-						<DropdownMenuItem
+						<LogoutButton
+							render={<DropdownMenuItem closeOnClick={false} className="cursor-pointer" />}
 							onClick={async () => {
+								const token = logout.setLoading();
 								try {
-									setIsLoading(true);
 									await signOut();
 									window.location.href = "/login";
 								} catch (error) {
 									console.error("Logout error:", error);
-									toast.error("Failed to logout");
-								} finally {
-									setTimeout(() => {
-										setIsLoading(false);
-									}, 2000);
+									logout.setError("Logout failed", { token });
 								}
 							}}
-						>
-							{isLoading ? <Spinner /> : null}
-							<IconLogout />
-							Log out
-						</DropdownMenuItem>
+						/>
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>

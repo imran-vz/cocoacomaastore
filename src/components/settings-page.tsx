@@ -2,15 +2,13 @@
 
 import { IconEye, IconEyeOff, IconKey, IconUser } from "@tabler/icons-react";
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { Separator } from "@/components/ui/separator";
-import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 
 interface SettingsPageProps {
@@ -26,10 +24,15 @@ export function SettingsPage({ user }: SettingsPageProps) {
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
-	const [isLoading, setIsLoading] = useState(false);
 	const [showCurrentPassword, setShowCurrentPassword] = useState(false);
 	const [showNewPassword, setShowNewPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+	const [passwordButton, SaveButton] = useReactiveButton({
+		label: "Change Password",
+		loading: { label: "Changing Password..." },
+		success: { label: "Password changed" },
+		feedbackStyle: "brand",
+	});
 
 	const getInitials = (name: string) => {
 		return name
@@ -42,23 +45,24 @@ export function SettingsPage({ user }: SettingsPageProps) {
 
 	const handleChangePassword = async (e: React.FormEvent) => {
 		e.preventDefault();
+		if (passwordButton.status !== "idle") return;
 
 		if (newPassword.length < 8) {
-			toast.error("New password must be at least 8 characters");
+			passwordButton.setError("New password must be at least 8 characters");
 			return;
 		}
 
 		if (newPassword !== confirmPassword) {
-			toast.error("New passwords do not match");
+			passwordButton.setError("New passwords do not match");
 			return;
 		}
 
 		if (currentPassword === newPassword) {
-			toast.error("New password must be different from current password");
+			passwordButton.setError("New password must be different from current password");
 			return;
 		}
 
-		setIsLoading(true);
+		const token = passwordButton.setLoading();
 
 		try {
 			const { error } = await authClient.changePassword({
@@ -68,19 +72,18 @@ export function SettingsPage({ user }: SettingsPageProps) {
 			});
 
 			if (error) {
-				toast.error(error.message || "Failed to change password");
+				passwordButton.setError(error.message || "Failed to change password", { token });
 				return;
 			}
 
-			toast.success("Password changed successfully");
-			setCurrentPassword("");
-			setNewPassword("");
-			setConfirmPassword("");
+			if (passwordButton.setSuccess(undefined, { token })) {
+				setCurrentPassword("");
+				setNewPassword("");
+				setConfirmPassword("");
+			}
 		} catch (error) {
 			console.error("Password change error:", error);
-			toast.error("An unexpected error occurred");
-		} finally {
-			setIsLoading(false);
+			passwordButton.setError("An unexpected error occurred", { token });
 		}
 	};
 
@@ -203,22 +206,11 @@ export function SettingsPage({ user }: SettingsPageProps) {
 							<p className="text-sm text-destructive">Passwords do not match</p>
 						)}
 
-						<Button
+						<SaveButton
 							type="submit"
 							className="w-full"
-							disabled={
-								isLoading || !currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword
-							}
-						>
-							{isLoading ? (
-								<>
-									<Spinner className="size-4" />
-									Changing Password...
-								</>
-							) : (
-								"Change Password"
-							)}
-						</Button>
+							disabled={!currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+						/>
 					</form>
 				</CardContent>
 			</Card>

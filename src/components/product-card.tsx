@@ -1,17 +1,35 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check, CircleAlert, Plus, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useState } from "react";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { tweenEnter } from "@/lib/motion";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+// Sized icons for the render-prop stock-toggle host (design-system button svg sizing
+// is not applied to custom hosts, so icons carry their own size classes).
+const StockSpinnerIcon = ({ className }: { className?: string }) => (
+	<span
+		aria-hidden="true"
+		className={cn("size-3 animate-spin rounded-full border-2 border-current border-r-transparent", className)}
+	/>
+);
+const StockCheckIcon = ({ className }: { className?: string }) => <Check className={cn("size-3", className)} />;
+const StockAlertIcon = ({ className }: { className?: string }) => <CircleAlert className={cn("size-3", className)} />;
+
+// The round add-indicator flashes green on a successful add and red when the cart
+// reducer rejects the add (out of stock / limit); null is the resting "+" state.
+type AddFlashStatus = "added" | "rejected" | null;
+
 interface ProductCardProps {
 	dessert: Dessert;
-	onAddToCart: (dessert: Dessert) => void;
-	onToggleStock?: (e: React.MouseEvent, dessert: Dessert) => void;
+	onAddToCart: (dessert: Dessert) => boolean;
+	onToggleStock?: (dessert: Dessert) => Promise<string>;
+	onToggleStockComplete?: (dessertId: number) => void;
 	isStockToggleLoading?: boolean;
+	stockToggleIsOutOfStock?: boolean;
 	compact?: boolean;
 }
 
@@ -19,21 +37,51 @@ export function ProductCard({
 	dessert,
 	onAddToCart,
 	onToggleStock,
+	onToggleStockComplete,
 	isStockToggleLoading = false,
+	stockToggleIsOutOfStock,
 	compact = false,
 }: ProductCardProps) {
-	const [showAdded, setShowAdded] = useState(false);
+	const [addFlash, setAddFlash] = useState<AddFlashStatus>(null);
 
 	const inventoryQty = dessert.inventoryQuantity;
 	const isInventoryOutOfStock = !dessert.hasUnlimitedStock && inventoryQty !== undefined && inventoryQty <= 0;
-	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock;
+	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock || isStockToggleLoading;
+	const stockToggleAction = (stockToggleIsOutOfStock ?? dessert.isOutOfStock) ? "Set Available" : "Mark Unavailable";
 
 	const handleAddToCart = useCallback(() => {
 		if (isUnavailable) return;
-		onAddToCart(dessert);
-		setShowAdded(true);
-		setTimeout(() => setShowAdded(false), 600);
+		const ok = onAddToCart(dessert);
+		setAddFlash(ok ? "added" : "rejected");
+		setTimeout(() => setAddFlash(null), 600);
 	}, [dessert, isUnavailable, onAddToCart]);
+
+	const [stockButton, StockButton] = useReactiveButton({
+		label: stockToggleAction,
+		icon: null,
+		loading: { label: "", icon: StockSpinnerIcon },
+		success: { label: "Updated", icon: StockCheckIcon, duration: 1200 },
+		error: { label: "Failed", icon: StockAlertIcon, duration: 1200 },
+		feedbackStyle: "neutral",
+	});
+
+	const handleToggleStock = useCallback(
+		async (e: React.MouseEvent) => {
+			e.stopPropagation();
+			if (!onToggleStock || stockButton.status !== "idle") return;
+			const token = stockButton.setLoading();
+			try {
+				const message = await onToggleStock(dessert);
+				stockButton.setSuccess(message, {
+					token,
+					onComplete: () => onToggleStockComplete?.(dessert.id),
+				});
+			} catch {
+				stockButton.setError(undefined, { token });
+			}
+		},
+		[dessert, onToggleStock, onToggleStockComplete, stockButton],
+	);
 
 	const getStockBadge = () => {
 		if (isUnavailable) {
@@ -70,7 +118,7 @@ export function ProductCard({
 			animate={{ opacity: 1, scale: 1 }}
 			exit={{ opacity: 0, scale: 0.95 }}
 			transition={tweenEnter}
-			className="relative select-none h-full"
+			className="group relative select-none h-full"
 		>
 			<motion.button
 				type="button"
@@ -124,11 +172,17 @@ export function ProductCard({
 								className={cn(
 									"ml-auto flex items-center justify-center rounded-full transition-colors",
 									compact ? "size-7" : "size-9",
-									showAdded ? "bg-green-500 text-white" : "bg-primary/10 text-primary hover:bg-primary/20",
+									addFlash === "added"
+										? "bg-green-500 text-white"
+										: addFlash === "rejected"
+											? "bg-red-500 text-white"
+											: "bg-primary/10 text-primary hover:bg-primary/20",
 								)}
 							>
-								{showAdded ? (
+								{addFlash === "added" ? (
 									<Check className={cn(compact ? "size-3.5" : "size-5")} />
+								) : addFlash === "rejected" ? (
+									<X className={cn(compact ? "size-3.5" : "size-5")} />
 								) : (
 									<Plus className={cn(compact ? "size-3.5" : "size-5")} />
 								)}
@@ -140,29 +194,26 @@ export function ProductCard({
 
 			{/* Stock Toggle (for managers) */}
 			{onToggleStock && (
-				<motion.button
-					type="button"
-					onClick={(e) => onToggleStock(e, dessert)}
-					disabled={isStockToggleLoading}
-					whileTap={{ scale: 0.95 }}
-					className={cn(
-						"absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full",
-						"text-[10px] font-medium px-2 py-1 rounded-b-lg",
-						"bg-muted/80 backdrop-blur-sm border border-t-0 border-border",
-						"opacity-0 group-hover:opacity-100 transition-opacity",
-						dessert.isOutOfStock
-							? "text-green-600 hover:text-green-700"
-							: "text-muted-foreground hover:text-destructive",
-					)}
-				>
-					{isStockToggleLoading ? (
-						<span className="size-3 animate-spin rounded-full border-2 border-current border-r-transparent inline-block" />
-					) : dessert.isOutOfStock ? (
-						"Set Available"
-					) : (
-						"Mark Unavailable"
-					)}
-				</motion.button>
+				<StockButton
+					onClick={handleToggleStock}
+					aria-label={`${stockToggleAction} ${dessert.name}`}
+					render={
+						<motion.button
+							type="button"
+							whileTap={{ scale: 0.95 }}
+							className={cn(
+								"absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full",
+								"text-[10px] font-medium px-2 py-1 rounded-b-lg",
+								"bg-muted/80 backdrop-blur-sm border border-t-0 border-border",
+								"opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none",
+								stockButton.status !== "idle" && "opacity-100",
+								dessert.isOutOfStock
+									? "text-green-600 hover:text-green-700"
+									: "text-muted-foreground hover:text-destructive",
+							)}
+						/>
+					}
+				/>
 			)}
 		</motion.div>
 	);
@@ -191,21 +242,21 @@ interface ComboCardProps {
 		}>;
 		overridePrice: number | null;
 	};
-	onAddToCart: () => void;
+	onAddToCart: () => boolean;
 	compact?: boolean;
 }
 
 export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProps) {
-	const [showAdded, setShowAdded] = useState(false);
+	const [addFlash, setAddFlash] = useState<AddFlashStatus>(null);
 
 	// Compute display price
 	const modifierTotal = combo.items.reduce((sum, item) => sum + item.dessert.price * item.quantity, 0);
 	const displayPrice = combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
 
 	const handleAddToCart = useCallback(() => {
-		onAddToCart();
-		setShowAdded(true);
-		setTimeout(() => setShowAdded(false), 600);
+		const ok = onAddToCart();
+		setAddFlash(ok ? "added" : "rejected");
+		setTimeout(() => setAddFlash(null), 600);
 	}, [onAddToCart]);
 
 	const comboDescription =
@@ -223,7 +274,7 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 			animate={{ opacity: 1, scale: 1 }}
 			exit={{ opacity: 0, scale: 0.95 }}
 			transition={tweenEnter}
-			className="relative select-none h-full"
+			className="group relative select-none h-full"
 		>
 			<motion.button
 				type="button"
@@ -268,11 +319,17 @@ export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProp
 							className={cn(
 								"flex items-center justify-center rounded-full transition-colors",
 								compact ? "size-7" : "size-9",
-								showAdded ? "bg-green-500 text-white" : "bg-primary text-primary-foreground",
+								addFlash === "added"
+									? "bg-green-500 text-white"
+									: addFlash === "rejected"
+										? "bg-red-500 text-white"
+										: "bg-primary text-primary-foreground",
 							)}
 						>
-							{showAdded ? (
+							{addFlash === "added" ? (
 								<Check className={cn(compact ? "size-3.5" : "size-5")} />
+							) : addFlash === "rejected" ? (
+								<X className={cn(compact ? "size-3.5" : "size-5")} />
 							) : (
 								<Plus className={cn(compact ? "size-3.5" : "size-5")} />
 							)}

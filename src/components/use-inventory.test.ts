@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDirtyInventoryUpdates } from "./use-inventory";
+import { buildDirtyInventoryUpdates, getInventorySaveLabel } from "./use-inventory";
 
 describe("buildDirtyInventoryUpdates", () => {
 	it("emits only a changed enabled limited-stock row with its observed quantity", () => {
@@ -52,5 +52,13 @@ describe("buildDirtyInventoryUpdates", () => {
 		expect(updates[0]).toEqual({ dessertId: 1, expectedQuantity: 1, quantity: 1.5 });
 		expect(updates[1]).toMatchObject({ dessertId: 2, expectedQuantity: 0 });
 		expect(updates[1]?.quantity).toBeNaN();
+	});
+});
+
+describe("getInventorySaveLabel", () => {
+	it("builds the shared visible and announcement label", () => {
+		expect(getInventorySaveLabel(0)).toBe("Saved 0 items");
+		expect(getInventorySaveLabel(1)).toBe("Saved 1 item");
+		expect(getInventorySaveLabel(3)).toBe("Saved 3 items");
 	});
 });

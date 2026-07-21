@@ -1,15 +1,15 @@
 "use client";
 
-import { useForm } from "@tanstack/react-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { use, useCallback, useEffect, useMemo, useReducer } from "react";
-import { toast } from "sonner";
-
+import { use, useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { toggleOutOfStock } from "@/app/desserts/actions";
 import type { UpiAccount } from "@/db/schema";
 import {
+	addComboToCart,
+	addDessertToCart,
 	applyPosCartEvent,
 	initialPosCartState,
 	reconcileSubmittedOrderFields,
@@ -92,6 +92,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		removeStockToggleLoadingId,
 		updateDessert,
 	} = useDessertStore();
+	const [pinnedStockState, setPinnedStockState] = useState<Map<number, boolean>>(new Map());
 
 	useEffect(() => {
 		setLocalDesserts(items);
@@ -101,7 +102,9 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		const dessertById = new Map(localDesserts.map((dessert) => [dessert.id, dessert]));
 		const isAvailable = (dessertId: number) => {
 			const dessert = dessertById.get(dessertId);
-			return Boolean(dessert?.enabled && !dessert.isDeleted && !dessert.isOutOfStock);
+			return Boolean(
+				dessert?.enabled && !dessert.isDeleted && !dessert.isOutOfStock && !stockToggleLoadingIds.has(dessertId),
+			);
 		};
 
 		return combosList.filter(
@@ -111,12 +114,19 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 				isAvailable(combo.baseDessertId) &&
 				combo.items.every((item) => isAvailable(item.dessertId)),
 		);
-	}, [combosList, localDesserts]);
+	}, [combosList, localDesserts, stockToggleLoadingIds]);
 
 	const form = useForm({
 		defaultValues: { name: "", deliveryCost: "" },
 		validators: { onChange: cartFormSchema },
 	});
+
+	// Reactive delivery cost so the save button's total label stays live as it is typed.
+	const deliveryCostValue = useStore(form.store, (state) => state.values.deliveryCost);
+	const saveOrderTotal = useMemo(
+		() => cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, Number.parseFloat(deliveryCostValue || "0")),
+		[cart, deliveryCostValue],
+	);
 
 	const dessertsWithInventory = useMemo(
 		() =>
@@ -133,22 +143,22 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		await refetchInventory();
 	}, [refetchInventory]);
 
-	useEffect(() => {
-		if (cartState.lastError) toast.error(cartState.lastError.message);
-	}, [cartState.lastError]);
-
 	const addToCart = useCallback(
 		(dessert: Dessert) => {
+			const result = addDessertToCart(cart, dessert, inventoryByDessertId);
 			dispatchCart({ type: "add-dessert", dessert, inventoryByDessertId });
+			return result.ok;
 		},
-		[inventoryByDessertId],
+		[cart, inventoryByDessertId],
 	);
 
 	const addCombo = useCallback(
 		(combo: ComboWithDetails) => {
+			const result = addComboToCart(cart, combo, inventoryByDessertId);
 			dispatchCart({ type: "add-combo", combo, inventoryByDessertId });
+			return result.ok;
 		},
-		[inventoryByDessertId],
+		[cart, inventoryByDessertId],
 	);
 
 	const removeFromCart = useCallback((cartLineId: string) => {
@@ -183,34 +193,84 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 		form.reset();
 	}, [form]);
 
-	const { isSaving, saveOrder } = useSaveCartOrder({
+	const { saveControls, SaveButton, saveOrder, registerCartInteraction } = useSaveCartOrder({
 		cart,
+		total: saveOrderTotal,
 		intentVersion: cartState.intentVersion,
 		acknowledgeSubmittedOrder,
 		refreshInventory,
 	});
 
-	const handleToggleStock = useCallback(
-		async (e: React.MouseEvent, dessert: Dessert) => {
-			e.stopPropagation();
+	const addToCartWithCartInteraction = useCallback(
+		(dessert: Dessert) => {
+			registerCartInteraction();
+			return addToCart(dessert);
+		},
+		[addToCart, registerCartInteraction],
+	);
+	const addComboWithCartInteraction = useCallback(
+		(combo: ComboWithDetails) => {
+			registerCartInteraction();
+			return addCombo(combo);
+		},
+		[addCombo, registerCartInteraction],
+	);
+	const removeWithCartInteraction = useCallback(
+		(cartLineId: string) => {
+			registerCartInteraction();
+			removeFromCart(cartLineId);
+		},
+		[registerCartInteraction, removeFromCart],
+	);
+	const updateWithCartInteraction = useCallback(
+		(cartLineId: string, quantity: number) => {
+			registerCartInteraction();
+			updateQuantity(cartLineId, quantity);
+		},
+		[registerCartInteraction, updateQuantity],
+	);
+	const clearWithCartInteraction = useCallback(() => {
+		registerCartInteraction();
+		clearCart();
+	}, [registerCartInteraction, clearCart]);
 
+	// Runs the optimistic stock toggle and server call. Resolves with the announcement
+	// message so the per-card button can flash success; throws (after rollback) on failure.
+	// The pin is held until the card's success flash completes (see clearPinnedStock).
+	const toggleStock = useCallback(
+		async (dessert: Dessert): Promise<string> => {
 			const nextIsOutOfStock = !dessert.isOutOfStock;
+			setPinnedStockState((current) => new Map(current).set(dessert.id, dessert.isOutOfStock));
 			addStockToggleLoadingId(dessert.id);
 			updateDessert(dessert.id, { isOutOfStock: nextIsOutOfStock });
 
 			try {
 				await toggleOutOfStock(dessert.id, nextIsOutOfStock);
-				toast.success(`Marked as ${nextIsOutOfStock ? "out of stock" : "back in stock"}`);
+				removeStockToggleLoadingId(dessert.id);
+				return `${dessert.name} marked ${nextIsOutOfStock ? "out of stock" : "available"}`;
 			} catch (error) {
-				toast.error("Failed to update stock status");
 				console.error("Failed to toggle stock status:", error);
 				updateDessert(dessert.id, { isOutOfStock: dessert.isOutOfStock });
-			} finally {
+				setPinnedStockState((current) => {
+					const next = new Map(current);
+					next.delete(dessert.id);
+					return next;
+				});
 				removeStockToggleLoadingId(dessert.id);
+				throw error;
 			}
 		},
-		[addStockToggleLoadingId, updateDessert, removeStockToggleLoadingId],
+		[addStockToggleLoadingId, removeStockToggleLoadingId, updateDessert],
 	);
+
+	const clearPinnedStock = useCallback((dessertId: number) => {
+		setPinnedStockState((current) => {
+			if (!current.has(dessertId)) return current;
+			const next = new Map(current);
+			next.delete(dessertId);
+			return next;
+		});
+	}, []);
 
 	return (
 		<form.Subscribe selector={(state) => state.values}>
@@ -266,10 +326,12 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 								<ProductGrid
 									desserts={dessertsWithInventory}
 									combos={availableCombos}
-									onAddToCart={addToCart}
-									onAddComboToCart={addCombo}
-									onToggleStock={handleToggleStock}
+									onAddToCart={addToCartWithCartInteraction}
+									onAddComboToCart={addComboWithCartInteraction}
+									onToggleStock={toggleStock}
+									onToggleStockComplete={clearPinnedStock}
 									stockToggleLoadingIds={stockToggleLoadingIds}
+									pinnedStockState={pinnedStockState}
 									searchQuery={searchQuery}
 								/>
 							</div>
@@ -279,15 +341,16 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 						<div className="md:hidden">
 							<MobileCartSheet
 								cart={cart}
-								updateQuantity={updateQuantity}
-								removeFromCart={removeFromCart}
+								updateQuantity={updateWithCartInteraction}
+								removeFromCart={removeWithCartInteraction}
 								form={form}
 								total={total}
 								upiAccounts={upiAccountsList}
 								customerName={customerName}
 								deliveryCost={deliveryCost}
 								onSaveOrder={saveOrder}
-								isSaving={isSaving}
+								saveControls={saveControls}
+								SaveButton={SaveButton}
 							/>
 						</div>
 
@@ -295,14 +358,14 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 						<div className="hidden md:block md:w-85 lg:w-95 xl:w-100 shrink-0 sticky top-13 h-[calc(100vh-52px-24px)] py-4 pr-4">
 							<TabletCartSidebar
 								cart={cart}
-								updateQuantity={updateQuantity}
-								removeFromCart={removeFromCart}
+								updateQuantity={updateWithCartInteraction}
+								removeFromCart={removeWithCartInteraction}
 								form={form}
 								total={total}
 								upiAccounts={upiAccountsList}
-								clearCart={clearCart}
+								clearCart={clearWithCartInteraction}
 								onSaveOrder={saveOrder}
-								isSaving={isSaving}
+								SaveButton={SaveButton}
 								customerName={customerName}
 								deliveryCost={deliveryCost}
 							/>

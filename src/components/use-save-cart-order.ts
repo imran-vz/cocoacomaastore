@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useCallback, useRef } from "react";
 import { createOrderWithLines } from "@/app/manager/orders/actions";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import type { OrderSubmissionIdentity, SubmittedOrderSnapshot } from "@/lib/pos-cart-behaviour";
 import { completeAcknowledgedOrder, resolveOrderSubmissionIdentity, saveCartOrder } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
@@ -24,22 +24,37 @@ function snapshotCart(cart: readonly CartLine[]) {
 
 export function useSaveCartOrder({
 	cart,
+	total,
 	intentVersion,
 	acknowledgeSubmittedOrder,
 	refreshInventory,
 }: {
 	cart: CartLine[];
+	total: number;
 	intentVersion: number;
 	acknowledgeSubmittedOrder: (snapshot: SubmittedOrderSnapshot) => void;
 	refreshInventory: () => void | Promise<void>;
 }) {
 	const submissionIdentityRef = useRef<OrderSubmissionIdentity | null>(null);
-	const inFlightRef = useRef(false);
-	const [isSaving, setIsSaving] = useState(false);
+	const inFlightRef = useRef<number | null>(null);
+	const cartInteractionVersionRef = useRef(0);
+
+	const [saveControls, SaveButton] = useReactiveButton({
+		label: cart.length === 0 ? "Add items to save" : `Save Order · ₹${total.toFixed(0)}`,
+		loading: { label: "Saving order..." },
+		success: { duration: 1200 },
+		feedbackStyle: "brand",
+	});
+	const { setLoading, setSuccess, setError, reset } = saveControls;
+
+	const registerCartInteraction = useCallback(() => {
+		cartInteractionVersionRef.current += 1;
+		reset({ ifStatus: "success" });
+	}, [reset]);
 
 	const saveOrder = useCallback<SaveCartOrder>(
 		async ({ customerName, deliveryCost, closeCart }) => {
-			if (cart.length === 0 || inFlightRef.current) return;
+			if (cart.length === 0 || inFlightRef.current !== null) return;
 
 			const snapshot: SubmittedOrderSnapshot = {
 				cart: snapshotCart(cart),
@@ -47,8 +62,15 @@ export function useSaveCartOrder({
 				deliveryCost,
 				intentVersion,
 			};
-			inFlightRef.current = true;
-			setIsSaving(true);
+			const cartInteractionVersion = cartInteractionVersionRef.current;
+			const token = setLoading();
+			inFlightRef.current = token;
+			const releaseSave = () => {
+				if (inFlightRef.current !== token) return false;
+				inFlightRef.current = null;
+				return true;
+			};
+
 			try {
 				const submissionIdentity = resolveOrderSubmissionIdentity(
 					submissionIdentityRef.current,
@@ -64,43 +86,49 @@ export function useSaveCartOrder({
 					submissionId: submissionIdentity.submissionId,
 				});
 				if (!result.ok) {
-					toast.error(result.error);
+					setError(result.error, { token });
 					return;
 				}
 				if (result.receipt.id !== result.orderId) {
-					toast.error("The saved order receipt could not be verified. Please retry.");
+					setError("Receipt mismatch — retry", { token });
 					return;
 				}
 
 				const completion = completeAcknowledgedOrder({
 					acknowledgement: result,
 					acknowledgeSubmittedOrder: () => acknowledgeSubmittedOrder(snapshot),
-					closeCart,
 					refreshInventory,
 				});
 				submissionIdentityRef.current = null;
-				// Free the button as soon as the server confirms; the inventory
-				// refetch in `completion` only gates the warning toasts below.
-				inFlightRef.current = false;
-				setIsSaving(false);
-				toast.success(result.replayed ? `Order #${result.orderId} already saved` : `Order #${result.orderId} saved!`);
+				releaseSave();
+				const message = result.replayed ? `Order #${result.orderId} already saved` : `Order #${result.orderId} saved`;
+				setSuccess(message, {
+					token,
+					onComplete: () => {
+						if (cartInteractionVersionRef.current === cartInteractionVersion) closeCart?.();
+					},
+				});
 
 				const acknowledgement = await completion;
 				if (result.refreshWarning) {
-					toast.warning("Order saved, but reporting refresh failed");
+					console.warn("Order saved, but reporting refresh failed");
 				} else if (acknowledgement.refreshWarning) {
-					toast.warning("Order saved, but inventory refresh failed");
+					console.warn("Order saved, but inventory refresh failed");
 				}
 			} catch (error) {
 				console.error("Failed to save order:", error);
-				toast.error(error instanceof Error ? error.message : "Failed to save order");
+				setError(error instanceof Error ? error.message : "Failed to save order", { token });
 			} finally {
-				inFlightRef.current = false;
-				setIsSaving(false);
+				releaseSave();
 			}
 		},
-		[acknowledgeSubmittedOrder, cart, intentVersion, refreshInventory],
+		[acknowledgeSubmittedOrder, cart, intentVersion, refreshInventory, setLoading, setSuccess, setError],
 	);
 
-	return { isSaving, saveOrder };
+	return {
+		saveControls,
+		SaveButton,
+		saveOrder,
+		registerCartInteraction,
+	};
 }

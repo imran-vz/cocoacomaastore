@@ -298,11 +298,9 @@ export function resolveOrderSubmissionIdentity(
 export async function completeAcknowledgedOrder({
 	acknowledgement,
 	acknowledgeSubmittedOrder,
-	closeCart,
 	refreshInventory,
 }: CompleteAcknowledgedOrderInput): Promise<OrderSaveAcknowledgement> {
 	acknowledgeSubmittedOrder();
-	closeCart?.();
 
 	try {
 		await refreshInventory();

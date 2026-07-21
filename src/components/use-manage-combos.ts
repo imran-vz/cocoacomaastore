@@ -1,7 +1,9 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { use, useEffect } from "react";
+import { use, useEffect, useState } from "react";
+
+import { useActionFeedback } from "@/components/ui/action-feedback";
 
 import type { BaseDessert, ModifierDessert } from "@/lib/combo-service";
 import type { ComboWithDetails } from "@/lib/types";
@@ -80,6 +82,36 @@ export function useManageCombos({
 		console.error(`Failed to fetch ${role} combos:`, error);
 	}
 
+	const [pinnedEnabled, setPinnedEnabled] = useState<Map<number, boolean>>(new Map());
+	const { getState, start, succeed, fail } = useActionFeedback();
+
+	const handleToggleWithFeedback = async (combo: ComboWithDetails) => {
+		const key = `combo-toggle-${combo.id}`;
+		setPinnedEnabled((current) => new Map(current).set(combo.id, combo.enabled));
+		start(key);
+		const result = await handleToggle(combo);
+		if (!result.ok) {
+			fail(key, { duration: 1600, announcement: `Failed to toggle ${combo.name}` });
+			setPinnedEnabled((current) => {
+				const next = new Map(current);
+				next.delete(combo.id);
+				return next;
+			});
+			return;
+		}
+		succeed(key, {
+			duration: 1200,
+			announcement: `${combo.name} ${result.enabled ? "enabled" : "disabled"}`,
+			onComplete: () => {
+				setPinnedEnabled((current) => {
+					const next = new Map(current);
+					next.delete(combo.id);
+					return next;
+				});
+			},
+		});
+	};
+
 	const filteredCombos = combos.filter((combo) => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	return {
@@ -89,6 +121,8 @@ export function useManageCombos({
 		setSearchTerm,
 		openCreateModal,
 		openEditModal,
-		handleToggle,
+		handleToggle: handleToggleWithFeedback,
+		getToggleFeedback: (comboId: number) => getState(`combo-toggle-${comboId}`),
+		getSectionEnabled: (combo: ComboWithDetails) => pinnedEnabled.get(combo.id) ?? combo.enabled,
 	};
 }

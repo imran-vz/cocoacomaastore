@@ -1,16 +1,28 @@
 "use client";
 
-import { Check, ChevronDown, Copy, ReceiptIndianRupee } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, Copy, ReceiptIndianRupee } from "lucide-react";
 import { motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { useSelectedUpiAccount } from "@/components/use-selected-upi-account";
 import type { UpiAccount } from "@/db/schema";
 import { copyQrSvgToClipboard } from "@/lib/copy-qr-to-clipboard";
 import { getOrderCopyText, getUpiPaymentText } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+const CopyIcon = ({ className }: { className?: string }) => <Copy className={cn("size-3.5", className)} />;
+const RupeeIcon = ({ className }: { className?: string }) => (
+	<ReceiptIndianRupee className={cn("size-3.5", className)} />
+);
+const CheckIcon = ({ className }: { className?: string }) => <Check className={cn("size-3.5", className)} />;
+const AlertIcon = ({ className }: { className?: string }) => <CircleAlert className={cn("size-3.5", className)} />;
+
+const buttonHostClass = cn(
+	"flex items-center justify-center rounded-lg border py-2 px-3 text-xs font-medium transition-colors",
+	"bg-muted/50 hover:bg-muted",
+);
 
 export function CartCopyActions({
 	cart,
@@ -24,32 +36,49 @@ export function CartCopyActions({
 	upiAccounts: UpiAccount[];
 }) {
 	const [isOpen, setIsOpen] = useState(false);
-	const [copiedOrder, setCopiedOrder] = useState(false);
-	const [copiedQr, setCopiedQr] = useState(false);
 	const qrCodeRef = useRef<SVGSVGElement>(null);
+	const [orderButton, OrderButton] = useReactiveButton({
+		label: "Copy Order",
+		icon: CopyIcon,
+		loading: { label: "Copying...", icon: CopyIcon },
+		success: { label: "Copied", icon: CheckIcon, duration: 2000 },
+		error: { label: "Failed", icon: AlertIcon },
+		feedbackStyle: "neutral",
+	});
+	const [qrButton, QrButton] = useReactiveButton({
+		label: "Copy QR",
+		icon: RupeeIcon,
+		loading: { label: "Copying...", icon: RupeeIcon },
+		success: { label: "Copied", icon: CheckIcon, duration: 2000 },
+		error: { label: "Failed", icon: AlertIcon },
+		feedbackStyle: "neutral",
+	});
 	const { selectedAccount, selectedUpiId, setSelectedUpiId } = useSelectedUpiAccount(upiAccounts);
 
 	const upiPaymentText = selectedAccount ? getUpiPaymentText(total, cart, selectedAccount.upiId) : "";
 
 	const copyOrderDetails = async () => {
-		if (cart.length === 0) return;
-		const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
-		await navigator.clipboard.writeText(getOrderCopyText(cart, total, deliveryCostAmount));
-		setCopiedOrder(true);
-		toast.info("Order copied!", { duration: 1000, style: { "--toast-duration": "1000ms" } as React.CSSProperties });
-		setTimeout(() => setCopiedOrder(false), 2000);
+		if (cart.length === 0 || orderButton.isBusy) return;
+		const token = orderButton.setLoading();
+		try {
+			const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
+			await navigator.clipboard.writeText(getOrderCopyText(cart, total, deliveryCostAmount));
+			orderButton.setSuccess(undefined, { token, duration: 2000 });
+		} catch (error) {
+			console.error("Failed to copy order:", error);
+			orderButton.setError("Failed", { token });
+		}
 	};
 
 	const copyQrCode = async () => {
-		if (!qrCodeRef.current) return;
+		if (!qrCodeRef.current || qrButton.isBusy) return;
+		const token = qrButton.setLoading();
 		try {
 			await copyQrSvgToClipboard(qrCodeRef.current);
-			setCopiedQr(true);
-			toast.info("QR copied!", { duration: 1000, style: { "--toast-duration": "1000ms" } as React.CSSProperties });
-			setTimeout(() => setCopiedQr(false), 2000);
+			qrButton.setSuccess(undefined, { token, duration: 2000 });
 		} catch (error) {
 			console.error("Failed to copy QR:", error);
-			toast.error("Failed to copy QR code");
+			qrButton.setError("Failed", { token });
 		}
 	};
 
@@ -89,33 +118,17 @@ export function CartCopyActions({
 						)}
 
 						<div className="grid grid-cols-2 gap-2">
-							<motion.button
-								type="button"
-								whileTap={{ scale: 0.95 }}
+							<OrderButton
 								onClick={copyOrderDetails}
-								className={cn(
-									"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-colors",
-									copiedOrder ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
-								)}
-							>
-								{copiedOrder ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-								<span>{copiedOrder ? "Copied!" : "Copy Order"}</span>
-							</motion.button>
+								render={<motion.button type="button" whileTap={{ scale: 0.95 }} className={buttonHostClass} />}
+							/>
 
-							<motion.button
-								type="button"
-								whileTap={{ scale: 0.95 }}
+							<QrButton
 								onClick={copyQrCode}
 								disabled={!upiPaymentText}
-								className={cn(
-									"flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border text-xs font-medium transition-colors",
-									copiedQr ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
-									!upiPaymentText && "opacity-50",
-								)}
-							>
-								{copiedQr ? <Check className="size-3.5" /> : <ReceiptIndianRupee className="size-3.5" />}
-								<span>{copiedQr ? "Copied!" : "Copy QR"}</span>
-							</motion.button>
+								className={cn(!upiPaymentText && "opacity-50")}
+								render={<motion.button type="button" whileTap={{ scale: 0.95 }} className={buttonHostClass} />}
+							/>
 						</div>
 
 						{upiPaymentText && <QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />}

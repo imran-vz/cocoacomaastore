@@ -1,15 +1,15 @@
 "use client";
 
-import { Loader2, ShoppingBag, Trash2 } from "lucide-react";
+import { ShoppingBag, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import type { UpiAccount } from "@/db/schema";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";
 import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
-import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import type { ReactiveButtonComponent } from "./ui/reactive-button";
 import { ScrollArea } from "./ui/scroll-area";
 import type { SaveCartOrder } from "./use-save-cart-order";
 
@@ -23,7 +23,7 @@ interface TabletCartSidebarProps {
 	upiAccounts: UpiAccount[];
 	clearCart: () => void;
 	onSaveOrder: SaveCartOrder;
-	isSaving: boolean;
+	SaveButton: ReactiveButtonComponent;
 	customerName: string;
 	deliveryCost: string;
 }
@@ -37,7 +37,7 @@ export function TabletCartSidebar({
 	upiAccounts,
 	clearCart,
 	onSaveOrder,
-	isSaving,
+	SaveButton,
 	customerName,
 	deliveryCost,
 }: TabletCartSidebarProps) {
@@ -166,19 +166,11 @@ export function TabletCartSidebar({
 					<CartCopyActions cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
 				)}
 
-				<Button
+				<SaveButton
 					onClick={handleSaveOrder}
-					disabled={cart.length === 0 || isSaving}
+					disabled={cart.length === 0}
 					className="w-full h-11 text-sm font-semibold rounded-xl"
-				>
-					{isSaving ? (
-						<Loader2 className="size-4 animate-spin" />
-					) : cart.length === 0 ? (
-						"Add items to save"
-					) : (
-						`Save Order · ₹${total.toFixed(0)}`
-					)}
-				</Button>
+				/>
 			</div>
 		</div>
 	);

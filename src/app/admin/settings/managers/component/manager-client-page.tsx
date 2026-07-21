@@ -2,13 +2,13 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
-import { use, useId, useState } from "react";
-import { toast } from "sonner";
+import { use, useId, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { authClient } from "@/lib/auth-client";
@@ -45,6 +45,7 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 		gcTime: 10 * 60_000,
 	});
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
+	const submitTokenRef = useRef<number | null>(null);
 	const [formData, setFormData] = useState({
 		name: "",
 		email: "",
@@ -52,33 +53,52 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 		role: "user" as "admin" | "user",
 	});
 
+	const [submitButton, SubmitButton] = useReactiveButton({
+		label: "Create Manager",
+		loading: { label: "Creating..." },
+		success: { label: "Created" },
+	});
+
+	const resetForm = () => setFormData({ name: "", email: "", password: "", role: "user" });
+
 	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
+		if (submitTokenRef.current !== null || submitButton.status !== "idle") return;
 
-		const result = await createManager(formData);
+		const token = submitButton.setLoading();
+		submitTokenRef.current = token;
+		try {
+			const result = await createManager(formData);
+			if (!result.success) {
+				if (submitButton.setError(result.error || "Failed to create", { token })) {
+					submitTokenRef.current = null;
+				}
+				return;
+			}
 
-		if (result.success) {
-			toast.success("Manager created successfully");
-			setIsDialogOpen(false);
-			setFormData({ name: "", email: "", password: "", role: "user" });
 			await queryClient.invalidateQueries({ queryKey: managersQueryKey });
-		} else {
-			toast.error(result.error || "Failed to create manager");
-		}
-	};
-
-	const handleDelete = async (id: string, name: string) => {
-		if (!confirm(`Are you sure you want to delete ${name}?`)) {
-			return;
-		}
-
-		const result = await deleteManager(id);
-
-		if (result.success) {
-			toast.success("Manager deleted successfully");
-			await queryClient.invalidateQueries({ queryKey: managersQueryKey });
-		} else {
-			toast.error(result.error || "Failed to delete manager");
+			if (submitTokenRef.current !== token) return;
+			if (
+				submitButton.setSuccess(undefined, {
+					token,
+					duration: 900,
+					onComplete: () => {
+						setIsDialogOpen(false);
+						resetForm();
+					},
+				})
+			) {
+				submitTokenRef.current = null;
+			}
+		} catch (error) {
+			console.error("Failed to create manager:", error);
+			if (submitButton.setError("Failed to create", { token })) {
+				submitTokenRef.current = null;
+			}
+		} finally {
+			if (submitTokenRef.current === token) {
+				submitTokenRef.current = null;
+			}
 		}
 	};
 
@@ -93,7 +113,18 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 					<h2 className="text-3xl font-bold tracking-tight">Managers</h2>
 					<p className="text-muted-foreground">Manage admin and manager accounts</p>
 				</div>
-				<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+				<Dialog
+					open={isDialogOpen}
+					onOpenChange={(open) => {
+						setIsDialogOpen(open);
+						if (!open) {
+							submitButton.reset();
+							if (submitTokenRef.current === null) {
+								resetForm();
+							}
+						}
+					}}
+				>
 					<Button type="button" onClick={() => setIsDialogOpen(true)}>
 						<Plus className="mr-2 h-4 w-4" />
 						Add Manager
@@ -153,9 +184,7 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 									</SelectContent>
 								</Select>
 							</div>
-							<Button type="submit" className="w-full">
-								Create Manager
-							</Button>
+							<SubmitButton type="submit" className="w-full" />
 						</form>
 					</DialogContent>
 				</Dialog>
@@ -195,16 +224,11 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 									</TableCell>
 									<TableCell>{new Date(manager.createdAt).toLocaleDateString()}</TableCell>
 									<TableCell className="text-right">
-										<Button
-											variant="ghost"
-											size="sm"
-											disabled={Boolean(deleteBlockedReason)}
-											title={deleteBlockedReason}
-											aria-label={deleteBlockedReason ?? `Delete ${manager.name}`}
-											onClick={() => handleDelete(manager.id, manager.name)}
-										>
-											<Trash2 className="h-4 w-4" />
-										</Button>
+										<DeleteManagerButton
+											manager={manager}
+											disabledReason={deleteBlockedReason}
+											onDeleted={() => queryClient.invalidateQueries({ queryKey: managersQueryKey })}
+										/>
 									</TableCell>
 								</TableRow>
 							);
@@ -213,5 +237,57 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 				</Table>
 			</div>
 		</div>
+	);
+}
+
+function DeleteManagerButton({
+	manager,
+	disabledReason,
+	onDeleted,
+}: {
+	manager: ManagerRow;
+	disabledReason?: string;
+	onDeleted: () => Promise<unknown>;
+}) {
+	const [deleteButton, DeleteButton] = useReactiveButton({
+		label: "",
+		icon: Trash2,
+		loading: { label: "" },
+		error: { label: "Failed" },
+		feedbackStyle: "neutral",
+	});
+
+	const handleDelete = async () => {
+		if (deleteButton.status !== "idle") return;
+		if (!confirm(`Are you sure you want to delete ${manager.name}?`)) {
+			return;
+		}
+
+		const token = deleteButton.setLoading();
+		try {
+			const result = await deleteManager(manager.id);
+			if (!result.success) {
+				console.error("Failed to delete manager:", result.error);
+				deleteButton.setError("Failed", { token });
+				return;
+			}
+
+			// Success: the row disappears once the list refetches — that is the feedback.
+			await onDeleted();
+		} catch (error) {
+			console.error("Failed to delete manager:", error);
+			deleteButton.setError("Failed", { token });
+		}
+	};
+
+	return (
+		<DeleteButton
+			variant="ghost"
+			size="sm"
+			disabled={Boolean(disabledReason)}
+			title={disabledReason}
+			aria-label={disabledReason ?? `Delete ${manager.name}`}
+			onClick={handleDelete}
+		/>
 	);
 }

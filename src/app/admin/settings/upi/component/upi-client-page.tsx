@@ -3,17 +3,74 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Edit, Plus, Trash2 } from "lucide-react";
 import { use, useId, useState } from "react";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { UpiAccount } from "@/db/schema";
 import { type AdminUpiAccount, createUpiAccount, deleteUpiAccount, updateUpiAccount } from "../actions";
 
 const upiAccountsQueryKey = ["admin-upi-accounts"] as const;
+
+function UpiAccountRow({
+	account,
+	onEdit,
+	onDeleted,
+}: {
+	account: AdminUpiAccount;
+	onEdit: (account: AdminUpiAccount) => void;
+	onDeleted: () => Promise<void> | void;
+}) {
+	const [deleteButton, DeleteButton] = useReactiveButton({
+		label: <Trash2 className="h-4 w-4" />,
+		icon: null,
+		loading: { label: "" },
+		error: { label: "Failed" },
+	});
+
+	const handleDelete = async () => {
+		if (deleteButton.status === "loading" || deleteButton.status === "success") return;
+		if (!confirm("Are you sure you want to delete this UPI account?")) {
+			return;
+		}
+
+		const token = deleteButton.setLoading();
+		try {
+			const result = await deleteUpiAccount(account.id);
+			if (!result.success) {
+				console.error("Failed to delete UPI account:", result.error);
+				deleteButton.setError("Failed", { token });
+				return;
+			}
+			// The row disappears on success — that is the feedback.
+			await onDeleted();
+		} catch (error) {
+			console.error("Failed to delete UPI account:", error);
+			deleteButton.setError("Failed", { token });
+		}
+	};
+
+	return (
+		<TableRow>
+			<TableCell className="font-medium">{account.label}</TableCell>
+			<TableCell>{account.upiId}</TableCell>
+			<TableCell>
+				<Badge variant={account.enabled ? "default" : "secondary"}>{account.enabled ? "Enabled" : "Disabled"}</Badge>
+			</TableCell>
+			<TableCell>{new Date(account.createdAt).toLocaleDateString()}</TableCell>
+			<TableCell className="text-right">
+				<div className="flex justify-end gap-2">
+					<Button variant="ghost" size="sm" onClick={() => onEdit(account)}>
+						<Edit className="h-4 w-4" />
+					</Button>
+					<DeleteButton variant="ghost" size="sm" onClick={handleDelete} />
+				</div>
+			</TableCell>
+		</TableRow>
+	);
+}
 
 async function fetchUpiAccounts(signal?: AbortSignal): Promise<AdminUpiAccount[]> {
 	const response = await fetch("/api/admin/upi", {
@@ -49,21 +106,45 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Ad
 		enabled: true,
 	});
 
+	const [submitButton, SubmitButton] = useReactiveButton({
+		label: editingAccount ? "Update UPI Account" : "Create UPI Account",
+		loading: { label: "Saving..." },
+		success: { label: editingAccount ? "Updated" : "Created", duration: 900 },
+	});
+
+	const resetForm = () => {
+		setEditingAccount(null);
+		setFormData({ label: "", upiId: "", enabled: true });
+	};
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+		if (submitButton.status === "loading" || submitButton.status === "success") return;
 
-		const result = editingAccount
-			? await updateUpiAccount(editingAccount.id, formData)
-			: await createUpiAccount(formData);
+		const wasEditing = Boolean(editingAccount);
+		const token = submitButton.setLoading();
+		try {
+			const result = editingAccount
+				? await updateUpiAccount(editingAccount.id, formData)
+				: await createUpiAccount(formData);
 
-		if (result.success) {
-			toast.success(editingAccount ? "UPI account updated successfully" : "UPI account created successfully");
-			setIsDialogOpen(false);
-			setEditingAccount(null);
-			setFormData({ label: "", upiId: "", enabled: true });
+			if (!result.success) {
+				submitButton.setError(result.error || "Failed to save UPI account", { token });
+				return;
+			}
+
 			await queryClient.invalidateQueries({ queryKey: upiAccountsQueryKey });
-		} else {
-			toast.error(result.error || "Failed to save UPI account");
+			submitButton.setSuccess(wasEditing ? "Updated" : "Created", {
+				token,
+				duration: 900,
+				onComplete: () => {
+					setIsDialogOpen(false);
+					resetForm();
+				},
+			});
+		} catch (error) {
+			console.error("Failed to save UPI account:", error);
+			submitButton.setError("Failed to save", { token });
 		}
 	};
 
@@ -77,25 +158,16 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Ad
 		setIsDialogOpen(true);
 	};
 
-	const handleDelete = async (id: UpiAccount["id"]) => {
-		if (!confirm("Are you sure you want to delete this UPI account?")) {
-			return;
-		}
-
-		const result = await deleteUpiAccount(id);
-
-		if (result.success) {
-			toast.success("UPI account deleted successfully");
-			await queryClient.invalidateQueries({ queryKey: upiAccountsQueryKey });
-		} else {
-			toast.error(result.error || "Failed to delete UPI account");
-		}
+	const handleDeleted = async () => {
+		await queryClient.invalidateQueries({ queryKey: upiAccountsQueryKey });
 	};
 
-	const handleDialogClose = () => {
-		setIsDialogOpen(false);
-		setEditingAccount(null);
-		setFormData({ label: "", upiId: "", enabled: true });
+	const handleDialogOpenChange = (open: boolean) => {
+		setIsDialogOpen(open);
+		if (!open && !submitButton.isBusy) {
+			submitButton.reset();
+			resetForm();
+		}
 	};
 
 	if (error) {
@@ -109,7 +181,7 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Ad
 					<h2 className="text-3xl font-bold tracking-tight">UPI Accounts</h2>
 					<p className="text-muted-foreground">Manage UPI payment accounts</p>
 				</div>
-				<Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+				<Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
 					<Button
 						type="button"
 						onClick={() => {
@@ -159,9 +231,7 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Ad
 									Enabled
 								</Label>
 							</div>
-							<Button type="submit" className="w-full">
-								{editingAccount ? "Update UPI Account" : "Create UPI Account"}
-							</Button>
+							<SubmitButton type="submit" className="w-full" />
 						</form>
 					</DialogContent>
 				</Dialog>
@@ -180,26 +250,7 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Ad
 					</TableHeader>
 					<TableBody>
 						{accounts.map((account) => (
-							<TableRow key={account.id}>
-								<TableCell className="font-medium">{account.label}</TableCell>
-								<TableCell>{account.upiId}</TableCell>
-								<TableCell>
-									<Badge variant={account.enabled ? "default" : "secondary"}>
-										{account.enabled ? "Enabled" : "Disabled"}
-									</Badge>
-								</TableCell>
-								<TableCell>{new Date(account.createdAt).toLocaleDateString()}</TableCell>
-								<TableCell className="text-right">
-									<div className="flex justify-end gap-2">
-										<Button variant="ghost" size="sm" onClick={() => handleEdit(account)}>
-											<Edit className="h-4 w-4" />
-										</Button>
-										<Button variant="ghost" size="sm" onClick={() => handleDelete(account.id)}>
-											<Trash2 className="h-4 w-4" />
-										</Button>
-									</div>
-								</TableCell>
-							</TableRow>
+							<UpiAccountRow key={account.id} account={account} onEdit={handleEdit} onDeleted={handleDeleted} />
 						))}
 					</TableBody>
 				</Table>

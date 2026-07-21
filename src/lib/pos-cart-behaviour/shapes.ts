@@ -80,7 +80,6 @@ export type SaveOrderAdapter = (input: {
 export type CompleteAcknowledgedOrderInput = {
 	acknowledgement: OrderSaveAcknowledgement;
 	acknowledgeSubmittedOrder: () => void;
-	closeCart?: () => void;
 	refreshInventory: () => void | Promise<void>;
 };
 

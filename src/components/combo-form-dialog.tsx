@@ -1,7 +1,9 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+
+import { useReactiveButton } from "@/components/ui/reactive-button";
 
 import { useComboStore } from "@/store/combo-store";
 import { Button } from "./ui/button";
@@ -27,6 +29,38 @@ export function ComboFormDialog() {
 		handleSubmit,
 		handleDelete,
 	} = useComboStore();
+	const mountGenerationRef = useRef(0);
+
+	useEffect(() => {
+		const mountGeneration = ++mountGenerationRef.current;
+		return () => {
+			queueMicrotask(() => {
+				if (mountGenerationRef.current === mountGeneration) closeModal();
+			});
+		};
+	}, [closeModal]);
+
+	const [submitButton, SubmitButton] = useReactiveButton({
+		label: editingCombo ? "Update" : "Create",
+		loading: { label: "Saving..." },
+		success: { label: editingCombo ? "Updated" : "Created", duration: 900 },
+		error: { label: "Failed to save" },
+		feedbackStyle: "brand",
+	});
+	const [deleteButton, DeleteButton] = useReactiveButton({
+		label: "Delete",
+		icon: Trash2,
+		loading: { label: "Deleting..." },
+		error: { label: "Delete failed" },
+	});
+	const closeWithFeedbackCancellation = () => {
+		submitButton.reset();
+		deleteButton.reset();
+		closeModal();
+	};
+
+	const isSubmitBusy = submitButton.status === "loading" || submitButton.status === "success";
+	const isDeleteBusy = deleteButton.status === "loading";
 
 	const baseDessertLabel = useMemo(() => {
 		const match = bases.find((b) => b.id === formData.baseDessertId);
@@ -34,15 +68,35 @@ export function ComboFormDialog() {
 	}, [bases, formData.baseDessertId]);
 
 	return (
-		<Dialog open={openModal} onOpenChange={closeModal}>
+		<Dialog
+			open={openModal}
+			onOpenChange={(open) => {
+				if (!open) closeWithFeedbackCancellation();
+			}}
+		>
 			<DialogContent className="mx-2 max-w-[calc(100vw-1rem)] sm:mx-4 sm:max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>{editingCombo ? "Edit Combo" : "Add New Combo"}</DialogTitle>
 				</DialogHeader>
 				<form
-					onSubmit={(e) => {
+					onSubmit={async (e) => {
 						e.preventDefault();
-						handleSubmit();
+						if (isLoading || isSubmitBusy || isDeleteBusy) return;
+						if (!formData.name.trim()) {
+							submitButton.setError("Name is required");
+							return;
+						}
+						if (!formData.baseDessertId) {
+							submitButton.setError("Base dessert is required");
+							return;
+						}
+						const token = submitButton.setLoading();
+						const result = await handleSubmit();
+						if (!result.ok) {
+							submitButton.setError("Failed to save", { token });
+							return;
+						}
+						submitButton.setSuccess(undefined, { token, onComplete: closeModal });
 					}}
 					className="space-y-4"
 				>
@@ -140,17 +194,26 @@ export function ComboFormDialog() {
 
 					<div className="flex gap-2 pt-2">
 						{editingCombo && (
-							<Button type="button" variant="destructive" onClick={handleDelete} disabled={isLoading}>
-								<Trash2 className="size-4 mr-2" />
-								Delete
-							</Button>
+							<DeleteButton
+								type="button"
+								variant="destructive"
+								disabled={isLoading || isSubmitBusy}
+								onClick={async () => {
+									if (isLoading || isSubmitBusy || isDeleteBusy) return;
+									const token = deleteButton.setLoading();
+									const result = await handleDelete();
+									// On success the store closes the dialog and the combo leaves the
+									// list — the disappearance is the feedback, so no success flash.
+									if (!result.ok) {
+										deleteButton.setError("Delete failed", { token });
+									}
+								}}
+							/>
 						)}
-						<Button type="button" variant="outline" onClick={closeModal} className="ml-auto">
+						<Button type="button" variant="outline" onClick={closeWithFeedbackCancellation} className="ml-auto">
 							Cancel
 						</Button>
-						<Button type="submit" disabled={isLoading}>
-							{isLoading ? "Saving..." : editingCombo ? "Update" : "Create"}
-						</Button>
+						<SubmitButton type="submit" disabled={isLoading || isDeleteBusy} />
 					</div>
 				</form>
 			</DialogContent>

@@ -1,8 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, Infinity as InfinityIcon, Pencil } from "lucide-react";
-import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo, useState } from "react";
 import {
 	createDessert,
 	deleteDessert,
@@ -17,8 +16,14 @@ import { DessertForm } from "@/components/dessert-form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
+import {
+	ReactiveButton,
+	type ReactiveButtonControls,
+	type ReactiveButtonIcon,
+	useReactiveButton,
+} from "@/components/ui/reactive-button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getInventorySaveLabel } from "@/components/use-inventory";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +42,7 @@ type InventoryData = {
 	onQuantityChange: (dessertId: number, value: string) => void;
 	onSaveInventory: () => Promise<void>;
 	isSaving: boolean;
+	saveSuccessCount: number | null;
 	todayLabel: string;
 };
 
@@ -60,51 +66,124 @@ export function DessertsTable({
 	maxWidth = "max-w-4xl",
 }: DessertsTableProps) {
 	const [isDisablingAll, setIsDisablingAll] = useState(false);
-	const [toggleLoadingIds, setToggleLoadingIds] = useState<Set<number>>(new Set());
+	const [disableAllError, setDisableAllError] = useState(false);
 	const [movingIds, setMovingIds] = useState<Set<number>>(new Set());
 	const [searchTerm, setSearchTerm] = useState("");
 	const [openModal, setOpenModal] = useState(false);
-	const [isFormLoading, setIsFormLoading] = useState(false);
 	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
+	const [pinnedEnabled, setPinnedEnabled] = useState<Map<number, boolean>>(new Map());
+	const inventorySuccessCount = inventory?.saveSuccessCount ?? null;
+	const hasInventory = Boolean(inventory);
+	const isEditingDessert = Boolean(editingDessert);
+
+	const [formButton, FormSubmitButton] = useReactiveButton({
+		label: isEditingDessert ? "Update Dessert" : "Add Dessert",
+		loading: { label: "Saving..." },
+		success: { label: isEditingDessert ? "Updated" : "Added" },
+		feedbackStyle: "brand",
+	});
+
+	const [inventoryButton, InventorySaveButton] = useReactiveButton({
+		label: (
+			<>
+				Save Stock
+				{inventory?.hasChanges && (
+					<span className="rounded-full bg-yellow-200 px-1.5 py-0.5 text-xs text-yellow-800">
+						{inventory.changedDessertIds.size}
+					</span>
+				)}
+			</>
+		),
+		loading: { label: "Saving..." },
+		success: { label: getInventorySaveLabel(inventorySuccessCount ?? 0) },
+		feedbackStyle: "brand",
+	});
+
+	const { setLoading: setInventoryLoading, setSuccess: setInventorySuccess, reset: resetInventory } = inventoryButton;
+
+	useEffect(() => {
+		if (!hasInventory) return;
+		if (inventory?.isSaving) {
+			setInventoryLoading();
+			return;
+		}
+		if (inventorySuccessCount !== null) {
+			setInventorySuccess(getInventorySaveLabel(inventorySuccessCount));
+		} else {
+			resetInventory();
+		}
+	}, [
+		hasInventory,
+		inventory?.isSaving,
+		inventorySuccessCount,
+		setInventoryLoading,
+		setInventorySuccess,
+		resetInventory,
+	]);
 
 	const allDessertNames = useMemo(() => desserts.map((d) => d.name), [desserts]);
 
 	const filteredDesserts = desserts.filter((dessert) => dessert.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-	const enabledDesserts = filteredDesserts.filter((d) => d.enabled);
-	const disabledDesserts = filteredDesserts.filter((d) => !d.enabled);
+	const enabledDesserts = filteredDesserts.filter((d) => pinnedEnabled.get(d.id) ?? d.enabled);
+	const disabledDesserts = filteredDesserts.filter((d) => !(pinnedEnabled.get(d.id) ?? d.enabled));
 
-	const handleToggleDessert = async (dessert: Dessert) => {
+	const handleToggleDessert = async (dessert: Dessert, controls: ReactiveButtonControls) => {
 		const newEnabledState = !dessert.enabled;
-		setToggleLoadingIds((prev) => new Set(prev).add(dessert.id));
+		const clearToggleLock = () => {
+			setPinnedEnabled((current) => {
+				const next = new Map(current);
+				next.delete(dessert.id);
+				return next;
+			});
+		};
+		setPinnedEnabled((current) => new Map(current).set(dessert.id, dessert.enabled));
 		setDesserts((prev) => prev.map((d) => (d.id === dessert.id ? { ...d, enabled: newEnabledState } : d)));
+		const token = controls.setLoading();
 
 		try {
 			await toggleDessert(dessert.id, newEnabledState);
-			toast.success(`${dessert.name} ${newEnabledState ? "enabled" : "disabled"}`);
 		} catch (error) {
-			toast.error("Failed to toggle dessert");
-			console.error(error);
+			controls.setError(undefined, { token });
+			console.error("Failed to toggle dessert:", error);
 			setDesserts((prev) => prev.map((d) => (d.id === dessert.id ? { ...d, enabled: dessert.enabled } : d)));
-		} finally {
-			setToggleLoadingIds((prev) => {
-				const newSet = new Set(prev);
-				newSet.delete(dessert.id);
-				return newSet;
-			});
-			await onRefetch();
+			clearToggleLock();
+			try {
+				await onRefetch();
+			} catch (refreshError) {
+				console.error("Failed to refresh desserts after toggle failure:", refreshError);
+			}
+			return;
 		}
+
+		try {
+			await onRefetch();
+		} catch (refreshError) {
+			console.warn("Dessert updated, but the latest list could not be refreshed");
+			console.error("Failed to refresh desserts after toggle success:", refreshError);
+		}
+
+		controls.setSuccess(undefined, {
+			token,
+			duration: 1200,
+			onComplete: clearToggleLock,
+		});
+	};
+
+	const handleEdit = (dessert: Dessert) => {
+		setEditingDessert(dessert);
+		setOpenModal(true);
 	};
 
 	const handleDisableAll = async () => {
+		setDisableAllError(false);
 		try {
 			setIsDisablingAll(true);
 			setDesserts((prev) => prev.map((d) => ({ ...d, enabled: false })));
 			await disableAllDesserts();
 			await onRefetch();
-			toast.success("All desserts disabled");
 		} catch (error) {
-			toast.error("Failed to disable all desserts");
+			setDisableAllError(true);
 			console.error(error);
 			await onRefetch();
 		} finally {
@@ -112,9 +191,9 @@ export function DessertsTable({
 		}
 	};
 
-	const handleMoveUp = async (dessert: Dessert) => {
+	const handleMoveUp = async (dessert: Dessert): Promise<boolean> => {
 		const currentIndex = enabledDesserts.findIndex((d) => d.id === dessert.id);
-		if (currentIndex <= 0) return;
+		if (currentIndex <= 0) return true;
 		const targetDessert = enabledDesserts[currentIndex - 1];
 		setMovingIds((prev) => new Set(prev).add(dessert.id));
 
@@ -129,9 +208,10 @@ export function DessertsTable({
 				}),
 			);
 			await onRefetch();
+			return true;
 		} catch (error) {
-			toast.error("Failed to move dessert");
 			console.error(error);
+			return false;
 		} finally {
 			setMovingIds((prev) => {
 				const newSet = new Set(prev);
@@ -141,9 +221,9 @@ export function DessertsTable({
 		}
 	};
 
-	const handleMoveDown = async (dessert: Dessert) => {
+	const handleMoveDown = async (dessert: Dessert): Promise<boolean> => {
 		const currentIndex = enabledDesserts.findIndex((d) => d.id === dessert.id);
-		if (currentIndex >= enabledDesserts.length - 1) return;
+		if (currentIndex >= enabledDesserts.length - 1) return true;
 		const targetDessert = enabledDesserts[currentIndex + 1];
 		setMovingIds((prev) => new Set(prev).add(dessert.id));
 
@@ -158,9 +238,10 @@ export function DessertsTable({
 				}),
 			);
 			await onRefetch();
+			return true;
 		} catch (error) {
-			toast.error("Failed to move dessert");
 			console.error(error);
+			return false;
 		} finally {
 			setMovingIds((prev) => {
 				const newSet = new Set(prev);
@@ -170,15 +251,16 @@ export function DessertsTable({
 		}
 	};
 
-	const handleMoveToTop = async (dessert: Dessert) => {
-		if (!dessert.enabled) return;
+	const handleMoveToTop = async (dessert: Dessert): Promise<boolean> => {
+		if (!dessert.enabled) return true;
 		setMovingIds((prev) => new Set(prev).add(dessert.id));
 		try {
 			await moveDessertToTop(dessert.id);
 			await onRefetch();
+			return true;
 		} catch (error) {
-			toast.error("Failed to move dessert to top");
 			console.error(error);
+			return false;
 		} finally {
 			setMovingIds((prev) => {
 				const newSet = new Set(prev);
@@ -188,15 +270,16 @@ export function DessertsTable({
 		}
 	};
 
-	const handleMoveToBottom = async (dessert: Dessert) => {
-		if (!dessert.enabled) return;
+	const handleMoveToBottom = async (dessert: Dessert): Promise<boolean> => {
+		if (!dessert.enabled) return true;
 		setMovingIds((prev) => new Set(prev).add(dessert.id));
 		try {
 			await moveDessertToBottom(dessert.id);
 			await onRefetch();
+			return true;
 		} catch (error) {
-			toast.error("Failed to move dessert to bottom");
 			console.error(error);
+			return false;
 		} finally {
 			setMovingIds((prev) => {
 				const newSet = new Set(prev);
@@ -207,7 +290,8 @@ export function DessertsTable({
 	};
 
 	const handleSubmit = async (values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted">) => {
-		setIsFormLoading(true);
+		const wasEditing = Boolean(editingDessert);
+		const token = formButton.setLoading();
 		try {
 			const trimmedValues = {
 				...values,
@@ -220,166 +304,32 @@ export function DessertsTable({
 				await createDessert({ ...trimmedValues, enabled: true });
 			}
 			await onRefetch();
-			setEditingDessert(null);
-			setOpenModal(false);
-			toast.success(`Dessert ${editingDessert ? "updated" : "added"} successfully`);
+			formButton.setSuccess(undefined, {
+				token,
+				duration: 900,
+				onComplete: () => {
+					setEditingDessert(null);
+					setOpenModal(false);
+				},
+			});
 		} catch (error) {
-			toast.error(`Failed to ${editingDessert ? "update" : "add"} dessert`);
+			formButton.setError(`Failed to ${wasEditing ? "update" : "add"}`, { token });
 			console.error("Failed to save dessert:", error);
-		} finally {
-			setIsFormLoading(false);
 		}
 	};
 
 	const handleDelete = async () => {
-		if (editingDessert) {
-			try {
-				setIsFormLoading(true);
-				await deleteDessert(editingDessert.id);
-				await onRefetch();
-				setEditingDessert(null);
-				setOpenModal(false);
-				toast.success("Dessert deleted successfully");
-			} catch (error) {
-				toast.error("Failed to delete dessert");
-				console.error("Failed to delete dessert:", error);
-			} finally {
-				setIsFormLoading(false);
-			}
+		if (!editingDessert) return;
+		const token = formButton.setLoading();
+		try {
+			await deleteDessert(editingDessert.id);
+			await onRefetch();
+			setEditingDessert(null);
+			setOpenModal(false);
+		} catch (error) {
+			formButton.setError("Delete failed", { token });
+			console.error("Failed to delete dessert:", error);
 		}
-	};
-
-	const renderDessertRow = (dessert: Dessert, index: number, totalCount: number, showReorder: boolean) => {
-		const isMoving = movingIds.has(dessert.id);
-		const isToggling = toggleLoadingIds.has(dessert.id);
-		const isChanged = inventory?.changedDessertIds.has(dessert.id) ?? false;
-
-		return (
-			<TableRow
-				key={dessert.id}
-				className={cn(
-					!dessert.enabled && "opacity-60 bg-muted/50",
-					isMoving && "bg-primary/5",
-					isChanged && "bg-yellow-50",
-				)}
-			>
-				{/* Reorder controls */}
-				<TableCell className="w-25">
-					{showReorder && dessert.enabled && (
-						<div className="flex items-center gap-0.5">
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => handleMoveToTop(dessert)}
-								disabled={index === 0 || isMoving}
-								className="h-7 w-7 p-0"
-								title="Move to top"
-							>
-								{isMoving ? <Spinner className="size-3" /> : <ChevronsUp className="size-3" />}
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => handleMoveUp(dessert)}
-								disabled={index === 0 || isMoving}
-								className="h-7 w-7 p-0"
-								title="Move up"
-							>
-								<ChevronUp className="size-3" />
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => handleMoveDown(dessert)}
-								disabled={index === totalCount - 1 || isMoving}
-								className="h-7 w-7 p-0"
-								title="Move down"
-							>
-								<ChevronDown className="size-3" />
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => handleMoveToBottom(dessert)}
-								disabled={index === totalCount - 1 || isMoving}
-								className="h-7 w-7 p-0"
-								title="Move to bottom"
-							>
-								<ChevronsDown className="size-3" />
-							</Button>
-						</div>
-					)}
-					{!showReorder && dessert.enabled && <span className="text-xs text-muted-foreground">#{index + 1}</span>}
-				</TableCell>
-
-				{/* Dessert name */}
-				<TableCell>
-					<div className="flex flex-col">
-						<span className={cn("font-medium", !dessert.enabled && "line-through text-muted-foreground")}>
-							{dessert.name}
-							{dessert.hasUnlimitedStock && <InfinityIcon className="inline-block ml-1.5 size-4 text-blue-500" />}
-						</span>
-						<span className="text-xs text-muted-foreground">Rs {dessert.price}</span>
-					</div>
-				</TableCell>
-
-				{/* Stock input - only show if inventory is provided */}
-				{inventory && (
-					<TableCell className="w-25">
-						{dessert.hasUnlimitedStock ? (
-							<div className="flex items-center justify-center h-8 w-20 text-blue-500">
-								<InfinityIcon className="size-5" />
-							</div>
-						) : (
-							<Input
-								type="number"
-								min={0}
-								step={1}
-								value={inventory.quantities[dessert.id] ?? "0"}
-								onChange={(e) => inventory.onQuantityChange(dessert.id, e.target.value)}
-								onFocus={(e) => e.target.select()}
-								className={cn("h-8 w-20", isChanged && "border-yellow-400 ring-1 ring-yellow-400")}
-								disabled={!dessert.enabled}
-							/>
-						)}
-					</TableCell>
-				)}
-
-				{/* Edit button */}
-				<TableCell className="w-12">
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={() => {
-							setEditingDessert(dessert);
-							setOpenModal(true);
-						}}
-						className="h-7 w-7 p-0"
-						title="Edit dessert"
-					>
-						<Pencil className="size-3" />
-					</Button>
-				</TableCell>
-
-				{/* Enable/Disable toggle */}
-				<TableCell className="w-20">
-					<Button
-						variant={dessert.enabled ? "outline" : "secondary"}
-						size="sm"
-						onClick={() => handleToggleDessert(dessert)}
-						disabled={isToggling}
-						className={cn(
-							"text-xs h-7 px-2",
-							dessert.enabled
-								? "border-green-200 text-green-700 hover:bg-green-50"
-								: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
-						)}
-					>
-						{isToggling ? <Spinner className="size-3" /> : dessert.enabled ? "On" : "Off"}
-					</Button>
-				</TableCell>
-			</TableRow>
-		);
 	};
 
 	const renderTableHeader = () => (
@@ -399,6 +349,7 @@ export function DessertsTable({
 			<Dialog
 				open={openModal}
 				onOpenChange={(open) => {
+					if (!open) formButton.reset();
 					setOpenModal(open);
 					if (!open) setEditingDessert(null);
 				}}
@@ -412,7 +363,8 @@ export function DessertsTable({
 						initialData={editingDessert ?? undefined}
 						onSubmit={handleSubmit}
 						onDelete={handleDelete}
-						isLoading={isFormLoading}
+						submitControls={formButton}
+						SubmitButton={FormSubmitButton}
 						existingNames={editingDessert ? allDessertNames.filter((n) => n !== editingDessert.name) : allDessertNames}
 					/>
 				</DialogContent>
@@ -425,30 +377,21 @@ export function DessertsTable({
 					{inventory && <p className="text-sm text-muted-foreground">Today: {inventory.todayLabel}</p>}
 				</div>
 				<div className="flex flex-wrap gap-2">
-					<Button
+					<ReactiveButton
 						variant="outline"
-						onClick={handleDisableAll}
-						disabled={isDisablingAll || inventory?.isSaving || desserts.every((d) => !d.enabled)}
 						size="sm"
+						isLoading={isDisablingAll}
+						isError={disableAllError}
+						loadingLabel="Disabling..."
+						successLabel="Disabled all"
+						errorLabel="Failed"
+						onClick={handleDisableAll}
+						disabled={inventory?.isSaving || desserts.every((d) => !d.enabled)}
 					>
-						{isDisablingAll ? <Spinner className="mr-2" /> : null}
 						Disable All
-					</Button>
+					</ReactiveButton>
 					{inventory && (
-						<Button
-							onClick={inventory.onSaveInventory}
-							disabled={inventory.isSaving || !inventory.hasChanges}
-							size="sm"
-							className={cn(inventory.hasChanges && "animate-pulse")}
-						>
-							{inventory.isSaving ? <Spinner className="mr-2" /> : null}
-							Save Stock
-							{inventory.hasChanges && (
-								<span className="ml-1.5 bg-yellow-200 text-yellow-800 text-xs px-1.5 py-0.5 rounded-full">
-									{inventory.changedDessertIds.size}
-								</span>
-							)}
-						</Button>
+						<InventorySaveButton size="sm" onClick={inventory.onSaveInventory} disabled={!inventory.hasChanges} />
 					)}
 					<Button
 						onClick={() => {
@@ -484,9 +427,23 @@ export function DessertsTable({
 						<Table>
 							{renderTableHeader()}
 							<TableBody>
-								{enabledDesserts.map((dessert, index) =>
-									renderDessertRow(dessert, index, enabledDesserts.length, true),
-								)}
+								{enabledDesserts.map((dessert, index) => (
+									<DessertRow
+										key={dessert.id}
+										dessert={dessert}
+										index={index}
+										totalCount={enabledDesserts.length}
+										showReorder={true}
+										isMoving={movingIds.has(dessert.id)}
+										inventory={inventory}
+										onToggle={handleToggleDessert}
+										onEdit={handleEdit}
+										onMoveToTop={handleMoveToTop}
+										onMoveUp={handleMoveUp}
+										onMoveDown={handleMoveDown}
+										onMoveToBottom={handleMoveToBottom}
+									/>
+								))}
 							</TableBody>
 						</Table>
 					</div>
@@ -501,9 +458,23 @@ export function DessertsTable({
 						<Table>
 							{renderTableHeader()}
 							<TableBody>
-								{disabledDesserts.map((dessert, index) =>
-									renderDessertRow(dessert, index, disabledDesserts.length, false),
-								)}
+								{disabledDesserts.map((dessert, index) => (
+									<DessertRow
+										key={dessert.id}
+										dessert={dessert}
+										index={index}
+										totalCount={disabledDesserts.length}
+										showReorder={false}
+										isMoving={movingIds.has(dessert.id)}
+										inventory={inventory}
+										onToggle={handleToggleDessert}
+										onEdit={handleEdit}
+										onMoveToTop={handleMoveToTop}
+										onMoveUp={handleMoveUp}
+										onMoveDown={handleMoveDown}
+										onMoveToBottom={handleMoveToBottom}
+									/>
+								))}
 							</TableBody>
 						</Table>
 					</div>
@@ -524,5 +495,182 @@ export function DessertsTable({
 				</div>
 			)}
 		</div>
+	);
+}
+
+type DessertRowProps = {
+	dessert: Dessert;
+	index: number;
+	totalCount: number;
+	showReorder: boolean;
+	isMoving: boolean;
+	inventory?: InventoryData;
+	onToggle: (dessert: Dessert, controls: ReactiveButtonControls) => void;
+	onEdit: (dessert: Dessert) => void;
+	onMoveToTop: (dessert: Dessert) => Promise<boolean>;
+	onMoveUp: (dessert: Dessert) => Promise<boolean>;
+	onMoveDown: (dessert: Dessert) => Promise<boolean>;
+	onMoveToBottom: (dessert: Dessert) => Promise<boolean>;
+};
+
+function DessertRow({
+	dessert,
+	index,
+	totalCount,
+	showReorder,
+	isMoving,
+	inventory,
+	onToggle,
+	onEdit,
+	onMoveToTop,
+	onMoveUp,
+	onMoveDown,
+	onMoveToBottom,
+}: DessertRowProps) {
+	const isChanged = inventory?.changedDessertIds.has(dessert.id) ?? false;
+	const [toggleControls, ToggleButton] = useReactiveButton({
+		label: dessert.enabled ? "On" : "Off",
+		loading: { label: "" },
+		success: { label: "", duration: 1200 },
+		error: { label: "" },
+		feedbackStyle: "neutral",
+	});
+
+	return (
+		<TableRow
+			className={cn(
+				!dessert.enabled && "opacity-60 bg-muted/50",
+				isMoving && "bg-primary/5",
+				isChanged && "bg-yellow-50",
+			)}
+		>
+			{/* Reorder controls */}
+			<TableCell className="w-25">
+				{showReorder && dessert.enabled && (
+					<div className="flex items-center gap-0.5">
+						<ReorderControl
+							icon={ChevronsUp}
+							title="Move to top"
+							disabled={index === 0 || isMoving}
+							onMove={() => onMoveToTop(dessert)}
+						/>
+						<ReorderControl
+							icon={ChevronUp}
+							title="Move up"
+							disabled={index === 0 || isMoving}
+							onMove={() => onMoveUp(dessert)}
+						/>
+						<ReorderControl
+							icon={ChevronDown}
+							title="Move down"
+							disabled={index === totalCount - 1 || isMoving}
+							onMove={() => onMoveDown(dessert)}
+						/>
+						<ReorderControl
+							icon={ChevronsDown}
+							title="Move to bottom"
+							disabled={index === totalCount - 1 || isMoving}
+							onMove={() => onMoveToBottom(dessert)}
+						/>
+					</div>
+				)}
+				{!showReorder && dessert.enabled && <span className="text-xs text-muted-foreground">#{index + 1}</span>}
+			</TableCell>
+
+			{/* Dessert name */}
+			<TableCell>
+				<div className="flex flex-col">
+					<span className={cn("font-medium", !dessert.enabled && "line-through text-muted-foreground")}>
+						{dessert.name}
+						{dessert.hasUnlimitedStock && <InfinityIcon className="inline-block ml-1.5 size-4 text-blue-500" />}
+					</span>
+					<span className="text-xs text-muted-foreground">Rs {dessert.price}</span>
+				</div>
+			</TableCell>
+
+			{/* Stock input - only show if inventory is provided */}
+			{inventory && (
+				<TableCell className="w-25">
+					{dessert.hasUnlimitedStock ? (
+						<div className="flex items-center justify-center h-8 w-20 text-blue-500">
+							<InfinityIcon className="size-5" />
+						</div>
+					) : (
+						<Input
+							type="number"
+							min={0}
+							step={1}
+							value={inventory.quantities[dessert.id] ?? "0"}
+							onChange={(e) => inventory.onQuantityChange(dessert.id, e.target.value)}
+							onFocus={(e) => e.target.select()}
+							className={cn("h-8 w-20", isChanged && "border-yellow-400 ring-1 ring-yellow-400")}
+							disabled={!dessert.enabled}
+						/>
+					)}
+				</TableCell>
+			)}
+
+			{/* Edit button */}
+			<TableCell className="w-12">
+				<Button variant="ghost" size="sm" onClick={() => onEdit(dessert)} className="h-7 w-7 p-0" title="Edit dessert">
+					<Pencil className="size-3" />
+				</Button>
+			</TableCell>
+
+			{/* Enable/Disable toggle */}
+			<TableCell className="w-20">
+				<ToggleButton
+					variant={dessert.enabled ? "outline" : "secondary"}
+					size="sm"
+					onClick={() => onToggle(dessert, toggleControls)}
+					className={cn(
+						"text-xs h-7 px-2",
+						dessert.enabled
+							? "border-green-200 text-green-700 hover:bg-green-50"
+							: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
+					)}
+				/>
+			</TableCell>
+		</TableRow>
+	);
+}
+
+type ReorderControlProps = {
+	icon: ReactiveButtonIcon;
+	title: string;
+	disabled: boolean;
+	onMove: () => Promise<boolean>;
+};
+
+function ReorderControl({ icon, title, disabled, onMove }: ReorderControlProps) {
+	const [controls, ReactiveIconButton] = useReactiveButton({
+		label: "",
+		icon,
+		loading: { label: "" },
+		error: { label: "" },
+		feedbackStyle: "neutral",
+	});
+
+	const handleClick = async () => {
+		const token = controls.setLoading();
+		try {
+			const ok = await onMove();
+			if (ok) controls.reset({ token });
+			else controls.setError(undefined, { token });
+		} catch (error) {
+			controls.setError(undefined, { token });
+			console.error(error);
+		}
+	};
+
+	return (
+		<ReactiveIconButton
+			variant="ghost"
+			size="sm"
+			onClick={handleClick}
+			disabled={disabled}
+			className="h-7 w-7 p-0"
+			title={title}
+		/>
 	);
 }

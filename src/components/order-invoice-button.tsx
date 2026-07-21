@@ -1,41 +1,33 @@
 "use client";
 
 import { Download } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { downloadOrderInvoice } from "@/lib/order-invoice";
 import type { SerializedOrderDetails } from "@/lib/order-lifecycle";
 import { cn } from "@/lib/utils";
 
 export function OrderInvoiceButton({ order, className }: { order: SerializedOrderDetails; className?: string }) {
-	const [isExporting, setIsExporting] = useState(false);
+	const [button, ExportButton] = useReactiveButton({
+		label: "Export PDF",
+		icon: Download,
+		loading: { label: "Preparing PDF..." },
+		success: { label: "Downloaded" },
+		error: { label: "Export failed" },
+		feedbackStyle: "neutral",
+	});
 
 	const handleExport = async () => {
-		setIsExporting(true);
+		if (button.status !== "idle") return;
+		const token = button.setLoading();
 		try {
 			await downloadOrderInvoice(order);
-			toast.success(`Invoice #${order.id} downloaded`);
+			button.setSuccess("Downloaded", { token });
 		} catch (error) {
+			if (!button.setError("Export failed", { token })) return;
 			console.error("Failed to export invoice:", error);
-			toast.error("Could not export the invoice PDF");
-		} finally {
-			setIsExporting(false);
 		}
 	};
 
-	return (
-		<Button
-			variant="outline"
-			size="sm"
-			className={cn("w-full", className)}
-			onClick={handleExport}
-			disabled={isExporting}
-		>
-			{isExporting ? <Spinner className="size-4" /> : <Download className="size-4" />}
-			{isExporting ? "Preparing PDF..." : "Export PDF"}
-		</Button>
-	);
+	return <ExportButton variant="outline" size="sm" className={cn("w-full", className)} onClick={handleExport} />;
 }

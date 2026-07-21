@@ -2,7 +2,6 @@
 
 import { XCircle } from "lucide-react";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +13,7 @@ import {
 	PopoverTitle,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Spinner } from "@/components/ui/spinner";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { MAX_ORDER_CANCELLATION_REASON_LENGTH } from "@/lib/order-limits";
 import type { OrderViewModel } from "./orders-view-model";
 
@@ -37,12 +36,21 @@ export function OrderCancelAction({
 }) {
 	const [isCancelPopoverOpen, setIsCancelPopoverOpen] = useState(false);
 	const [cancelReason, setCancelReason] = useState("");
-	const [isCancelling, setIsCancelling] = useState(false);
 	const cancelReasonInputRef = useRef<HTMLInputElement>(null);
 	const cancelTriggerRef = useRef<HTMLButtonElement>(null);
 
+	const [cancelButton, CancelButton] = useReactiveButton({
+		label: "Cancel Order",
+		loading: { label: "Cancelling..." },
+		success: { label: "Cancelled", duration: 900 },
+	});
+
+	// Loading (mid-cancel) and the brief success flash both hold the popover open;
+	// success auto-closes it via onComplete below.
+	const isBusy = cancelButton.status !== "idle";
+
 	const handleCancelPopoverOpenChange = (open: boolean) => {
-		if (isCancelling && !open) {
+		if (isBusy && !open) {
 			return;
 		}
 
@@ -53,16 +61,20 @@ export function OrderCancelAction({
 	};
 
 	const handleCancelOrder = async () => {
-		setIsCancelling(true);
+		const token = cancelButton.setLoading();
 		try {
 			await onCancelOrder(order.id, cancelReason.trim() || undefined);
-			toast.success(`Order #${order.id} has been cancelled`);
-			setIsCancelPopoverOpen(false);
-			setCancelReason("");
+			cancelButton.setSuccess("Cancelled", {
+				token,
+				duration: 900,
+				onComplete: () => {
+					setIsCancelPopoverOpen(false);
+					setCancelReason("");
+				},
+			});
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Failed to cancel order");
-		} finally {
-			setIsCancelling(false);
+			console.error(error);
+			cancelButton.setError("Cancellation failed", { token });
 		}
 	};
 
@@ -70,7 +82,7 @@ export function OrderCancelAction({
 		<Popover open={isCancelPopoverOpen} onOpenChange={handleCancelPopoverOpenChange} modal="trap-focus">
 			<PopoverTrigger
 				ref={cancelTriggerRef}
-				disabled={isCancelling}
+				disabled={isBusy}
 				render={
 					<Button variant="destructive" size="sm" className="h-11 w-full md:h-8">
 						<XCircle className="size-4" />
@@ -105,7 +117,7 @@ export function OrderCancelAction({
 							value={cancelReason}
 							maxLength={MAX_ORDER_CANCELLATION_REASON_LENGTH}
 							onChange={(event) => setCancelReason(event.target.value)}
-							disabled={isCancelling}
+							disabled={cancelButton.isBusy}
 						/>
 						<datalist id={`cancel-reasons-${order.id}`}>
 							{CANCELLATION_REASONS.map((reason) => (
@@ -117,23 +129,14 @@ export function OrderCancelAction({
 
 				<div className="grid grid-cols-2 gap-2 rounded-b-xl border-t bg-muted/50 p-3">
 					<PopoverClose
-						disabled={isCancelling}
+						disabled={isBusy}
 						render={
 							<Button variant="outline" className="w-full">
 								Keep Order
 							</Button>
 						}
 					/>
-					<Button variant="destructive" onClick={handleCancelOrder} disabled={isCancelling}>
-						{isCancelling ? (
-							<>
-								<Spinner className="size-4" />
-								Cancelling...
-							</>
-						) : (
-							"Cancel Order"
-						)}
-					</Button>
+					<CancelButton variant="destructive" onClick={handleCancelOrder} />
 				</div>
 			</PopoverContent>
 		</Popover>

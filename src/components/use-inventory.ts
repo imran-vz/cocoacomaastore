@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
 import type { InventoryUpdate, InventoryWriteResult } from "@/lib/daily-inventory";
 import type { Dessert } from "@/lib/types";
 
@@ -29,6 +28,10 @@ type InventoryDessert = Pick<Dessert, "id" | "enabled" | "hasUnlimitedStock">;
 function parseInventoryQuantity(value: string | undefined) {
 	if (value === undefined || value.trim() === "") return Number.NaN;
 	return Number(value);
+}
+
+export function getInventorySaveLabel(count: number) {
+	return count === 1 ? "Saved 1 item" : `Saved ${count} items`;
 }
 
 export function buildDirtyInventoryUpdates(
@@ -62,6 +65,14 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 	});
 
 	const [isSaving, setIsSaving] = useState(false);
+	const [saveSuccessCount, setSaveSuccessCount] = useState<number | null>(null);
+	// Monotonic id bumped on each failed save so the button can flash an error
+	// even when the same failure repeats back-to-back. Mirrors how
+	// `saveSuccessCount` drives the success flash; `message` is the flash label.
+	const [saveError, setSaveError] = useState<{ id: number; message: string } | null>(null);
+	const reportSaveError = useCallback((message: string) => {
+		setSaveError((current) => ({ id: (current?.id ?? 0) + 1, message }));
+	}, []);
 
 	const dirtyUpdates = useMemo(
 		() => buildDirtyInventoryUpdates(desserts, quantities, serverQuantities),
@@ -82,6 +93,7 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 	);
 
 	const onQuantityChange = useCallback((dessertId: number, value: string) => {
+		setSaveSuccessCount(null);
 		setQuantities((prev) => ({
 			...prev,
 			[dessertId]: value,
@@ -101,10 +113,7 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 	}, []);
 
 	const handleSaveInventory = useCallback(async () => {
-		if (!hasChanges) {
-			toast.info("No changes to save");
-			return;
-		}
+		if (!hasChanges) return;
 
 		setIsSaving(true);
 		try {
@@ -113,7 +122,7 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 				result = await onSave(dirtyUpdates);
 			} catch (error) {
 				console.error(error);
-				toast.error("Failed to save inventory");
+				reportSaveError("Failed to save");
 				return;
 			}
 
@@ -122,23 +131,19 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 				refreshInventoryState(newDesserts, newInventory);
 			} catch (error) {
 				console.error(error);
-				toast.error(
-					result.ok
-						? "Inventory saved, but the latest stock could not be loaded. Refresh to verify current inventory."
-						: "Inventory conflict detected. Refresh to load the latest stock, then review and save again.",
-				);
+				reportSaveError(result.ok ? "Saved — refresh to verify stock" : "Stock conflict — refresh and retry");
 				return;
 			}
 
 			if (result.ok) {
-				toast.success(`Inventory saved (${dirtyUpdates.length} item${dirtyUpdates.length !== 1 ? "s" : ""} updated)`);
+				setSaveSuccessCount(dirtyUpdates.length);
 			} else {
-				toast.error("Inventory changed while you were editing. Latest stock was loaded; review and save again.");
+				reportSaveError("Stock changed — review and save again");
 			}
 		} finally {
 			setIsSaving(false);
 		}
-	}, [hasChanges, dirtyUpdates, onSave, onRefetch, refreshInventoryState]);
+	}, [hasChanges, dirtyUpdates, onSave, onRefetch, refreshInventoryState, reportSaveError]);
 
 	return {
 		quantities,
@@ -148,6 +153,8 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 		onQuantityChange,
 		onSaveInventory: handleSaveInventory,
 		isSaving,
+		saveSuccessCount,
+		saveError,
 		todayLabel,
 		refreshInventoryState,
 	};

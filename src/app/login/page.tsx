@@ -4,11 +4,9 @@ import { ShieldCheck, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
+import { ReactiveButton } from "@/components/ui/reactive-button";
 import { authClient, signIn } from "@/lib/auth-client";
 
 const SMIRKY_MESSAGES = [
@@ -75,6 +73,7 @@ export default function LoginPage() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+	const [isError, setIsError] = useState(false);
 	const [isRedirecting, setIsRedirecting] = useState(false);
 	const hasRedirected = useRef(false);
 
@@ -90,6 +89,7 @@ export default function LoginPage() {
 	const handleSubmit = useCallback(
 		async (e: React.SubmitEvent) => {
 			e.preventDefault();
+			setIsError(false);
 			setIsLoading(true);
 
 			try {
@@ -103,14 +103,14 @@ export default function LoginPage() {
 						},
 						onError: (error) => {
 							console.error("Login error:", error);
-							toast.error("Invalid email or password");
+							setIsError(true);
 							setIsLoading(false);
 						},
 					},
 				);
 			} catch (error) {
 				console.error("Login error:", error);
-				toast.error("Invalid email or password");
+				setIsError(true);
 				setIsLoading(false);
 			}
 		},
@@ -187,7 +187,10 @@ export default function LoginPage() {
 												type="email"
 												placeholder="you@example.com"
 												value={email}
-												onChange={(e) => setEmail(e.target.value)}
+												onChange={(e) => {
+													setEmail(e.target.value);
+													setIsError(false);
+												}}
 												required
 												disabled={isLoading}
 												autoComplete="email"
@@ -207,20 +210,26 @@ export default function LoginPage() {
 												type="password"
 												placeholder="••••••••"
 												value={password}
-												onChange={(e) => setPassword(e.target.value)}
+												onChange={(e) => {
+													setPassword(e.target.value);
+													setIsError(false);
+												}}
 												required
 												disabled={isLoading}
 												autoComplete="current-password"
 												className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
 											/>
 										</div>
-										<Button
+										<ReactiveButton
 											type="submit"
-											disabled={isLoading}
+											isLoading={isLoading}
+											isError={isError}
+											errorLabel="Invalid email or password"
+											loadingLabel=""
 											className="h-12 w-full rounded-xl bg-[#2c1810] text-sm font-bold uppercase tracking-wider text-[#f5efe6] shadow-lg shadow-[#2c1810]/15 transition-transform hover:-translate-y-0.5 hover:bg-[#3d2218]"
 										>
-											{isLoading ? <Spinner className="text-white" /> : "Enter dashboard"}
-										</Button>
+											Enter dashboard
+										</ReactiveButton>
 									</form>
 								</>
 							)}

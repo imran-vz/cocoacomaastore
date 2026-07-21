@@ -1,4 +1,3 @@
-import { toast } from "sonner";
 import { create } from "zustand";
 import type { ComboWithDetails } from "@/lib/types";
 
@@ -53,6 +52,10 @@ const initialFormData: ComboFormData = {
 	items: [],
 };
 
+export type ComboSubmitResult = { ok: true; mode: "created" | "updated" } | { ok: false };
+export type ComboDeleteResult = { ok: true } | { ok: false };
+export type ComboToggleResult = { ok: true; enabled: boolean } | { ok: false };
+
 interface ComboStore {
 	combos: ComboWithDetails[];
 	bases: BaseDessertOption[];
@@ -82,9 +85,9 @@ interface ComboStore {
 	toggleModifier: (dessertId: number) => void;
 	updateModifierQuantity: (dessertId: number, quantity: number) => void;
 
-	handleSubmit: () => Promise<void>;
-	handleDelete: () => Promise<void>;
-	handleToggle: (combo: ComboWithDetails) => Promise<void>;
+	handleSubmit: () => Promise<ComboSubmitResult>;
+	handleDelete: () => Promise<ComboDeleteResult>;
+	handleToggle: (combo: ComboWithDetails) => Promise<ComboToggleResult>;
 }
 
 export const useComboStore = create<ComboStore>((set, get) => ({
@@ -178,15 +181,13 @@ export const useComboStore = create<ComboStore>((set, get) => ({
 
 	handleSubmit: async () => {
 		const { formData, editingCombo, actions } = get();
-		if (!actions) return;
+		if (!actions) return { ok: false };
 
-		if (!formData.name.trim()) {
-			toast.error("Name is required");
-			return;
-		}
-		if (!formData.baseDessertId) {
-			toast.error("Base dessert is required");
-			return;
+		// The dialog validates and surfaces field-level messages on the submit button
+		// before entering loading; these guards stay as a defensive net (and to narrow
+		// baseDessertId to a number) but no longer surface toasts.
+		if (!formData.name.trim() || !formData.baseDessertId) {
+			return { ok: false };
 		}
 
 		set({ isLoading: true });
@@ -214,39 +215,36 @@ export const useComboStore = create<ComboStore>((set, get) => ({
 			}
 
 			const updated = await actions.refetchCombos();
-			set({
-				combos: updated,
-				openModal: false,
-				editingCombo: null,
-				formData: initialFormData,
-			});
-			toast.success(editingCombo ? "Combo updated" : "Combo created");
+			set({ combos: updated });
+			return { ok: true, mode: editingCombo ? "updated" : "created" };
 		} catch (error) {
 			console.error("Failed to save combo:", error);
-			toast.error("Failed to save combo");
+			return { ok: false };
 		} finally {
 			set({ isLoading: false });
 		}
 	},
 
-	handleDelete: async () => {
+	handleDelete: async (): Promise<ComboDeleteResult> => {
 		const { editingCombo, actions } = get();
-		if (!editingCombo || !actions) return;
+		if (!editingCombo || !actions) return { ok: false };
 
 		set({ isLoading: true });
 		try {
 			await actions.deleteCombo(editingCombo.id);
 			const updated = await actions.refetchCombos();
+			// Success feedback is the combo leaving the list and the dialog closing —
+			// no toast or on-button flash needed.
 			set({
 				combos: updated,
 				openModal: false,
 				editingCombo: null,
 				formData: initialFormData,
 			});
-			toast.success("Combo deleted");
+			return { ok: true };
 		} catch (error) {
 			console.error("Failed to delete combo:", error);
-			toast.error("Failed to delete combo");
+			return { ok: false };
 		} finally {
 			set({ isLoading: false });
 		}
@@ -254,7 +252,7 @@ export const useComboStore = create<ComboStore>((set, get) => ({
 
 	handleToggle: async (combo) => {
 		const { actions } = get();
-		if (!actions) return;
+		if (!actions) return { ok: false };
 
 		const newEnabled = !combo.enabled;
 
@@ -267,13 +265,13 @@ export const useComboStore = create<ComboStore>((set, get) => ({
 			await actions.toggleCombo(combo.id, newEnabled);
 			const updated = await actions.refetchCombos();
 			set({ combos: updated });
-			toast.success(`Combo ${newEnabled ? "enabled" : "disabled"}`);
+			return { ok: true, enabled: newEnabled };
 		} catch (error) {
 			console.error("Failed to toggle combo:", error);
-			toast.error("Failed to toggle combo");
 			set((state) => ({
 				combos: state.combos.map((c) => (c.id === combo.id ? { ...c, enabled: combo.enabled } : c)),
 			}));
+			return { ok: false };
 		} finally {
 			set((state) => {
 				const next = new Set(state.toggleLoadingIds);

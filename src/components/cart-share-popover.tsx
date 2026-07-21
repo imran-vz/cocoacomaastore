@@ -1,10 +1,10 @@
 "use client";
 
-import { Check, Copy, ReceiptIndianRupee, Share2 } from "lucide-react";
+import { Copy, ReceiptIndianRupee, Share2 } from "lucide-react";
 import { motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useRef, useState } from "react";
-import { toast } from "sonner";
+import { useReactiveButton } from "@/components/ui/reactive-button";
 import { useSelectedUpiAccount } from "@/components/use-selected-upi-account";
 import type { UpiAccount } from "@/db/schema";
 import { copyQrSvgToClipboard } from "@/lib/copy-qr-to-clipboard";
@@ -12,8 +12,6 @@ import { getOrderCopyText, getUpiPaymentText } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-
-const TOAST_STYLE = { "--toast-duration": "1000ms" } as React.CSSProperties;
 
 export function CartSharePopover({
 	cart,
@@ -26,8 +24,23 @@ export function CartSharePopover({
 	deliveryCost: string;
 	upiAccounts: UpiAccount[];
 }) {
-	const [copiedOrder, setCopiedOrder] = useState(false);
-	const [copiedQr, setCopiedQr] = useState(false);
+	const [isOpen, setIsOpen] = useState(false);
+	const [orderButton, OrderButton] = useReactiveButton({
+		label: "Copy Order",
+		icon: Copy,
+		loading: { label: "Copying...", icon: Copy },
+		success: { label: "Copied", duration: 2000 },
+		error: { label: "Copy failed" },
+		feedbackStyle: "neutral",
+	});
+	const [qrButton, QrButton] = useReactiveButton({
+		label: "Copy QR",
+		icon: ReceiptIndianRupee,
+		loading: { label: "Copying...", icon: ReceiptIndianRupee },
+		success: { label: "Copied", duration: 2000 },
+		error: { label: "Copy failed" },
+		feedbackStyle: "neutral",
+	});
 	const qrCodeRef = useRef<SVGSVGElement>(null);
 	const { selectedAccount, selectedUpiId, setSelectedUpiId } = useSelectedUpiAccount(upiAccounts);
 
@@ -61,28 +74,40 @@ export function CartSharePopover({
 	const upiPaymentText = selectedAccount ? getUpiPaymentText(total, cart, selectedAccount.upiId) : "";
 
 	const copyOrderDetails = async () => {
-		if (cart.length === 0) return;
-		await navigator.clipboard.writeText(orderText);
-		setCopiedOrder(true);
-		toast.info("Order copied!", { duration: 1000, style: TOAST_STYLE });
-		setTimeout(() => setCopiedOrder(false), 2000);
+		if (cart.length === 0 || orderButton.isBusy) return;
+		const token = orderButton.setLoading();
+		try {
+			await navigator.clipboard.writeText(orderText);
+			orderButton.setSuccess(undefined, { token });
+		} catch (error) {
+			if (!orderButton.setError("Copy failed", { token })) return;
+			console.error("Failed to copy order:", error);
+		}
 	};
 
 	const copyQrCode = async () => {
-		if (!qrCodeRef.current) return;
+		if (!qrCodeRef.current || qrButton.isBusy) return;
+		const token = qrButton.setLoading();
 		try {
 			await copyQrSvgToClipboard(qrCodeRef.current);
-			setCopiedQr(true);
-			toast.info("QR copied!", { duration: 1000, style: TOAST_STYLE });
-			setTimeout(() => setCopiedQr(false), 2000);
+			qrButton.setSuccess(undefined, { token });
 		} catch (error) {
+			if (!qrButton.setError("Copy failed", { token })) return;
 			console.error("Failed to copy QR:", error);
-			toast.error("Failed to copy QR code");
 		}
 	};
 
 	return (
-		<Popover>
+		<Popover
+			open={isOpen}
+			onOpenChange={(open) => {
+				setIsOpen(open);
+				if (!open) {
+					orderButton.reset();
+					qrButton.reset();
+				}
+			}}
+		>
 			<PopoverTrigger
 				render={
 					<motion.button
@@ -135,18 +160,14 @@ export function CartSharePopover({
 						/>
 					</div>
 
-					<motion.button
-						type="button"
-						whileTap={{ scale: 0.97 }}
+					<OrderButton
+						render={<motion.button type="button" whileTap={{ scale: 0.97 }} />}
 						onClick={copyOrderDetails}
 						className={cn(
-							"flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 px-3 text-xs font-medium transition-colors",
-							copiedOrder ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
+							"flex w-full items-center justify-center rounded-lg border py-2 px-3 text-xs font-medium transition-colors [&_svg]:size-3.5",
+							"bg-muted/50 hover:bg-muted",
 						)}
-					>
-						{copiedOrder ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-						<span>{copiedOrder ? "Copied!" : "Copy Order"}</span>
-					</motion.button>
+					/>
 
 					{upiPaymentText && (
 						<div className="flex flex-col items-center gap-2 border-t pt-3">
@@ -155,18 +176,14 @@ export function CartSharePopover({
 							</div>
 							{/* Hidden 400px source keeps the copied QR high-res for scanning. */}
 							<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />
-							<motion.button
-								type="button"
-								whileTap={{ scale: 0.97 }}
+							<QrButton
+								render={<motion.button type="button" whileTap={{ scale: 0.97 }} />}
 								onClick={copyQrCode}
 								className={cn(
-									"flex w-full items-center justify-center gap-1.5 rounded-lg border py-2 px-3 text-xs font-medium transition-colors",
-									copiedQr ? "bg-green-50 border-green-200 text-green-600" : "bg-muted/50 hover:bg-muted",
+									"flex w-full items-center justify-center rounded-lg border py-2 px-3 text-xs font-medium transition-colors [&_svg]:size-3.5",
+									"bg-muted/50 hover:bg-muted",
 								)}
-							>
-								{copiedQr ? <Check className="size-3.5" /> : <ReceiptIndianRupee className="size-3.5" />}
-								<span>{copiedQr ? "Copied!" : "Copy QR"}</span>
-							</motion.button>
+							/>
 						</div>
 					)}
 				</div>
