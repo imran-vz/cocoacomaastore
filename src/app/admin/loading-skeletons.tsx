@@ -1,4 +1,5 @@
 import { AdminPageShell } from "@/components/admin/admin-page-shell";
+import { StatCardGrid } from "@/components/admin/dashboard/stats-card";
 import { CocoaDaybookSkeleton } from "@/components/orders/cocoa-daybook-skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,7 +55,7 @@ function PageHeaderSkeleton({
 
 function StatCardSkeleton() {
 	return (
-		<Card>
+		<Card className="rounded-none ring-0">
 			<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 				<Skeleton className="h-4 w-24" />
 				<Skeleton className="size-4 rounded" />
@@ -180,11 +181,11 @@ export function DashboardSkeleton({ includeMain = true }: { includeMain?: boolea
 	const content = (
 		<div className="space-y-4">
 			<PageHeaderSkeleton actionWidth="w-36" />
-			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+			<StatCardGrid className="lg:grid-cols-4">
 				{dashboardStatSlots.map((slot) => (
 					<StatCardSkeleton key={slot} />
 				))}
-			</div>
+			</StatCardGrid>
 			<Card className="col-span-4">
 				<CardHeader>
 					<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -418,11 +419,11 @@ export function AnalyticsSkeleton({ includeMain = true }: { includeMain?: boolea
 	const content = (
 		<div className="flex-1 space-y-6">
 			<PageHeaderSkeleton titleWidth="w-40" subtitleWidth="w-96" />
-			<div className="grid gap-4 md:grid-cols-3">
+			<StatCardGrid className="grid-cols-1 md:grid-cols-3">
 				{analyticsStatSlots.map((slot) => (
 					<StatCardSkeleton key={slot} />
 				))}
-			</div>
+			</StatCardGrid>
 			<Card>
 				<CardHeader>
 					<div className="space-y-2">

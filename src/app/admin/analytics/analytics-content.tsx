@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { lazy, Suspense, use, useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { MonthlyDessertRevenue, MonthlyRevenue, WeeklyRevenue } from "@/app/admin/dashboard/actions";
 import { Button } from "@/components/ui/button";
+import StatCard, { StatCardGrid } from "@/components/admin/dashboard/stats-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -190,40 +191,26 @@ function SummaryCards({
 	monthCount: number;
 }) {
 	return (
-		<div className="grid gap-4 md:grid-cols-3">
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-					<IconTrendingUp className="size-4 text-muted-foreground" />
-				</CardHeader>
-				<CardContent>
-					<div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
-					<p className="text-xs text-muted-foreground">Across {monthCount} months</p>
-				</CardContent>
-			</Card>
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-					<IconChartBar className="size-4 text-muted-foreground" />
-				</CardHeader>
-				<CardContent>
-					<div className="text-2xl font-bold">{totalOrders.toLocaleString()}</div>
-					<p className="text-xs text-muted-foreground">
-						Avg {totalOrders > 0 ? formatCurrency(totalRevenue / totalOrders) : "₹0"} per order
-					</p>
-				</CardContent>
-			</Card>
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">{formatMonth(month)} Revenue</CardTitle>
-					<IconCalendar className="size-4 text-muted-foreground" />
-				</CardHeader>
-				<CardContent>
-					<div className="text-2xl font-bold">{formatCurrency(selectedMonthRevenue)}</div>
-					<p className="text-xs text-muted-foreground">From {dessertCount} desserts</p>
-				</CardContent>
-			</Card>
-		</div>
+		<StatCardGrid className="grid-cols-1 md:grid-cols-3">
+			<StatCard
+				title="Total Revenue"
+				value={formatCurrency(totalRevenue)}
+				subtitle={`Across ${monthCount} months`}
+				icon={IconTrendingUp}
+			/>
+			<StatCard
+				title="Total Orders"
+				value={totalOrders.toLocaleString()}
+				subtitle={`Avg ${totalOrders > 0 ? formatCurrency(totalRevenue / totalOrders) : "₹0"} per order`}
+				icon={IconChartBar}
+			/>
+			<StatCard
+				title={`${formatMonth(month)} Revenue`}
+				value={formatCurrency(selectedMonthRevenue)}
+				subtitle={`From ${dessertCount} desserts`}
+				icon={IconCalendar}
+			/>
+		</StatCardGrid>
 	);
 }
 

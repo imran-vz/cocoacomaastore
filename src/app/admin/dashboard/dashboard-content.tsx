@@ -5,7 +5,7 @@ import { IndianRupee, Package, ShoppingCart, TrendingUp } from "lucide-react";
 import { use, useCallback, useMemo, useState } from "react";
 import AuditLogList from "@/components/admin/dashboard/audit-log-list";
 import RevenueChart from "@/components/admin/dashboard/revenue-chart";
-import StatCard from "@/components/admin/dashboard/stats-card";
+import StatCard, { StatCardGrid } from "@/components/admin/dashboard/stats-card";
 import StockList from "@/components/admin/dashboard/stock-list";
 import { DateSwitcher } from "@/components/date-switcher";
 import { formatCurrency } from "@/lib/utils";
@@ -110,7 +110,7 @@ export function DashboardContent({
 			</div>
 
 			{/* Stats Grid */}
-			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+			<StatCardGrid className="lg:grid-cols-4">
 				<StatCard
 					title="Orders"
 					value={stats.dayOrdersCount}
@@ -140,7 +140,7 @@ export function DashboardContent({
 					icon={TrendingUp}
 					isLoading={isLoading}
 				/>
-			</div>
+			</StatCardGrid>
 
 			{/* Revenue Chart */}
 			<RevenueChart data={dailyRevenue} isLoading={isLoading} />
