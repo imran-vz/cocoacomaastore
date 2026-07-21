@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronUp, Loader2, ShoppingBag, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, type PanInfo, useDragControls } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { UpiAccount } from "@/db/schema";
@@ -11,10 +11,16 @@ import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
+import { CartSharePopover } from "./cart-share-popover";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import type { SaveCartOrder } from "./use-save-cart-order";
+
+// Swipe past either threshold (distance in px, or flick velocity in px/s)
+// toggles the sheet between collapsed and expanded.
+const SWIPE_DISTANCE = 60;
+const SWIPE_VELOCITY = 400;
 
 interface MobileCartSheetProps {
 	cart: CartLine[];
@@ -63,6 +69,29 @@ export function MobileCartSheet({
 			if (!prev) setShouldRender(true);
 			return !prev;
 		});
+	}, []);
+
+	// Drag-to-collapse: only pointer-downs on the handle/header start the drag,
+	// so the scrollable body keeps its native vertical scroll.
+	const dragControls = useDragControls();
+	const startExpandedDrag = useCallback(
+		(event: React.PointerEvent) => {
+			dragControls.start(event);
+		},
+		[dragControls],
+	);
+
+	const handleExpandedDragEnd = useCallback((_event: unknown, info: PanInfo) => {
+		if (info.offset.y > SWIPE_DISTANCE || info.velocity.y > SWIPE_VELOCITY) {
+			setIsOpen(false);
+		}
+	}, []);
+
+	const handleCollapsedDragEnd = useCallback((_event: unknown, info: PanInfo) => {
+		if (info.offset.y < -SWIPE_DISTANCE || info.velocity.y < -SWIPE_VELOCITY) {
+			setShouldRender(true);
+			setIsOpen(true);
+		}
 	}, []);
 
 	const handleClose = useCallback(() => {
@@ -116,39 +145,46 @@ export function MobileCartSheet({
 						animate={{ y: 0, opacity: 1 }}
 						exit={{ y: 100, opacity: 0 }}
 						transition={springSheet}
+						drag="y"
+						dragConstraints={{ top: 0, bottom: 0 }}
+						dragElastic={{ top: 0.5, bottom: 0 }}
+						onDragEnd={handleCollapsedDragEnd}
 						className="fixed bottom-0 inset-x-0 z-50 md:hidden p-4 pb-6"
 					>
-						<button
-							type="button"
-							onClick={handleToggle}
-							className="w-full bg-background rounded-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] border p-4 flex items-center justify-between active:scale-[0.98] transition-transform"
-						>
-							<div className="flex items-center gap-3">
-								<div className="relative">
-									<ShoppingBag className="size-6 text-primary" />
-									<span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full size-5 flex items-center justify-center">
-										{itemCount > 99 ? "99+" : itemCount}
-									</span>
+						<div className="w-full bg-background rounded-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] border p-4 flex items-center gap-2">
+							<button
+								type="button"
+								onClick={handleToggle}
+								className="flex flex-1 min-w-0 items-center justify-between active:scale-[0.98] transition-transform"
+							>
+								<div className="flex items-center gap-3">
+									<div className="relative">
+										<ShoppingBag className="size-6 text-primary" />
+										<span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full size-5 flex items-center justify-center">
+											{itemCount > 99 ? "99+" : itemCount}
+										</span>
+									</div>
+									<div className="text-left">
+										<p className="text-sm font-medium">
+											{itemCount} {itemCount === 1 ? "item" : "items"}
+										</p>
+										<p className="text-xs text-muted-foreground">Swipe up or tap to view cart</p>
+									</div>
 								</div>
-								<div className="text-left">
-									<p className="text-sm font-medium">
-										{itemCount} {itemCount === 1 ? "item" : "items"}
+								<div className="flex items-center gap-2">
+									<p
+										className={cn(
+											"text-lg font-bold tabular-nums transition-colors duration-300 ease-out motion-reduce:transition-none",
+											totalTicked && "text-primary",
+										)}
+									>
+										₹{total.toFixed(0)}
 									</p>
-									<p className="text-xs text-muted-foreground">Tap to view cart</p>
+									<ChevronUp className="size-5 text-muted-foreground" />
 								</div>
-							</div>
-							<div className="flex items-center gap-2">
-								<p
-									className={cn(
-										"text-lg font-bold tabular-nums transition-colors duration-300 ease-out motion-reduce:transition-none",
-										totalTicked && "text-primary",
-									)}
-								>
-									₹{total.toFixed(0)}
-								</p>
-								<ChevronUp className="size-5 text-muted-foreground" />
-							</div>
-						</button>
+							</button>
+							<CartSharePopover cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
+						</div>
 					</motion.div>
 				)}
 			</AnimatePresence>
@@ -160,15 +196,27 @@ export function MobileCartSheet({
 						animate={{ y: 0 }}
 						exit={{ y: "100%" }}
 						transition={springSheet}
+						drag="y"
+						dragControls={dragControls}
+						dragListener={false}
+						dragConstraints={{ top: 0, bottom: 0 }}
+						dragElastic={{ top: 0, bottom: 0.5 }}
+						onDragEnd={handleExpandedDragEnd}
 						className="fixed inset-x-0 bottom-0 z-50 md:hidden"
 						style={{ maxHeight: "85vh" }}
 					>
 						<div className="bg-background rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col max-h-[85vh]">
-							<button type="button" onClick={handleToggle} className="shrink-0 w-full pt-3 pb-2">
+							<button
+								type="button"
+								onClick={handleToggle}
+								onPointerDown={startExpandedDrag}
+								style={{ touchAction: "none" }}
+								className="shrink-0 w-full pt-3 pb-2"
+							>
 								<div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto" />
 							</button>
 
-							<div className="shrink-0 px-4 pb-3">
+							<div className="shrink-0 px-4 pb-3 touch-none" onPointerDown={startExpandedDrag}>
 								<div className="flex items-center justify-between">
 									<div className="flex items-center gap-3">
 										<div className="relative">
@@ -181,7 +229,7 @@ export function MobileCartSheet({
 											<p className="text-sm font-medium">
 												{itemCount} {itemCount === 1 ? "item" : "items"}
 											</p>
-											<p className="text-xs text-muted-foreground">Tap handle to close</p>
+											<p className="text-xs text-muted-foreground">Swipe down or tap handle to close</p>
 										</div>
 									</div>
 									<div className="flex items-center gap-2">
