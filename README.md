@@ -40,7 +40,6 @@ Public signup is disabled. After the first administrator exists, create later ac
 | Required web application values | `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_BASE_URL`, `NEXT_PUBLIC_APP_URL`, `REVALIDATE_SECRET` | Database, authentication, trusted application origin, and cache revalidation. Use an independent high-entropy value for each secret. |
 | Optional database diagnostics | `DB_QUERY_TIMING`, `DB_SLOW_QUERY_MS` | Enable query timing and configure its slow-query threshold. |
 | Optional Trigger.dev workflows | `TRIGGER_PROJECT_REF`, `TRIGGER_SECRET_KEY` | Required for the Trigger.dev workflows below, not for core web application startup. |
-| Optional database cloning | `SUPABASE_DATABASE_URL` or `REMOTE_DATABASE_URL`; `LOCAL_DATABASE_URL` | Supply one remote source and an optional explicit local target for database cloning. |
 | One-time administrator bootstrap | `BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`, `COCOACOMAA_BOOTSTRAP_ADMIN_ACKNOWLEDGE_SHARED_DATABASE` | Export only for one invocation and unset immediately afterward. Never persist these values in `.env`. |
 
 The tracked `.env.example` contains placeholders only. `NODE_ENV` is runtime-managed and does not belong in local configuration.

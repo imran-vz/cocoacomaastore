@@ -3,7 +3,7 @@
 import { Check, Copy, ReceiptIndianRupee, Share2 } from "lucide-react";
 import { motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useSelectedUpiAccount } from "@/components/use-selected-upi-account";
 import type { UpiAccount } from "@/db/schema";
@@ -30,6 +30,31 @@ export function CartSharePopover({
 	const [copiedQr, setCopiedQr] = useState(false);
 	const qrCodeRef = useRef<SVGSVGElement>(null);
 	const { selectedAccount, selectedUpiId, setSelectedUpiId } = useSelectedUpiAccount(upiAccounts);
+
+	// Scroll shadows: fade the top/bottom edge only while there is more order
+	// text to scroll toward in that direction.
+	const [showTopShadow, setShowTopShadow] = useState(false);
+	const [showBottomShadow, setShowBottomShadow] = useState(false);
+	const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+	const updateShadows = useCallback((element: HTMLElement) => {
+		const { scrollTop, scrollHeight, clientHeight } = element;
+		setShowTopShadow(scrollTop > 1);
+		setShowBottomShadow(scrollTop + clientHeight < scrollHeight - 1);
+	}, []);
+
+	const attachOrderText = useCallback(
+		(element: HTMLPreElement | null) => {
+			resizeObserverRef.current?.disconnect();
+			if (!element) return;
+			// ResizeObserver fires once observation starts, giving a reliable
+			// first measurement when the popover mounts this element.
+			const observer = new ResizeObserver(() => updateShadows(element));
+			observer.observe(element);
+			resizeObserverRef.current = observer;
+		},
+		[updateShadows],
+	);
 
 	const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
 	const orderText = getOrderCopyText(cart, total, deliveryCostAmount);
@@ -86,9 +111,29 @@ export function CartSharePopover({
 						</select>
 					)}
 
-					<pre className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-3 font-mono text-xs leading-relaxed">
-						{orderText}
-					</pre>
+					<div className="relative">
+						<pre
+							ref={attachOrderText}
+							onScroll={(event) => updateShadows(event.currentTarget)}
+							className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-lg bg-muted/50 p-3 font-mono text-xs leading-relaxed"
+						>
+							{orderText}
+						</pre>
+						<div
+							aria-hidden
+							className={cn(
+								"pointer-events-none absolute inset-x-0 top-0 h-6 rounded-t-lg bg-gradient-to-b from-foreground/15 to-transparent transition-opacity duration-200",
+								showTopShadow ? "opacity-100" : "opacity-0",
+							)}
+						/>
+						<div
+							aria-hidden
+							className={cn(
+								"pointer-events-none absolute inset-x-0 bottom-0 h-6 rounded-b-lg bg-gradient-to-t from-foreground/15 to-transparent transition-opacity duration-200",
+								showBottomShadow ? "opacity-100" : "opacity-0",
+							)}
+						/>
+					</div>
 
 					<motion.button
 						type="button"
