@@ -9,7 +9,6 @@ import { springSheet, tweenEnter } from "@/lib/motion";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
 import { CartSharePopover } from "./cart-share-popover";
 import { Input } from "./ui/input";
@@ -255,6 +254,14 @@ export function MobileCartSheet({
 										>
 											₹{total.toFixed(0)}
 										</p>
+										<div onPointerDown={(event) => event.stopPropagation()}>
+											<CartSharePopover
+												cart={cart}
+												total={total}
+												deliveryCost={deliveryCost}
+												upiAccounts={upiAccounts}
+											/>
+										</div>
 										<ChevronUp
 											className={cn("size-5 text-muted-foreground transition-transform", isOpen && "rotate-180")}
 										/>
@@ -347,9 +354,6 @@ export function MobileCartSheet({
 									</AnimatePresence>
 								</div>
 
-								<div className="mt-4 border-t pt-4">
-									<CartCopyActions cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
-								</div>
 							</div>
 
 							<div className="shrink-0 p-4 border-t bg-background">
