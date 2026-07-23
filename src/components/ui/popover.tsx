@@ -1,10 +1,55 @@
 "use client";
 
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
+import { useRef } from "react";
+import { flushSync } from "react-dom";
 import { cn } from "@/lib/utils";
 
-function Popover({ ...props }: PopoverPrimitive.Root.Props) {
-	return <PopoverPrimitive.Root data-slot="popover" {...props} />;
+/**
+ * Clicking the open trigger while the popup is open fires outside-press (close)
+ * then trigger-press (open) in the same gesture.
+ *
+ * In controlled mode the store closes on outside-press while React's `open` prop
+ * is still true until the next paint — controlled sync can reopen, then the
+ * pending setState(false) closes again (flicker). flushSync the close, and
+ * cancel + re-assert false if a reopen still sneaks through.
+ */
+const TRIGGER_REOPEN_GUARD_MS = 400;
+
+function Popover({ onOpenChange, ...props }: PopoverPrimitive.Root.Props) {
+	const skipOpenUntilRef = useRef(0);
+
+	return (
+		<PopoverPrimitive.Root
+			data-slot="popover"
+			{...props}
+			onOpenChange={(nextOpen, eventDetails) => {
+				if (!nextOpen) {
+					if (eventDetails.reason === "outside-press" || eventDetails.reason === "focus-out") {
+						skipOpenUntilRef.current = performance.now() + TRIGGER_REOPEN_GUARD_MS;
+					}
+					if (onOpenChange) {
+						flushSync(() => {
+							onOpenChange(nextOpen, eventDetails);
+						});
+					}
+					return;
+				}
+
+				if (performance.now() < skipOpenUntilRef.current) {
+					eventDetails.cancel();
+					if (onOpenChange) {
+						flushSync(() => {
+							onOpenChange(false, eventDetails);
+						});
+					}
+					return;
+				}
+
+				onOpenChange?.(nextOpen, eventDetails);
+			}}
+		/>
+	);
 }
 
 function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {

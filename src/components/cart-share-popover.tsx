@@ -3,7 +3,7 @@
 import { Copy, ReceiptIndianRupee, Share2 } from "lucide-react";
 import { motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useReactiveButton } from "@/components/ui/reactive-button";
 import { useSelectedUpiAccount } from "@/components/use-selected-upi-account";
 import type { UpiAccount } from "@/db/schema";
@@ -24,7 +24,6 @@ export function CartSharePopover({
 	deliveryCost: string;
 	upiAccounts: UpiAccount[];
 }) {
-	const [isOpen, setIsOpen] = useState(false);
 	const [orderButton, OrderButton] = useReactiveButton({
 		label: "Copy Order",
 		icon: Copy,
@@ -74,9 +73,7 @@ export function CartSharePopover({
 
 	return (
 		<Popover
-			open={isOpen}
 			onOpenChange={(open) => {
-				setIsOpen(open);
 				if (!open) {
 					orderButton.reset();
 					qrButton.reset();
