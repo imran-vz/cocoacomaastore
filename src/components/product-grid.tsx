@@ -72,9 +72,11 @@ export function ProductGrid({
 	}
 
 	// Column counts follow the product pane width (sidebar + fixed cart shrink it),
-	// not the viewport — viewport breakpoints were forcing 2–3 cols into a choked lane.
-	// @xl ≈ 36rem / 576px, @4xl ≈ 56rem / 896px (container width, not viewport).
-	const itemGridClass = "grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
+	// not the viewport. Products stay 2-up on mobile; combos stay full-width until roomy.
+	// @4xl ≈ 56rem / 896px container width.
+	const productGridClass = "grid grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
+	const comboGridClass =
+		"grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
 	// motion wrappers create stacking contexts — lift the hovered cell so the
 	// hanging stock tab paints above the row beneath it.
 	const itemCellClass = "relative z-0 hover:z-30 focus-within:z-30 has-[[data-stock-busy]]:z-30";
@@ -85,7 +87,7 @@ export function ProductGrid({
 			{filteredCombos.length > 0 && onAddComboToCart && (
 				<section>
 					<h2 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 px-1">🎁 Combos</h2>
-					<div className={itemGridClass}>
+					<div className={comboGridClass}>
 						<AnimatePresence mode="popLayout">
 							{filteredCombos.map((combo) => (
 								<motion.div
@@ -111,7 +113,7 @@ export function ProductGrid({
 							All Items
 						</h2>
 					)}
-					<div className={itemGridClass}>
+					<div className={productGridClass}>
 						<AnimatePresence mode="popLayout">
 							{availableDesserts.map((dessert) => (
 								<motion.div
@@ -154,7 +156,7 @@ export function ProductGrid({
 								</div>
 							</AccordionTrigger>
 							<AccordionContent>
-								<div className={cn(itemGridClass, "pt-2 pb-7")}>
+								<div className={cn(productGridClass, "pt-2 pb-7")}>
 									<AnimatePresence mode="popLayout">
 										{unavailableDesserts.map((dessert) => (
 											<motion.div key={dessert.id} className={itemCellClass}>
