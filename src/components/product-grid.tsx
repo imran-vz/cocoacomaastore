@@ -75,8 +75,7 @@ export function ProductGrid({
 	// not the viewport. Products stay 2-up on mobile; combos stay full-width until roomy.
 	// @4xl ≈ 56rem / 896px container width.
 	const productGridClass = "grid grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
-	const comboGridClass =
-		"grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
+	const comboGridClass = "grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
 	// motion wrappers create stacking contexts — lift the hovered cell so the
 	// hanging stock tab paints above the row beneath it.
 	const itemCellClass = "relative z-0 hover:z-30 focus-within:z-30 has-[[data-stock-busy]]:z-30";
