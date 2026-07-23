@@ -120,7 +120,15 @@ export function CartSharePopover({
 					</motion.button>
 				}
 			/>
-			<PopoverContent side="top" align="end" className="w-72">
+			{/* max-h-(--available-height) caps the popup to the space between the
+				trigger and the viewport edge (set by the positioner after flip/
+				collision detection), so it never overflows the screen; overflow-y-auto
+				keeps everything reachable on very short screens. */}
+			<PopoverContent
+				side="top"
+				align="end"
+				className="w-72 max-h-(--available-height) overflow-y-auto overscroll-contain"
+			>
 				<div className="space-y-3">
 					{upiAccounts.length > 1 && (
 						<select

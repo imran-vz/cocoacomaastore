@@ -5,13 +5,13 @@
       "source": "fallow-rs/fallow-skills",
       "sourceType": "github",
       "skillPath": "fallow/skills/fallow/SKILL.md",
-      "computedHash": "c2cd356f8c0d33f2001be4817b0b78d016017a0918346490642169381a26d546"
+      "computedHash": "bd4eef4f418ed99052648c75175d1fbec3f5473780d0df5b4636033f23922830"
     },
     "improve-animations": {
       "source": "emilkowalski/skills",
       "sourceType": "github",
       "skillPath": "skills/improve-animations/SKILL.md",
-      "computedHash": "32f23d860467841f5b07cef198fb53efc70f2adaaa6144cf1a3434d782aed246"
+      "computedHash": "eeb219a407e325b687af88db25771cc3018e3148245604112f5ac6990b6fd79c"
     },
     "supabase": {
       "source": "supabase/agent-skills",
