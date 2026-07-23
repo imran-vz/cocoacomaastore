@@ -3,7 +3,7 @@
 import { Copy, ReceiptIndianRupee, Share2 } from "lucide-react";
 import { motion } from "motion/react";
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useReactiveButton } from "@/components/ui/reactive-button";
 import { useSelectedUpiAccount } from "@/components/use-selected-upi-account";
 import type { UpiAccount } from "@/db/schema";
@@ -43,31 +43,6 @@ export function CartSharePopover({
 	});
 	const qrCodeRef = useRef<SVGSVGElement>(null);
 	const { selectedAccount, selectedUpiId, setSelectedUpiId } = useSelectedUpiAccount(upiAccounts);
-
-	// Scroll shadows: fade the top/bottom edge only while there is more order
-	// text to scroll toward in that direction.
-	const [showTopShadow, setShowTopShadow] = useState(false);
-	const [showBottomShadow, setShowBottomShadow] = useState(false);
-	const resizeObserverRef = useRef<ResizeObserver | null>(null);
-
-	const updateShadows = useCallback((element: HTMLElement) => {
-		const { scrollTop, scrollHeight, clientHeight } = element;
-		setShowTopShadow(scrollTop > 1);
-		setShowBottomShadow(scrollTop + clientHeight < scrollHeight - 1);
-	}, []);
-
-	const attachOrderText = useCallback(
-		(element: HTMLPreElement | null) => {
-			resizeObserverRef.current?.disconnect();
-			if (!element) return;
-			// ResizeObserver fires once observation starts, giving a reliable
-			// first measurement when the popover mounts this element.
-			const observer = new ResizeObserver(() => updateShadows(element));
-			observer.observe(element);
-			resizeObserverRef.current = observer;
-		},
-		[updateShadows],
-	);
 
 	const deliveryCostAmount = Number.parseFloat(deliveryCost || "0");
 	const orderText = getOrderCopyText(cart, total, deliveryCostAmount);
@@ -122,78 +97,60 @@ export function CartSharePopover({
 			/>
 			{/* max-h-(--available-height) caps the popup to the space between the
 				trigger and the viewport edge (set by the positioner after flip/
-				collision detection), so it never overflows the screen; overflow-y-auto
-				keeps everything reachable on very short screens. */}
-			<PopoverContent
-				side="top"
-				align="end"
-				className="w-72 max-h-(--available-height) overflow-y-auto overscroll-contain"
-			>
-				<div className="space-y-3">
-					{upiAccounts.length > 1 && (
-						<select
-							value={selectedUpiId}
-							onChange={(event) => setSelectedUpiId(event.target.value)}
-							className="w-full text-xs border rounded-lg px-2 py-1.5 bg-muted"
-						>
-							{upiAccounts.map((account) => (
-								<option key={account.id} value={account.id.toString()}>
-									{account.label}
-								</option>
-							))}
-						</select>
-					)}
-
-					<div className="relative">
-						<pre
-							ref={attachOrderText}
-							onScroll={(event) => updateShadows(event.currentTarget)}
-							className="max-h-40 overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-lg bg-muted/50 p-3 font-mono text-xs leading-relaxed"
-						>
-							{orderText}
-						</pre>
-						<div
-							aria-hidden
-							className={cn(
-								"pointer-events-none absolute inset-x-0 top-0 h-6 rounded-t-lg bg-linear-to-b from-foreground/15 to-transparent transition-opacity duration-200",
-								showTopShadow ? "opacity-100" : "opacity-0",
-							)}
-						/>
-						<div
-							aria-hidden
-							className={cn(
-								"pointer-events-none absolute inset-x-0 bottom-0 h-6 rounded-b-lg bg-linear-to-t from-foreground/15 to-transparent transition-opacity duration-200",
-								showBottomShadow ? "opacity-100" : "opacity-0",
-							)}
-						/>
-					</div>
-
-					<OrderButton
-						render={<motion.button type="button" whileTap={{ scale: 0.97 }} />}
-						onClick={copyOrderDetails}
-						className={cn(
-							"flex w-full items-center justify-center rounded-lg border py-2 px-3 text-xs font-medium transition-colors [&_svg]:size-3.5",
-							"bg-muted/50 hover:bg-muted",
-						)}
-					/>
-
-					{upiPaymentText && (
-						<div className="flex flex-col items-center gap-2 border-t pt-3">
-							<div className="rounded-lg bg-white p-2">
-								<QRCodeSVG value={upiPaymentText} size={120} />
-							</div>
-							{/* Hidden 400px source keeps the copied QR high-res for scanning. */}
-							<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />
-							<QrButton
-								render={<motion.button type="button" whileTap={{ scale: 0.97 }} />}
-								onClick={copyQrCode}
-								className={cn(
-									"flex w-full items-center justify-center rounded-lg border py-2 px-3 text-xs font-medium transition-colors [&_svg]:size-3.5",
-									"bg-muted/50 hover:bg-muted",
-								)}
-							/>
+				collision detection), so it never overflows the screen. The inner
+				scroller carries scroll-fade and the padding, so the scroll-aware
+				mask dissolves the content and never the popup chrome. */}
+			<PopoverContent side="top" align="end" className="w-72 max-h-(--available-height) overflow-hidden p-0">
+				<div className="scroll-fade max-h-(--available-height) overflow-y-auto overscroll-contain p-4">
+					<div className="space-y-3">
+						{/* scroll-fade goes on the pre while its background stays on the
+							wrapper, so the mask fades only the text at the scrolled edges. */}
+						<div className="overflow-hidden rounded-lg bg-muted/50">
+							<pre className="scroll-fade max-h-40 overflow-y-auto whitespace-pre-wrap wrap-break-word p-3 font-mono text-xs leading-relaxed">
+								{orderText}
+							</pre>
 						</div>
-					)}
+
+						<OrderButton
+							render={<motion.button type="button" whileTap={{ scale: 0.97 }} />}
+							onClick={copyOrderDetails}
+							className={cn(
+								"flex w-full items-center justify-center rounded-lg border py-2 px-3 text-xs font-medium transition-colors [&_svg]:size-3.5",
+								"bg-muted/50 hover:bg-muted",
+							)}
+						/>
+
+						{upiPaymentText && (
+							<div className="flex flex-col items-center gap-2 border-t pt-3">
+								{upiAccounts.length > 1 && (
+									<select
+										value={selectedUpiId}
+										onChange={(event) => setSelectedUpiId(event.target.value)}
+										className="w-full text-xs border rounded-lg px-2 py-1.5 bg-muted"
+									>
+										{upiAccounts.map((account) => (
+											<option key={account.id} value={account.id.toString()}>
+												{account.label}
+											</option>
+										))}
+									</select>
+								)}
+								<div className="rounded-lg bg-white p-2">
+									<QRCodeSVG value={upiPaymentText} size={120} />
+								</div>
+								{/* Hidden 400px source keeps the copied QR high-res for scanning. */}
+								<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />
+								<QrButton
+									render={<motion.button type="button" whileTap={{ scale: 0.97 }} />}
+									onClick={copyQrCode}
+									className={cn(
+										"flex w-full items-center justify-center rounded-lg border py-2 px-3 text-xs font-medium transition-colors [&_svg]:size-3.5",
+										"bg-muted/50 hover:bg-muted",
+									)}
+								/>
+							</div>
+						)}
+					</div>
 				</div>
 			</PopoverContent>
 		</Popover>
