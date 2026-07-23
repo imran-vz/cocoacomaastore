@@ -4,6 +4,7 @@ import { IconCake } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
 import { tweenFast } from "@/lib/motion";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { ComboCard, ProductCard } from "./product-card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 
@@ -70,13 +71,19 @@ export function ProductGrid({
 		);
 	}
 
+	// Column counts follow the product pane width (sidebar + fixed cart shrink it),
+	// not the viewport — viewport breakpoints were forcing 2–3 cols into a choked lane.
+	// @xl ≈ 36rem / 576px, @4xl ≈ 56rem / 896px (container width, not viewport).
+	const itemGridClass =
+		"grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
+
 	return (
-		<div className="space-y-4 md:space-y-6">
+		<div className="@container/products space-y-4 @md/products:space-y-6">
 			{/* Combos Section */}
 			{filteredCombos.length > 0 && onAddComboToCart && (
 				<section>
 					<h2 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 px-1">🎁 Combos</h2>
-					<div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
+					<div className={itemGridClass}>
 						<AnimatePresence mode="popLayout">
 							{filteredCombos.map((combo) => (
 								<motion.div
@@ -102,7 +109,7 @@ export function ProductGrid({
 							All Items
 						</h2>
 					)}
-					<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
+					<div className={itemGridClass}>
 						<AnimatePresence mode="popLayout">
 							{availableDesserts.map((dessert) => (
 								<motion.div
@@ -144,7 +151,7 @@ export function ProductGrid({
 								</div>
 							</AccordionTrigger>
 							<AccordionContent>
-								<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3 pt-2">
+								<div className={cn(itemGridClass, "pt-2")}>
 									<AnimatePresence mode="popLayout">
 										{unavailableDesserts.map((dessert) => (
 											<ProductCard
