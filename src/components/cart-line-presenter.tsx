@@ -124,12 +124,15 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 
 			<div className={cn("flex items-center justify-between", isTablet ? "" : "mt-3 gap-2")}>
 				{isTablet && <p className="text-[10px] text-muted-foreground font-mono">{lineView.unitPriceText}</p>}
-				<div className="flex items-center bg-muted rounded-lg overflow-hidden">
+				<div className="flex items-center rounded-lg bg-muted">
 					<motion.button
 						whileTap={{ scale: 0.96 }}
 						type="button"
+						aria-label="Decrease quantity"
 						className={cn(
-							"flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors",
+							"flex items-center justify-center rounded-l-lg text-muted-foreground transition-colors",
+							"hover:bg-muted/80 hover:text-foreground",
+							"focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
 							isTablet ? "h-7 w-8" : "h-9 w-10",
 						)}
 						{...decrementLongPress()}
@@ -145,7 +148,10 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 						disabled={line.quantity >= MAX_ORDER_LINE_QUANTITY}
 						aria-label="Increase quantity"
 						className={cn(
-							"flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors disabled:opacity-50 disabled:pointer-events-none",
+							"flex items-center justify-center rounded-r-lg text-muted-foreground transition-colors",
+							"hover:bg-muted/80 hover:text-foreground",
+							"focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+							"disabled:pointer-events-none disabled:opacity-50",
 							isTablet ? "h-7 w-8" : "h-9 w-10",
 						)}
 						{...incrementLongPress()}

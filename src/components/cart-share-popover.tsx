@@ -96,17 +96,15 @@ export function CartSharePopover({
 				}
 			/>
 			{/* max-h-(--available-height) caps the popup to the space between the
-				trigger and the viewport edge (set by the positioner after flip/
-				collision detection), so it never overflows the screen. The inner
-				scroller carries scroll-fade and the padding, so the scroll-aware
-				mask dissolves the content and never the popup chrome. */}
+				trigger and the viewport edge. Background stays on PopoverContent;
+				scroll-fade on the scroller dissolves content into that surface. */}
 			<PopoverContent side="top" align="end" className="w-72 max-h-(--available-height) overflow-hidden p-0">
-				<div className="scroll-fade max-h-(--available-height) overflow-y-auto overscroll-contain p-4">
+				<div className="scroll-fade scroll-fade-12 max-h-(--available-height) overflow-y-auto overscroll-contain p-4">
 					<div className="space-y-3">
-						{/* scroll-fade goes on the pre while its background stays on the
-							wrapper, so the mask fades only the text at the scrolled edges. */}
+						{/* Surface on the wrapper; scroll-fade on the pre so the mask
+							fades text into bg-muted/50, not the rounded chrome. */}
 						<div className="overflow-hidden rounded-lg bg-muted/50">
-							<pre className="scroll-fade max-h-40 overflow-y-auto whitespace-pre-wrap wrap-break-word p-3 font-mono text-xs leading-relaxed">
+							<pre className="scroll-fade scroll-fade-8 max-h-40 overflow-y-auto whitespace-pre-wrap wrap-break-word p-3 font-mono text-xs leading-relaxed">
 								{orderText}
 							</pre>
 						</div>
@@ -136,7 +134,7 @@ export function CartSharePopover({
 									</select>
 								)}
 								<div className="rounded-lg bg-white p-2">
-									<QRCodeSVG value={upiPaymentText} size={120} />
+									<QRCodeSVG value={upiPaymentText} size={88} />
 								</div>
 								{/* Hidden 400px source keeps the copied QR high-res for scanning. */}
 								<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />

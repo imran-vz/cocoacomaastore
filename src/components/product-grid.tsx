@@ -74,8 +74,10 @@ export function ProductGrid({
 	// Column counts follow the product pane width (sidebar + fixed cart shrink it),
 	// not the viewport — viewport breakpoints were forcing 2–3 cols into a choked lane.
 	// @xl ≈ 36rem / 576px, @4xl ≈ 56rem / 896px (container width, not viewport).
-	const itemGridClass =
-		"grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
+	const itemGridClass = "grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
+	// motion wrappers create stacking contexts — lift the hovered cell so the
+	// hanging stock tab paints above the row beneath it.
+	const itemCellClass = "relative z-0 hover:z-30 focus-within:z-30 has-[[data-stock-busy]]:z-30";
 
 	return (
 		<div className="@container/products space-y-4 @md/products:space-y-6">
@@ -118,6 +120,7 @@ export function ProductGrid({
 									animate={{ opacity: 1 }}
 									exit={{ opacity: 0, scale: 0.95 }}
 									transition={tweenFast}
+									className={itemCellClass}
 								>
 									<ProductCard
 										dessert={dessert}
@@ -151,19 +154,20 @@ export function ProductGrid({
 								</div>
 							</AccordionTrigger>
 							<AccordionContent>
-								<div className={cn(itemGridClass, "pt-2")}>
+								<div className={cn(itemGridClass, "pt-2 pb-7")}>
 									<AnimatePresence mode="popLayout">
 										{unavailableDesserts.map((dessert) => (
-											<ProductCard
-												key={dessert.id}
-												dessert={dessert}
-												onAddToCart={onAddToCart}
-												onToggleStock={onToggleStock}
-												onToggleStockComplete={onToggleStockComplete}
-												isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
-												stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
-												compact
-											/>
+											<motion.div key={dessert.id} className={itemCellClass}>
+												<ProductCard
+													dessert={dessert}
+													onAddToCart={onAddToCart}
+													onToggleStock={onToggleStock}
+													onToggleStockComplete={onToggleStockComplete}
+													isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+													stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
+													compact
+												/>
+											</motion.div>
 										))}
 									</AnimatePresence>
 								</div>

@@ -118,7 +118,12 @@ export function ProductCard({
 			animate={{ opacity: 1, scale: 1 }}
 			exit={{ opacity: 0, scale: 0.95 }}
 			transition={tweenEnter}
-			className="group relative select-none h-full"
+			className={cn(
+				// Hang the stock tab below the card; lift above the next stacked row on hover/busy.
+				"group relative z-0 h-full select-none hover:z-30 focus-within:z-30",
+				stockButton.status !== "idle" && "z-30",
+			)}
+			data-stock-busy={stockButton.status !== "idle" ? "" : undefined}
 		>
 			<motion.button
 				type="button"
@@ -202,7 +207,7 @@ export function ProductCard({
 							type="button"
 							whileTap={{ scale: 0.95 }}
 							className={cn(
-								"absolute -bottom-1 left-1/2 -translate-x-1/2 translate-y-full",
+								"absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 translate-y-full",
 								"text-[10px] font-medium px-2 py-1 rounded-b-lg",
 								"bg-muted/80 backdrop-blur-sm border border-t-0 border-border",
 								"opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none",
