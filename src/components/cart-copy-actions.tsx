@@ -87,10 +87,12 @@ export function CartCopyActions({
 			<button
 				type="button"
 				onClick={() => setIsOpen((current) => !current)}
-				className="w-full flex items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg transition-colors"
+				className="w-full flex items-center justify-between rounded-lg bg-muted px-3 py-2.5 text-xs text-foreground transition-colors hover:bg-muted/80"
 			>
 				<span className="font-medium">Online Order (Instagram)</span>
-				<ChevronDown className={cn("size-4 transition-transform duration-200", isOpen && "rotate-180")} />
+				<ChevronDown
+					className={cn("size-4 text-muted-foreground transition-transform duration-200", isOpen && "rotate-180")}
+				/>
 			</button>
 			<div
 				inert={!isOpen}

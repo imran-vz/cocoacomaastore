@@ -279,7 +279,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 				const total = cart.reduce((sum, line) => sum + line.unitPrice * line.quantity, deliveryCostAmount);
 
 				return (
-					<div className="min-h-app flex flex-col md:flex-row md:gap-4 lg:gap-6">
+					<div className="min-h-app flex flex-col md:flex-row md:gap-4 lg:gap-6 md:px-6">
 						{/* Main Content - Products */}
 						<div className="flex-1 flex flex-col min-w-0">
 							{/* Search Header */}
@@ -322,7 +322,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 							</motion.div>
 
 							{/* Product Grid */}
-							<div className="flex-1 px-4 pb-24 md:pb-6 md:px-0">
+							<div className="flex-1 px-4 pb-24 md:px-0 md:pb-6">
 								<ProductGrid
 									desserts={dessertsWithInventory}
 									combos={availableCombos}
@@ -355,7 +355,7 @@ export default function POSHome({ desserts, upiAccounts, inventory, combos, vari
 						</div>
 
 						{/* Cart - Tablet Sidebar */}
-						<div className="hidden md:block md:w-85 lg:w-95 xl:w-100 shrink-0 sticky top-13 h-[calc(100vh-52px-24px)] py-4 pr-4">
+						<div className="hidden md:block md:w-85 lg:w-95 xl:w-100 shrink-0 sticky top-13 h-[calc(100vh-52px-24px)] py-4">
 							<TabletCartSidebar
 								cart={cart}
 								updateQuantity={updateWithCartInteraction}

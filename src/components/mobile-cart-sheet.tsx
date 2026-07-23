@@ -9,6 +9,7 @@ import { springSheet, tweenEnter } from "@/lib/motion";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
 import { CartSharePopover } from "./cart-share-popover";
 import { Input } from "./ui/input";
@@ -355,7 +356,16 @@ export function MobileCartSheet({
 								</div>
 							</div>
 
-							<div className="shrink-0 p-4 border-t bg-background">
+							<div className="shrink-0 p-4 border-t bg-background space-y-3">
+								<div className="flex items-center justify-between px-1">
+									<span className="text-sm text-muted-foreground">Total</span>
+									<span className="text-xl font-bold text-primary tabular-nums">₹{total.toFixed(0)}</span>
+								</div>
+
+								{cart.length > 0 && (
+									<CartCopyActions cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
+								)}
+
 								<SaveButton
 									onClick={handleSaveOrder}
 									disabled={cart.length === 0}
