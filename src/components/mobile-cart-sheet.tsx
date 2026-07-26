@@ -11,7 +11,6 @@ import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
-import { CartSharePopover } from "./cart-share-popover";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import type { ReactiveButtonComponent, ReactiveButtonControls } from "./ui/reactive-button";
@@ -165,40 +164,37 @@ export function MobileCartSheet({
 						onDragEnd={handleCollapsedDragEnd}
 						className="fixed bottom-0 inset-x-0 z-50 md:hidden p-4 pb-6"
 					>
-						<div className="w-full bg-background rounded-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] border p-4 flex items-center gap-2">
-							<button
-								type="button"
-								onClick={handleToggle}
-								className="flex flex-1 min-w-0 items-center justify-between active:scale-[0.98] transition-transform"
-							>
-								<div className="flex items-center gap-3">
-									<div className="relative">
-										<ShoppingBag className="size-6 text-primary" />
-										<span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full size-5 flex items-center justify-center">
-											{itemCount > 99 ? "99+" : itemCount}
-										</span>
-									</div>
-									<div className="text-left">
-										<p className="text-sm font-medium">
-											{itemCount} {itemCount === 1 ? "item" : "items"}
-										</p>
-										<p className="text-xs text-muted-foreground">Swipe up or tap to view cart</p>
-									</div>
+						<button
+							type="button"
+							onClick={handleToggle}
+							className="w-full bg-background rounded-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] border p-4 flex items-center justify-between active:scale-[0.98] transition-transform"
+						>
+							<div className="flex items-center gap-3">
+								<div className="relative">
+									<ShoppingBag className="size-6 text-primary" />
+									<span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full size-5 flex items-center justify-center">
+										{itemCount > 99 ? "99+" : itemCount}
+									</span>
 								</div>
-								<div className="flex items-center gap-2">
-									<p
-										className={cn(
-											"text-lg font-bold tabular-nums transition-colors duration-300 ease-out motion-reduce:transition-none",
-											totalTicked && "text-primary",
-										)}
-									>
-										₹{total.toFixed(0)}
+								<div className="text-left">
+									<p className="text-sm font-medium">
+										{itemCount} {itemCount === 1 ? "item" : "items"}
 									</p>
-									<ChevronUp className="size-5 text-muted-foreground" />
+									<p className="text-xs text-muted-foreground">Swipe up or tap to view cart</p>
 								</div>
-							</button>
-							<CartSharePopover cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
-						</div>
+							</div>
+							<div className="flex items-center gap-2">
+								<p
+									className={cn(
+										"text-lg font-bold tabular-nums transition-colors duration-300 ease-out motion-reduce:transition-none",
+										totalTicked && "text-primary",
+									)}
+								>
+									₹{total.toFixed(0)}
+								</p>
+								<ChevronUp className="size-5 text-muted-foreground" />
+							</div>
+						</button>
 					</motion.div>
 				)}
 			</AnimatePresence>
@@ -255,14 +251,6 @@ export function MobileCartSheet({
 										>
 											₹{total.toFixed(0)}
 										</p>
-										<div onPointerDown={(event) => event.stopPropagation()}>
-											<CartSharePopover
-												cart={cart}
-												total={total}
-												deliveryCost={deliveryCost}
-												upiAccounts={upiAccounts}
-											/>
-										</div>
 										<ChevronUp
 											className={cn("size-5 text-muted-foreground transition-transform", isOpen && "rotate-180")}
 										/>
@@ -341,7 +329,7 @@ export function MobileCartSheet({
 									)}
 								</button>
 
-								<div className="space-y-3">
+								<div className="overflow-hidden rounded-xl border shadow-sm empty:hidden">
 									<AnimatePresence mode="popLayout">
 										{cart.map((line) => (
 											<CartLinePresenter

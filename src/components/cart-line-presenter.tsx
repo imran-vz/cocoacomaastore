@@ -88,8 +88,12 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 			exit={{ opacity: 0, x: 20 }}
 			transition={springSnappy}
 			className={cn(
-				"bg-card rounded-xl p-3 border",
-				isTablet ? "group relative hover:border-primary/20 transition-colors" : "shadow-sm",
+				"bg-card",
+				isTablet
+					? "group relative rounded-xl border p-3 hover:border-primary/20 transition-colors"
+					: // Mobile lines sit flush inside the list frame, separated by a hairline
+						// rule instead of a gap; the frame owns the rounding and border.
+						"px-3 py-2.5 border-b last:border-b-0",
 			)}
 		>
 			{isTablet && (
@@ -109,7 +113,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 				</motion.button>
 			)}
 
-			<div className={cn("flex items-start justify-between", isTablet ? "gap-2 mb-2" : "gap-3")}>
+			<div className={cn("flex items-start justify-between", isTablet ? "gap-2 mb-2" : "gap-3 mb-2")}>
 				<div className="flex-1 min-w-0">
 					<h4 className="font-semibold text-sm leading-tight capitalize truncate">{lineView.displayName}</h4>
 					{lineView.hasModifiers && (
@@ -117,12 +121,12 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 							{lineView.modifierText}
 						</p>
 					)}
-					{!isTablet && <p className="text-xs text-muted-foreground mt-1 font-mono">{lineView.unitPriceText}</p>}
 				</div>
 				<p className={cn("font-bold text-sm text-primary", isTablet && "shrink-0")}>{lineView.lineTotalText}</p>
 			</div>
 
-			<div className={cn("flex items-center justify-between", isTablet ? "" : "mt-3 gap-2")}>
+			{/* Mobile drops the unit-price line: the stepper and line total already say it. */}
+			<div className="flex items-center justify-between gap-2">
 				{isTablet && <p className="text-[10px] text-muted-foreground font-mono">{lineView.unitPriceText}</p>}
 				<div className="flex items-center rounded-lg bg-muted">
 					<motion.button
@@ -133,13 +137,13 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 							"flex items-center justify-center rounded-l-lg text-muted-foreground transition-colors",
 							"hover:bg-muted/80 hover:text-foreground",
 							"focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-							isTablet ? "h-7 w-8" : "h-9 w-10",
+							isTablet ? "h-7 w-8" : "h-8 w-9",
 						)}
 						{...decrementLongPress()}
 					>
 						<Minus className={isTablet ? "size-3" : "size-4"} />
 					</motion.button>
-					<span className={cn("text-center font-semibold tabular-nums", isTablet ? "w-7 text-xs" : "w-10 text-sm")}>
+					<span className={cn("text-center font-semibold tabular-nums", isTablet ? "w-7 text-xs" : "w-8 text-sm")}>
 						{line.quantity}
 					</span>
 					<motion.button
@@ -152,7 +156,7 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 							"hover:bg-muted/80 hover:text-foreground",
 							"focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
 							"disabled:pointer-events-none disabled:opacity-50",
-							isTablet ? "h-7 w-8" : "h-9 w-10",
+							isTablet ? "h-7 w-8" : "h-8 w-9",
 						)}
 						{...incrementLongPress()}
 					>
@@ -163,8 +167,9 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 					<motion.button
 						whileTap={{ scale: 0.96 }}
 						type="button"
+						aria-label="Remove item"
 						onClick={() => removeFromCart(line.cartLineId)}
-						className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+						className="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
 					>
 						<Trash2 className="size-4" />
 					</motion.button>

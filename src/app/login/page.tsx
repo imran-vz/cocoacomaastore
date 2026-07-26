@@ -42,9 +42,12 @@ function redirectForRole(role: string | null | undefined, router: ReturnType<typ
  * Shown while checking session or redirecting after login.
  */
 function CardLoadingState({ message }: { message?: string }) {
-	const [smirky, setSmirky] = useState(() => getRandomMessage());
+	// Seed with a fixed message so the SSR markup and the first client render agree;
+	// picking randomly here would hydration-mismatch. Randomising starts after mount.
+	const [smirky, setSmirky] = useState(SMIRKY_MESSAGES[0]);
 
 	useEffect(() => {
+		setSmirky((prev) => getRandomMessage(prev));
 		const interval = setInterval(() => {
 			setSmirky((prev) => getRandomMessage(prev));
 		}, 2000);
