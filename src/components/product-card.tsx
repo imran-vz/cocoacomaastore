@@ -47,11 +47,17 @@ export function ProductCard({
 	const inventoryQty = dessert.inventoryQuantity;
 	const isInventoryOutOfStock = !dessert.hasUnlimitedStock && inventoryQty !== undefined && inventoryQty <= 0;
 	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock || isStockToggleLoading;
-	// The stock tab only ever restores stock now — marking an item unavailable from the
-	// grid was too easy to hit by accident, and the tab was hover-only so touch devices
-	// had no way to undo it. Use the pinned value so the tab survives the success flash.
+	// The stock control only ever restores stock now — marking an item unavailable from
+	// the grid was too easy to hit by accident. Use the pinned value so the control
+	// survives the success flash.
 	const canRestock = stockToggleIsOutOfStock ?? dessert.isOutOfStock;
-	const stockToggleAction = "Set Available";
+	const stockToggleAction = "Restock";
+	const showRestock = Boolean(onToggleStock) && canRestock;
+	// The restock control sits in the card footer, so the shell cannot be a <button>
+	// while it is on screen — buttons do not nest. Unavailable cards are not clickable
+	// anyway, and the card stays inert through the post-restock flash so the "Updated"
+	// confirmation has somewhere to sit.
+	const isInert = isUnavailable || showRestock;
 
 	const handleAddToCart = useCallback(() => {
 		if (isUnavailable) return;
@@ -115,110 +121,112 @@ export function ProductCard({
 		return null;
 	};
 
+	// Cells sit flush inside the grid frame, so the shell carries no border or rounding
+	// of its own — the frame owns those, and unavailability reads as a shaded row.
+	const shellClass = cn(
+		"w-full h-full text-left flex flex-col transition-colors duration-200",
+		"focus:outline-none focus-visible:inset-ring-2 focus-visible:inset-ring-ring",
+		isUnavailable ? "bg-muted/40 cursor-not-allowed" : "bg-card",
+		compact ? "p-2.5" : "p-4",
+	);
+
+	const cardBody = (
+		<div className="flex flex-col flex-1">
+			{/* Header: Name & Price */}
+			<div className={cn("flex items-start justify-between gap-2", compact ? "mb-1" : "mb-1.5")}>
+				<h3
+					className={cn(
+						"font-semibold leading-tight",
+						compact ? "text-[13px] line-clamp-2" : "text-base",
+						isUnavailable && "line-through text-muted-foreground",
+					)}
+				>
+					{dessert.name}
+				</h3>
+				<span
+					className={cn(
+						"shrink-0 font-bold tabular-nums",
+						compact ? "text-[13px]" : "text-base",
+						isUnavailable ? "text-muted-foreground" : "text-primary",
+					)}
+				>
+					₹{dessert.price}
+				</span>
+			</div>
+
+			{/* Description */}
+			{dessert.description && !compact && (
+				<p className="text-xs text-muted-foreground line-clamp-2 mb-2.5 leading-relaxed">{dessert.description}</p>
+			)}
+
+			{/* Footer: Stock badge, plus either the restock shortcut or the add indicator */}
+			<div className={cn("flex items-center justify-between gap-2 mt-auto", compact ? "pt-1.5" : "pt-2")}>
+				{getStockBadge()}
+
+				{showRestock ? (
+					<StockButton
+						onClick={handleToggleStock}
+						aria-label={`${stockToggleAction} ${dessert.name}`}
+						render={
+							<motion.button
+								type="button"
+								whileTap={{ scale: 0.95 }}
+								className={cn(
+									"ml-auto shrink-0 inline-flex items-center gap-1 rounded-md border border-border",
+									"bg-background px-1.5 py-0.5 text-[10px] font-medium",
+									"text-green-600 hover:text-green-700 hover:bg-muted",
+									"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								)}
+							/>
+						}
+					/>
+				) : (
+					!isUnavailable && (
+						<div
+							className={cn(
+								"ml-auto flex items-center justify-center rounded-full transition-colors",
+								compact ? "size-7" : "size-9",
+								addFlash === "added"
+									? "bg-green-500 text-white"
+									: addFlash === "rejected"
+										? "bg-red-500 text-white"
+										: "bg-primary/10 text-primary hover:bg-primary/20",
+							)}
+						>
+							{addFlash === "added" ? (
+								<Check className={cn(compact ? "size-3.5" : "size-5")} />
+							) : addFlash === "rejected" ? (
+								<X className={cn(compact ? "size-3.5" : "size-5")} />
+							) : (
+								<Plus className={cn(compact ? "size-3.5" : "size-5")} />
+							)}
+						</div>
+					)
+				)}
+			</div>
+		</div>
+	);
+
 	return (
 		<motion.div
 			layout
-			initial={{ opacity: 0, scale: 0.95 }}
-			animate={{ opacity: 1, scale: 1 }}
-			exit={{ opacity: 0, scale: 0.95 }}
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			exit={{ opacity: 0 }}
 			transition={tweenEnter}
-			className={cn(
-				// Hang the stock tab below the card; lift above the next stacked row on hover/busy.
-				"group relative z-0 h-full select-none hover:z-30 focus-within:z-30",
-				stockButton.status !== "idle" && "z-30",
-			)}
-			data-stock-busy={stockButton.status !== "idle" ? "" : undefined}
+			className="group relative h-full select-none"
 		>
-			<motion.button
-				type="button"
-				onClick={handleAddToCart}
-				disabled={isUnavailable}
-				whileTap={!isUnavailable ? { scale: 0.97 } : undefined}
-				className={cn(
-					"w-full h-full text-left rounded-2xl bg-card border-2 overflow-hidden transition-[border-color,box-shadow] duration-200",
-					"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-					"flex flex-col",
-					isUnavailable
-						? "opacity-60 cursor-not-allowed border-border"
-						: "border-border hover:border-primary/30 hover:shadow-md active:border-primary/50",
-					compact ? "p-2.5" : "p-4",
-				)}
-			>
-				<div className="relative z-10 flex flex-col flex-1">
-					{/* Header: Name & Price */}
-					<div className={cn("flex items-start justify-between gap-2", compact ? "mb-1" : "mb-1.5")}>
-						<h3
-							className={cn(
-								"font-semibold leading-tight",
-								compact ? "text-[13px] line-clamp-2" : "text-base",
-								isUnavailable && "line-through text-muted-foreground",
-							)}
-						>
-							{dessert.name}
-						</h3>
-						<span
-							className={cn(
-								"shrink-0 font-bold tabular-nums",
-								compact ? "text-[13px]" : "text-base",
-								isUnavailable ? "text-muted-foreground" : "text-primary",
-							)}
-						>
-							₹{dessert.price}
-						</span>
-					</div>
-
-					{/* Description */}
-					{dessert.description && !compact && (
-						<p className="text-xs text-muted-foreground line-clamp-2 mb-2.5 leading-relaxed">{dessert.description}</p>
-					)}
-
-					{/* Footer: Stock & Add Button */}
-					<div className={cn("flex items-center justify-between gap-2 mt-auto", compact ? "pt-1.5" : "pt-2")}>
-						{getStockBadge()}
-
-						{!isUnavailable && (
-							<div
-								className={cn(
-									"ml-auto flex items-center justify-center rounded-full transition-colors",
-									compact ? "size-7" : "size-9",
-									addFlash === "added"
-										? "bg-green-500 text-white"
-										: addFlash === "rejected"
-											? "bg-red-500 text-white"
-											: "bg-primary/10 text-primary hover:bg-primary/20",
-								)}
-							>
-								{addFlash === "added" ? (
-									<Check className={cn(compact ? "size-3.5" : "size-5")} />
-								) : addFlash === "rejected" ? (
-									<X className={cn(compact ? "size-3.5" : "size-5")} />
-								) : (
-									<Plus className={cn(compact ? "size-3.5" : "size-5")} />
-								)}
-							</div>
-						)}
-					</div>
-				</div>
-			</motion.button>
-
-			{/* Restock shortcut (for managers) — shown only on already-unavailable items */}
-			{onToggleStock && canRestock && (
-				<StockButton
-					onClick={handleToggleStock}
-					aria-label={`${stockToggleAction} ${dessert.name}`}
-					render={
-						<motion.button
-							type="button"
-							whileTap={{ scale: 0.95 }}
-							className={cn(
-								"absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 translate-y-full",
-								"text-[10px] font-medium px-2 py-1 rounded-b-lg",
-								"bg-muted/80 backdrop-blur-sm border border-t-0 border-border",
-								"text-green-600 hover:text-green-700",
-							)}
-						/>
-					}
-				/>
+			{isInert ? (
+				<div className={shellClass}>{cardBody}</div>
+			) : (
+				<motion.button
+					type="button"
+					onClick={handleAddToCart}
+					whileTap={{ scale: 0.97 }}
+					className={cn(shellClass, "hover:bg-muted/40 active:bg-muted/60")}
+				>
+					{cardBody}
+				</motion.button>
 			)}
 		</motion.div>
 	);

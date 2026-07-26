@@ -73,12 +73,16 @@ export function ProductGrid({
 
 	// Column counts follow the product pane width (sidebar + fixed cart shrink it),
 	// not the viewport. Products stay 2-up on mobile; combos stay full-width until roomy.
-	// @4xl ≈ 56rem / 896px container width.
-	const productGridClass = "grid grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
+	// @xl ≈ 36rem / 576px, @4xl ≈ 56rem / 896px container width.
+	//
+	// Products render as one merged slab instead of floating cards: the frame owns the
+	// rounding and border, cells sit flush and are separated by hairlines. The grid's
+	// negative margins push the trailing column/row hairlines under the frame's own
+	// border, where overflow-hidden clips them.
+	const productFrameClass = "overflow-hidden rounded-xl border bg-card shadow-sm";
+	const productGridClass = "grid grid-cols-2 @xl/products:grid-cols-3 @4xl/products:grid-cols-4 -mr-px -mb-px";
+	const productCellClass = "border-r border-b border-border";
 	const comboGridClass = "grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
-	// motion wrappers create stacking contexts — lift the hovered cell so the
-	// hanging stock tab paints above the row beneath it.
-	const itemCellClass = "relative z-0 hover:z-30 focus-within:z-30 has-[[data-stock-busy]]:z-30";
 
 	return (
 		<div className="@container/products space-y-4 @md/products:space-y-6">
@@ -112,29 +116,31 @@ export function ProductGrid({
 							All Items
 						</h2>
 					)}
-					<div className={productGridClass}>
-						<AnimatePresence mode="popLayout">
-							{availableDesserts.map((dessert) => (
-								<motion.div
-									key={dessert.id}
-									initial={{ opacity: 0 }}
-									animate={{ opacity: 1 }}
-									exit={{ opacity: 0, scale: 0.95 }}
-									transition={tweenFast}
-									className={itemCellClass}
-								>
-									<ProductCard
-										dessert={dessert}
-										onAddToCart={onAddToCart}
-										onToggleStock={onToggleStock}
-										onToggleStockComplete={onToggleStockComplete}
-										isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
-										stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
-										compact
-									/>
-								</motion.div>
-							))}
-						</AnimatePresence>
+					<div className={productFrameClass}>
+						<div className={productGridClass}>
+							<AnimatePresence mode="popLayout">
+								{availableDesserts.map((dessert) => (
+									<motion.div
+										key={dessert.id}
+										initial={{ opacity: 0 }}
+										animate={{ opacity: 1 }}
+										exit={{ opacity: 0 }}
+										transition={tweenFast}
+										className={productCellClass}
+									>
+										<ProductCard
+											dessert={dessert}
+											onAddToCart={onAddToCart}
+											onToggleStock={onToggleStock}
+											onToggleStockComplete={onToggleStockComplete}
+											isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+											stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
+											compact
+										/>
+									</motion.div>
+								))}
+							</AnimatePresence>
+						</div>
 					</div>
 				</section>
 			)}
@@ -155,22 +161,24 @@ export function ProductGrid({
 								</div>
 							</AccordionTrigger>
 							<AccordionContent>
-								<div className={cn(productGridClass, "pt-2 pb-7")}>
-									<AnimatePresence mode="popLayout">
-										{unavailableDesserts.map((dessert) => (
-											<motion.div key={dessert.id} className={itemCellClass}>
-												<ProductCard
-													dessert={dessert}
-													onAddToCart={onAddToCart}
-													onToggleStock={onToggleStock}
-													onToggleStockComplete={onToggleStockComplete}
-													isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
-													stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
-													compact
-												/>
-											</motion.div>
-										))}
-									</AnimatePresence>
+								<div className={cn(productFrameClass, "mt-2 mb-1")}>
+									<div className={productGridClass}>
+										<AnimatePresence mode="popLayout">
+											{unavailableDesserts.map((dessert) => (
+												<motion.div key={dessert.id} className={productCellClass}>
+													<ProductCard
+														dessert={dessert}
+														onAddToCart={onAddToCart}
+														onToggleStock={onToggleStock}
+														onToggleStockComplete={onToggleStockComplete}
+														isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+														stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
+														compact
+													/>
+												</motion.div>
+											))}
+										</AnimatePresence>
+									</div>
 								</div>
 							</AccordionContent>
 						</AccordionItem>
