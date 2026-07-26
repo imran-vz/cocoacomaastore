@@ -47,7 +47,11 @@ export function ProductCard({
 	const inventoryQty = dessert.inventoryQuantity;
 	const isInventoryOutOfStock = !dessert.hasUnlimitedStock && inventoryQty !== undefined && inventoryQty <= 0;
 	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock || isStockToggleLoading;
-	const stockToggleAction = (stockToggleIsOutOfStock ?? dessert.isOutOfStock) ? "Set Available" : "Mark Unavailable";
+	// The stock tab only ever restores stock now — marking an item unavailable from the
+	// grid was too easy to hit by accident, and the tab was hover-only so touch devices
+	// had no way to undo it. Use the pinned value so the tab survives the success flash.
+	const canRestock = stockToggleIsOutOfStock ?? dessert.isOutOfStock;
+	const stockToggleAction = "Set Available";
 
 	const handleAddToCart = useCallback(() => {
 		if (isUnavailable) return;
@@ -197,8 +201,8 @@ export function ProductCard({
 				</div>
 			</motion.button>
 
-			{/* Stock Toggle (for managers) */}
-			{onToggleStock && (
+			{/* Restock shortcut (for managers) — shown only on already-unavailable items */}
+			{onToggleStock && canRestock && (
 				<StockButton
 					onClick={handleToggleStock}
 					aria-label={`${stockToggleAction} ${dessert.name}`}
@@ -210,11 +214,7 @@ export function ProductCard({
 								"absolute -bottom-1 left-1/2 z-10 -translate-x-1/2 translate-y-full",
 								"text-[10px] font-medium px-2 py-1 rounded-b-lg",
 								"bg-muted/80 backdrop-blur-sm border border-t-0 border-border",
-								"opacity-0 group-hover:opacity-100 transition-opacity motion-reduce:transition-none",
-								stockButton.status !== "idle" && "opacity-100",
-								dessert.isOutOfStock
-									? "text-green-600 hover:text-green-700"
-									: "text-muted-foreground hover:text-destructive",
+								"text-green-600 hover:text-green-700",
 							)}
 						/>
 					}
