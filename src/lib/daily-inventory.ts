@@ -1,5 +1,5 @@
 import { performance } from "node:perf_hooks";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import { db } from "@/db";
 import { dailyDessertInventoryTable, inventoryAuditLogTable } from "@/db/schema";
@@ -148,19 +148,26 @@ export function setInventoryWithAuditEffect({
 						})),
 					);
 
-					for (const update of changedUpdates) {
-						const updated = await tx
-							.update(dailyDessertInventoryTable)
-							.set({ quantity: update.quantity, updatedAt: now })
-							.where(
-								and(
-									eq(dailyDessertInventoryTable.day, day),
-									eq(dailyDessertInventoryTable.dessertId, update.dessertId),
+					const quantityCases = changedUpdates.map(
+						({ dessertId, quantity }) => sql`WHEN ${dessertId} THEN ${quantity}::integer`,
+					);
+					const updated = await tx
+						.update(dailyDessertInventoryTable)
+						.set({
+							quantity: sql`CASE ${dailyDessertInventoryTable.dessertId} ${sql.join(quantityCases, sql` `)} ELSE ${dailyDessertInventoryTable.quantity} END`,
+							updatedAt: now,
+						})
+						.where(
+							and(
+								eq(dailyDessertInventoryTable.day, day),
+								inArray(
+									dailyDessertInventoryTable.dessertId,
+									changedUpdates.map(({ dessertId }) => dessertId),
 								),
-							)
-							.returning({ dessertId: dailyDessertInventoryTable.dessertId });
-						if (updated.length !== 1) throw new Error("Failed to update a locked inventory row");
-					}
+							),
+						)
+						.returning({ dessertId: dailyDessertInventoryTable.dessertId });
+					if (updated.length !== changedUpdates.length) throw new Error("Failed to update every locked inventory row");
 
 					return { ok: true, updatedCount: changedUpdates.length };
 				}),

@@ -107,6 +107,34 @@ describe("manual inventory persistence", () => {
 		});
 	});
 
+	it("sets distinct quantities in one batch without auditing unchanged rows", async () => {
+		const first = await seedDessert("Set To Zero", 5);
+		const second = await seedDessert("New Stock");
+		const unchanged = await seedDessert("Unchanged Stock", 7);
+		await expect(
+			runManualWrite([
+				{ dessertId: first.id, expectedQuantity: 5, quantity: 0 },
+				{ dessertId: second.id, expectedQuantity: 0, quantity: 12 },
+				{ dessertId: unchanged.id, expectedQuantity: 7, quantity: 7 },
+			]),
+		).resolves.toEqual({ ok: true, updatedCount: 2 });
+		const rows = await integrationDb
+			.select()
+			.from(dailyDessertInventoryTable)
+			.orderBy(asc(dailyDessertInventoryTable.dessertId));
+		expect(rows.map(({ quantity }) => quantity)).toEqual([0, 12, 7]);
+		const audits = await integrationDb
+			.select()
+			.from(inventoryAuditLogTable)
+			.orderBy(asc(inventoryAuditLogTable.dessertId));
+		expect(
+			audits.map(({ dessertId, previousQuantity, newQuantity }) => ({ dessertId, previousQuantity, newQuantity })),
+		).toEqual([
+			{ dessertId: first.id, previousQuantity: 5, newQuantity: 0 },
+			{ dessertId: second.id, previousQuantity: 0, newQuantity: 12 },
+		]);
+	});
+
 	it("rolls back the entire batch and missing-row initialization on conflict", async () => {
 		const existing = await seedDessert("Existing Dessert", 5);
 		const missing = await seedDessert("Missing Inventory Dessert");
