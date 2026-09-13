@@ -2,10 +2,10 @@
 
 import { IconCalendar, IconChartBar, IconLoader2, IconTrendingUp, IconX } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
-import { lazy, Suspense, use, useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { lazy, use, useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import type { MonthlyDessertRevenue, MonthlyRevenue, WeeklyRevenue } from "@/app/admin/dashboard/actions";
 import StatCard, { StatCardGrid } from "@/components/admin/dashboard/stats-card";
+import { DesktopChartSlot } from "@/components/desktop-chart-slot";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -149,30 +149,6 @@ function buildPieChartData(dessertRevenue: MonthlyDessertRevenue[]): PieChartRow
 		quantitySold: dessert.quantitySold,
 		fill: COLORS[index % COLORS.length],
 	}));
-}
-
-function useIsDesktop() {
-	const [isDesktop, setIsDesktop] = useState(false);
-
-	useEffect(() => {
-		const mediaQuery = window.matchMedia("(min-width: 768px)");
-		const updateIsDesktop = () => setIsDesktop(mediaQuery.matches);
-
-		updateIsDesktop();
-		mediaQuery.addEventListener("change", updateIsDesktop);
-
-		return () => mediaQuery.removeEventListener("change", updateIsDesktop);
-	}, []);
-
-	return isDesktop;
-}
-
-function DesktopChartSlot({ children, fallbackClassName }: { children: ReactNode; fallbackClassName: string }) {
-	const isDesktop = useIsDesktop();
-
-	if (!isDesktop) return null;
-
-	return <Suspense fallback={<div className={fallbackClassName} aria-hidden="true" />}>{children}</Suspense>;
 }
 
 function SummaryCards({
