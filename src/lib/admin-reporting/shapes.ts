@@ -55,16 +55,11 @@ export type DailyRevenue = {
 	orders: number;
 };
 
-export type MissingAnalyticsState = {
-	missingDays: string[];
-};
-
 export type AdminDashboardReport = {
 	stats: DashboardStats;
 	stock: DessertStock[];
 	auditLogs: AuditLogEntry[];
 	dailyRevenue: DailyRevenue[];
-	analyticsState: MissingAnalyticsState;
 };
 
 export type AdminAnalyticsReport = {

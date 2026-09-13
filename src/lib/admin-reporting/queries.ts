@@ -254,36 +254,6 @@ async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 	}));
 }
 
-// Get daily revenue for the past N days ending on a specific date (for chart)
-async function getMissingDailyRevenueDays(endDate: Date, days = 7): Promise<string[]> {
-	const endDay = getAnalyticsDay(endDate);
-	const today = getAnalyticsDay(new Date());
-	const analyticsEndDay = endDay.getTime() === today.getTime() ? new Date(endDay.getTime() - 86_400_000) : endDay;
-	const startDay = new Date(endDay);
-	startDay.setDate(startDay.getDate() - (days - 1));
-
-	if (analyticsEndDay < startDay) return [];
-
-	const results = await db
-		.select({ day: analyticsDailyRevenueTable.day })
-		.from(analyticsDailyRevenueTable)
-		.where(
-			and(
-				gte(analyticsDailyRevenueTable.day, timestampParam(startDay)),
-				lte(analyticsDailyRevenueTable.day, timestampParam(analyticsEndDay)),
-			),
-		);
-	const present = new Set(results.map((row) => row.day.toISOString().slice(0, 10)));
-	const missing: string[] = [];
-
-	for (const day = new Date(startDay); day <= analyticsEndDay; day.setUTCDate(day.getUTCDate() + 1)) {
-		const key = day.toISOString().slice(0, 10);
-		if (!present.has(key)) missing.push(key);
-	}
-
-	return missing;
-}
-
 // Live completed-order count and revenue for one IST day, straight from the orders table
 // (analytics rows only exist for past days).
 async function getLiveDayTotals(day: Date) {
@@ -618,12 +588,11 @@ async function getDashboardReport(dateString?: string): Promise<AdminDashboardRe
 
 	return unstable_cache(
 		async () => {
-			const [stats, stock, auditLogs, dailyRevenue, missingDays] = await Promise.all([
+			const [stats, stock, auditLogs, dailyRevenue] = await Promise.all([
 				getDashboardStats(date),
 				getStockPerDessert(date),
 				getAuditLogs(date),
 				getDailyRevenue(date, 7),
-				getMissingDailyRevenueDays(date, 7),
 			]);
 
 			return {
@@ -631,7 +600,6 @@ async function getDashboardReport(dateString?: string): Promise<AdminDashboardRe
 				stock,
 				auditLogs,
 				dailyRevenue,
-				analyticsState: { missingDays },
 			};
 		},
 		["admin-dashboard-report", dayKey],
