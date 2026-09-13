@@ -62,7 +62,7 @@ export async function getEnabledCombos(): Promise<ComboWithDetails[]> {
 
 export const getCachedAllCombos = unstable_cache(getAllCombos, ["all-combos"], {
 	revalidate: 60 * 60 * 24,
-	tags: [CacheTag.combos],
+	tags: [CacheTag.combos, CacheTag.desserts],
 });
 
 async function getBaseDesserts() {

@@ -1,5 +1,11 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { analyticsDailyRevenueTable, analyticsMonthlyRevenueTable, dessertsTable } from "@/db/schema";
+import {
+	analyticsDailyRevenueTable,
+	analyticsMonthlyRevenueTable,
+	dessertComboItemsTable,
+	dessertCombosTable,
+	dessertsTable,
+} from "@/db/schema";
 import { closeIntegrationDatabase, integrationDb, resetIntegrationData } from "@/test/integration/database";
 
 // Model tag eviction while keeping actual reporting queries and mutations on Postgres.
@@ -11,7 +17,10 @@ function invalidate(tag: string) {
 }
 vi.doMock("server-only", () => ({}));
 vi.doMock("@/db", () => ({ db: integrationDb }));
-vi.doMock("@/lib/auth/guards", () => ({ requireAdmin: vi.fn().mockResolvedValue({ id: "cache-admin" }) }));
+vi.doMock("@/lib/auth/guards", () => ({
+	requireAdmin: vi.fn().mockResolvedValue({ id: "cache-admin" }),
+	requireSession: vi.fn().mockResolvedValue({ id: "cache-admin" }),
+}));
 vi.doMock("next/cache", () => ({
 	unstable_cache:
 		(callback: () => Promise<unknown>, keys: string[], options: { tags: readonly string[] }) => async () => {
@@ -27,9 +36,14 @@ vi.doMock("next/cache", () => ({
 	revalidatePath: vi.fn(),
 }));
 
-const { getAdminDashboardReport, getAdminAnalyticsReport, getCachedWeeklyRevenue } = await import("./index");
+const { getAdminDashboardReport, getAdminAnalyticsReport, getCachedWeeklyRevenue } = await import(
+	"@/lib/admin-reporting"
+);
 const { createCompletedOrder, cancelOrderAsNormalPath, getCachedOrders } = await import("@/lib/order-lifecycle");
 const { CacheTag } = await import("@/server/effect/cache-tags");
+const { getCachedAllCombos } = await import("@/lib/combo-service");
+const { getCachedCombos } = await import("@/app/combos/actions");
+const { updateDessert, toggleOutOfStock } = await import("@/app/desserts/actions");
 const NOW = new Date("2026-07-15T12:00:00Z");
 const CLOSED_DAY = new Date("2026-07-14T00:00:00Z");
 
@@ -41,7 +55,7 @@ beforeEach(async () => {
 afterEach(() => vi.useRealTimers());
 afterAll(closeIntegrationDatabase);
 
-describe("report cache invalidation", () => {
+describe("cache invalidation", () => {
 	it("refreshes live orders and reports on create/cancel while preserving closed reports until compilation", async () => {
 		const [dessert] = await integrationDb
 			.insert(dessertsTable)
@@ -109,5 +123,36 @@ describe("report cache invalidation", () => {
 		});
 		expect((await getAdminDashboardReport("2026-07-15")).stats.dayRevenue).toBe(321);
 		expect((await getCachedWeeklyRevenue("2026-07")).reduce((sum, week) => sum + week.grossRevenue, 0)).toBe(321);
+	});
+	it("refreshes embedded dessert fields in both warmed combo catalogs after a dessert edit", async () => {
+		const [base] = await integrationDb.insert(dessertsTable).values({ name: "Base", price: 100 }).returning();
+		const [modifier] = await integrationDb
+			.insert(dessertsTable)
+			.values({ name: "Modifier", price: 20, kind: "modifier" })
+			.returning();
+		const [combo] = await integrationDb
+			.insert(dessertCombosTable)
+			.values({ name: "Combo", baseDessertId: base.id })
+			.returning();
+		await integrationDb
+			.insert(dessertComboItemsTable)
+			.values({ comboId: combo.id, dessertId: modifier.id, quantity: 1 });
+		for (const read of [getCachedCombos, getCachedAllCombos]) {
+			expect((await read())[0].baseDessert).toMatchObject({ name: "Base", price: 100 });
+			expect((await read())[0].items[0].dessert.isOutOfStock).toBe(false);
+		}
+		await updateDessert(base.id, {
+			name: "Updated Base",
+			price: 150,
+			description: null,
+			kind: "base",
+			isOutOfStock: false,
+			hasUnlimitedStock: false,
+		});
+		await toggleOutOfStock(modifier.id, true);
+		for (const read of [getCachedCombos, getCachedAllCombos]) {
+			expect((await read())[0].baseDessert).toMatchObject({ name: "Updated Base", price: 150 });
+			expect((await read())[0].items[0].dessert.isOutOfStock).toBe(true);
+		}
 	});
 });

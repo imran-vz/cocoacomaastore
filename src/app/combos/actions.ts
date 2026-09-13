@@ -10,5 +10,5 @@ import { CacheTag } from "@/server/effect/cache-tags";
  */
 export const getCachedCombos = unstable_cache(getEnabledCombos, [CacheTag.combos], {
 	revalidate: 60 * 60 * 24,
-	tags: [CacheTag.combos],
+	tags: [CacheTag.combos, CacheTag.desserts],
 });
