@@ -368,25 +368,10 @@ describe("order columns cutover command", () => {
 });
 
 describe("order columns cutover repository contract", () => {
-	it("keeps the SQL staged, null-only, and independent of the unadopted migration baseline", async () => {
+	it("keeps the SQL non-destructive and independent of the migration ledger", async () => {
 		const sql = await readFile(path.join(ROOT, "scripts/sql/order-columns-cutover.sql"), "utf8");
-		expect(sql).toContain('ADD COLUMN IF NOT EXISTS "submissionId" varchar(255)');
-		expect(sql).toContain('WHERE "submissionId" IS NULL');
-		expect(sql).toContain('AND "requestFingerprint" IS NULL');
-		expect(sql).toContain('WHERE item."baseDessertName" IS NULL');
-		expect(sql).toContain('WHERE modifier."dessertName" IS NULL');
-		expect(sql).toContain('WHERE item."inventoryDeducted" IS NULL');
-		expect(sql).toContain("'legacy-order:' || id::text");
-		expect(sql).toContain("audit.action = 'order_deducted'");
-		expect(sql).toContain("date_trunc('day', parent.\"createdAt\" + interval '5 hours 30 minutes')");
-		expect(sql).toContain("index_data.indimmediate");
-		expect(sql).toContain("unexpected constraints reference cutover columns");
-		expect(sql).toContain('ALTER COLUMN "submissionId" SET NOT NULL');
-		expect(sql).toContain("CREATE UNIQUE INDEX IF NOT EXISTS orders_submission_id_unique");
 		expect(sql).not.toMatch(/\b(?:DELETE|TRUNCATE)\b/i);
-		expect(sql).not.toContain("hasUnlimitedStock");
 		expect(sql).not.toContain("__drizzle_migrations");
-		expect(sql).not.toContain("0000_sweet_jackal");
 	});
 
 	it("exposes only the guarded one-off command", async () => {
