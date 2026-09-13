@@ -152,7 +152,7 @@ Mutation and compilation boundary:
 
 Cache invalidation:
 
-- Order and inventory mutations synchronously invalidate their domain cache tags before their request completes.
+- Order and inventory mutations synchronously invalidate tags for the affected IST day before their request completes. Closed-period reporting caches are invalidated by analytics compilation and relevant catalog edits; broad domain tags remain available for explicit refreshes.
 
 ## Dashboard And Analytics UI
 

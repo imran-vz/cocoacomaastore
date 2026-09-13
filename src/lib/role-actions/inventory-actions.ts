@@ -6,6 +6,7 @@ import {
 	type InventoryWriteResult,
 	setInventoryWithAuditEffect,
 } from "@/lib/daily-inventory";
+import { getDayKey } from "@/lib/ist-date";
 import { upsertInventorySchema } from "@/lib/validation";
 import { updateInventoryTagsEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
@@ -30,7 +31,7 @@ export function createInventoryActions({ label, requireUser }: RoleActionConfig)
 			const result = await runNextAppEffect(
 				Effect.gen(function* () {
 					const writeResult = yield* setInventoryWithAuditEffect({ day, updates: validatedUpdates, userId: user.id });
-					if (writeResult.ok) yield* updateInventoryTagsEffect();
+					if (writeResult.ok) yield* updateInventoryTagsEffect(getDayKey(day));
 					return writeResult;
 				}),
 			);

@@ -5,7 +5,7 @@ import { unstable_cache } from "next/cache";
 import { requireManagerAccess } from "@/lib/auth/guards";
 import { getDailyInventoryDay, getDailyInventoryDayKey, getInventoryForDay } from "@/lib/daily-inventory";
 import { upsertInventoryWithAudit as upsertManagerInventoryWithAudit } from "@/lib/role-actions/manager-inventory";
-import { CacheTag } from "@/server/effect/cache-tags";
+import { CacheTag, InventoryTags } from "@/server/effect/cache-tags";
 
 export async function getCachedTodayInventory() {
 	await requireManagerAccess();
@@ -14,7 +14,7 @@ export async function getCachedTodayInventory() {
 
 	return unstable_cache(() => getInventoryForDay(day), [CacheTag.inventory, dayKey], {
 		revalidate: 60 * 60 * 24,
-		tags: [CacheTag.inventory],
+		tags: [CacheTag.inventory, InventoryTags.day(dayKey)],
 	})();
 }
 

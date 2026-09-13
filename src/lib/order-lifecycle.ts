@@ -222,8 +222,8 @@ export type ResolvedOrderLine = {
 const MAX_ORDER_TOTAL_CENTS = 9_999_999_999;
 const MAX_UNIT_PRICE = 99_999_999;
 
-function invalidateOrderMutationCachesEffect(tags: readonly string[] = OrderTags.mutation) {
-	return updateTagsEffect(tags);
+function invalidateOrderMutationCachesEffect(dayKey: string) {
+	return updateTagsEffect(OrderTags.mutation(dayKey));
 }
 
 export function fingerprintOrderRequest(data: CreateCompletedOrderInput) {
@@ -634,7 +634,7 @@ export async function getCachedOrders(date?: Date) {
 
 	return unstable_cache(() => getOrders(date), [CacheTag.orders, dayKey], {
 		revalidate: 60 * 60 * 24,
-		tags: [CacheTag.orders],
+		tags: [CacheTag.orders, OrderTags.day(dayKey)],
 	})();
 }
 
@@ -678,7 +678,7 @@ export async function createCompletedOrder(
 
 	let refreshWarning = false;
 	try {
-		await runNextAppEffect(invalidateOrderMutationCachesEffect());
+		await runNextAppEffect(invalidateOrderMutationCachesEffect(getDayKey(created.order.createdAt)));
 	} catch (error) {
 		refreshWarning = true;
 		logSafeServerError("invalidate order caches", error);
@@ -768,7 +768,7 @@ function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?:
 			}),
 		);
 
-		yield* invalidateOrderMutationCachesEffect();
+		yield* invalidateOrderMutationCachesEffect(getDayKey(now));
 	});
 }
 

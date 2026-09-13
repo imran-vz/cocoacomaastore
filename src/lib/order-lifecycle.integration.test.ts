@@ -620,13 +620,13 @@ describe("order lifecycle persistence", () => {
 			MANAGER_ID,
 		);
 
-		expect(nextCacheMocks.updateTag.mock.calls.map(([tag]) => tag)).toEqual(OrderTags.mutation);
+		expect(nextCacheMocks.updateTag.mock.calls.map(([tag]) => tag)).toEqual(OrderTags.mutation("2026-07-15"));
 		nextCacheMocks.updateTag.mockClear();
 
 		const [order] = await integrationDb.select({ id: ordersTable.id }).from(ordersTable);
 		await cancelOrderAsNormalPath(order.id, MANAGER_ID);
 
-		expect(nextCacheMocks.updateTag.mock.calls.map(([tag]) => tag)).toEqual(OrderTags.mutation);
+		expect(nextCacheMocks.updateTag.mock.calls.map(([tag]) => tag)).toEqual(OrderTags.mutation("2026-07-15"));
 		expect(analyticsCompilerMocks.recomputeDayAnalyticsEffect).not.toHaveBeenCalled();
 		const [dailyRevenue, dessertRevenue, eodStock] = await Promise.all([
 			integrationDb.select().from(analyticsDailyRevenueTable),

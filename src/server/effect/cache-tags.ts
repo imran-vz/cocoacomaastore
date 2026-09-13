@@ -22,8 +22,9 @@ export const CacheTag = {
 // ============================================================================
 
 export const OrderTags = {
-	mutation: [CacheTag.orders, CacheTag.inventory, CacheTag.dashboard, CacheTag.analytics] as const,
-} as const;
+	day: (dayKey: string) => `${CacheTag.orders}:${dayKey}`,
+	mutation: (dayKey: string) => [OrderTags.day(dayKey), InventoryTags.day(dayKey)],
+};
 
 const ComboTags = {
 	mutation: [CacheTag.combos] as const,
@@ -34,9 +35,9 @@ const DessertTags = {
 	mutation: [CacheTag.desserts] as const,
 } as const;
 
-const InventoryTags = {
-	mutation: [CacheTag.inventory] as const,
-} as const;
+export const InventoryTags = {
+	day: (dayKey: string) => `${CacheTag.inventory}:${dayKey}`,
+};
 
 const _ManagerTags = {
 	mutation: [CacheTag.managers] as const,
@@ -46,17 +47,26 @@ export const UpiTags = {
 	mutation: [CacheTag.upiAccounts, CacheTag.upiAccountsAdmin] as const,
 } as const;
 
+// Closed-period reports change only after compilation (or a catalog edit).
+// Broad tags remain available to explicit refresh operations.
 export const DashboardTags = {
-	stats: [CacheTag.orders, CacheTag.dashboard] as const,
-	stock: [CacheTag.inventory, CacheTag.desserts, CacheTag.dashboard] as const,
-	auditLogs: [CacheTag.inventory, CacheTag.dashboard] as const,
-	dailyRevenue: [CacheTag.orders, CacheTag.dashboard] as const,
-	monthlyRevenue: [CacheTag.orders, CacheTag.analytics] as const,
-	weeklyRevenue: [CacheTag.orders, CacheTag.analytics] as const,
-	monthlyDessertRevenue: [CacheTag.orders, CacheTag.analytics, CacheTag.desserts] as const,
-	eodStock: [CacheTag.inventory, CacheTag.analytics] as const,
-	availableMonths: [CacheTag.analytics] as const,
-} as const;
+	report: (dayKey: string, isLive: boolean) => [
+		CacheTag.dashboard,
+		CacheTag.analytics,
+		CacheTag.desserts,
+		CacheTag.inventory,
+		InventoryTags.day(dayKey),
+		...(isLive ? [CacheTag.orders, OrderTags.day(dayKey)] : []),
+	],
+	monthlyRevenue: [CacheTag.analytics],
+	weeklyRevenue: (liveDayKey?: string) => [
+		CacheTag.analytics,
+		...(liveDayKey ? [CacheTag.orders, OrderTags.day(liveDayKey)] : []),
+	],
+	monthlyDessertRevenue: [CacheTag.analytics, CacheTag.desserts],
+	eodStock: [CacheTag.analytics, CacheTag.desserts],
+	availableMonths: [CacheTag.analytics],
+};
 
 export const AllCacheTags = [
 	CacheTag.desserts,
@@ -114,6 +124,6 @@ export function updateDessertTagsEffect() {
 	return updateTagsEffect(DessertTags.mutation);
 }
 
-export function updateInventoryTagsEffect() {
-	return updateTagsEffect(InventoryTags.mutation);
+export function updateInventoryTagsEffect(dayKey: string) {
+	return updateTagsEffect([InventoryTags.day(dayKey)]);
 }

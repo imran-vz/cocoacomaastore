@@ -59,7 +59,6 @@ function unstable_cache<T extends Callback>(
 
 	return next_unstable_cache(cb, keyParts, options as { revalidate?: number | false; tags?: string[] });
 }
-const ADMIN_REPORTING_TAGS = DashboardTags;
 
 // Get dashboard stats for a specific day
 async function getDashboardStats(date: Date): Promise<DashboardStats> {
@@ -465,9 +464,11 @@ async function getWeeklyRevenue(month: string): Promise<WeeklyRevenue[]> {
 
 export async function getCachedWeeklyRevenue(month: string) {
 	await requireAdmin();
-	return unstable_cache(() => getWeeklyRevenue(month), ["weekly-revenue", month], {
+	const now = new Date();
+	const liveDayKey = month === getISTMonthKey(now) ? getDayKey(now) : undefined;
+	return unstable_cache(() => getWeeklyRevenue(month), ["weekly-revenue", month, liveDayKey ?? "closed"], {
 		revalidate: 60 * 60,
-		tags: DashboardTags.monthlyRevenue,
+		tags: DashboardTags.weeklyRevenue(liveDayKey),
 	})();
 }
 
@@ -519,7 +520,7 @@ export async function getCachedMonthlyDessertRevenue(month?: string) {
 
 	return unstable_cache(() => getMonthlyDessertRevenue(targetMonth), ["monthly-dessert-revenue", targetMonth], {
 		revalidate: 60 * 60, // Revalidate every hour
-		tags: ["orders", "analytics", "desserts"],
+		tags: DashboardTags.monthlyDessertRevenue,
 	})();
 }
 
@@ -585,6 +586,7 @@ async function getAvailableMonths(): Promise<string[]> {
 async function getDashboardReport(dateString?: string): Promise<AdminDashboardReport> {
 	const date = dateString ? new Date(dateString) : new Date();
 	const dayKey = getDayKey(date);
+	const isLive = dayKey === getDayKey();
 
 	return unstable_cache(
 		async () => {
@@ -602,15 +604,10 @@ async function getDashboardReport(dateString?: string): Promise<AdminDashboardRe
 				dailyRevenue,
 			};
 		},
-		["admin-dashboard-report", dayKey],
+		["admin-dashboard-report", dayKey, isLive ? "live" : "closed"],
 		{
 			revalidate: 60,
-			tags: [
-				...ADMIN_REPORTING_TAGS.stats,
-				...ADMIN_REPORTING_TAGS.stock,
-				...ADMIN_REPORTING_TAGS.auditLogs,
-				...ADMIN_REPORTING_TAGS.dailyRevenue,
-			],
+			tags: DashboardTags.report(dayKey, isLive),
 		},
 	)();
 }
@@ -635,10 +632,6 @@ export async function getAdminAnalyticsReport(month?: string): Promise<AdminAnal
 	await requireAdmin();
 	return unstable_cache(() => getAnalyticsReport(month), ["admin-analytics-report", month ?? "latest"], {
 		revalidate: 60 * 60,
-		tags: [
-			...ADMIN_REPORTING_TAGS.monthlyRevenue,
-			...ADMIN_REPORTING_TAGS.monthlyDessertRevenue,
-			...ADMIN_REPORTING_TAGS.availableMonths,
-		],
+		tags: [...DashboardTags.monthlyRevenue, ...DashboardTags.monthlyDessertRevenue, ...DashboardTags.availableMonths],
 	})();
 }
