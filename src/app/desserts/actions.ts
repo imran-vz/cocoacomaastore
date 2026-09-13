@@ -1,6 +1,5 @@
 "use server";
 
-import { performance } from "node:perf_hooks";
 import { and, eq, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 import { db } from "@/db";
@@ -21,16 +20,12 @@ import { CacheTag, updateDessertTagsEffect } from "@/server/effect/cache-tags";
 import { runNextAppEffect } from "@/server/effect/next-runtime";
 
 async function getDesserts({ shouldShowDisabled = false }: { shouldShowDisabled?: boolean } = {}) {
-	const start = performance.now();
-
 	// Get desserts from database, sorted by sequence
 	const desserts = await db.query.dessertsTable.findMany({
 		where: and(eq(dessertsTable.isDeleted, false), shouldShowDisabled ? undefined : eq(dessertsTable.enabled, true)),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
 	});
 
-	const duration = performance.now() - start;
-	console.log(`getDesserts: ${duration.toFixed(2)}ms`);
 	return desserts;
 }
 
@@ -40,7 +35,6 @@ export async function toggleDessert(id: number, enabled: boolean) {
 	// Validate input
 	const validated = toggleDessertSchema.parse({ id, enabled });
 
-	const start = performance.now();
 	await db
 		.update(dessertsTable)
 		.set({
@@ -48,8 +42,7 @@ export async function toggleDessert(id: number, enabled: boolean) {
 			isOutOfStock: validated.enabled ? false : undefined,
 		})
 		.where(eq(dessertsTable.id, validated.id));
-	const duration = performance.now() - start;
-	console.log(`toggleDessert: ${duration.toFixed(2)}ms`);
+
 	await runNextAppEffect(updateDessertTagsEffect());
 }
 
@@ -59,13 +52,11 @@ export async function toggleOutOfStock(id: number, isOutOfStock: boolean) {
 	// Validate input
 	const validated = toggleOutOfStockSchema.parse({ id, isOutOfStock });
 
-	const start = performance.now();
 	await db
 		.update(dessertsTable)
 		.set({ isOutOfStock: validated.isOutOfStock })
 		.where(eq(dessertsTable.id, validated.id));
-	const duration = performance.now() - start;
-	console.log(`toggleOutOfStock: ${duration.toFixed(2)}ms`);
+
 	await runNextAppEffect(updateDessertTagsEffect());
 }
 
@@ -81,8 +72,6 @@ export async function createDessert(data: Omit<Dessert, "id" | "sequence" | "isD
 	const validated = createDessertSchema.parse(data);
 	const sanitizedDescription = validated.description ? sanitizeDescription(validated.description) : null;
 
-	const start = performance.now();
-
 	try {
 		// Create dessert in database
 		const [newDessert] = await db
@@ -95,8 +84,6 @@ export async function createDessert(data: Omit<Dessert, "id" | "sequence" | "isD
 
 		await initializeSequence(newDessert.id);
 
-		const duration = performance.now() - start;
-		console.log(`createDessert: ${duration.toFixed(2)}ms`);
 		await runNextAppEffect(updateDessertTagsEffect());
 	} catch (error: unknown) {
 		if (error instanceof Error && "code" in error && (error as { code: string }).code === "23505") {
@@ -113,7 +100,6 @@ export async function updateDessert(id: number, data: Omit<Dessert, "id" | "enab
 	const validated = updateDessertSchema.parse({ id, data });
 	const sanitizedDescription = validated.data.description ? sanitizeDescription(validated.data.description) : null;
 
-	const start = performance.now();
 	try {
 		await db
 			.update(dessertsTable)
@@ -126,8 +112,7 @@ export async function updateDessert(id: number, data: Omit<Dessert, "id" | "enab
 				hasUnlimitedStock: validated.data.hasUnlimitedStock,
 			})
 			.where(eq(dessertsTable.id, validated.id));
-		const duration = performance.now() - start;
-		console.log(`updateDessert: ${duration.toFixed(2)}ms`);
+
 		await runNextAppEffect(updateDessertTagsEffect());
 	} catch (error: unknown) {
 		if (error instanceof Error && "code" in error && (error as { code: string }).code === "23505") {
@@ -142,8 +127,6 @@ export async function deleteDessert(id: number) {
 
 	// Validate input
 	const { id: validatedId } = deleteDessertSchema.parse({ id });
-
-	const start = performance.now();
 
 	// Fetch current name first, then rename on delete to free up the unique constraint
 	const [current] = await db
@@ -160,8 +143,6 @@ export async function deleteDessert(id: number) {
 
 	await db.update(dessertsTable).set({ isDeleted: true, name: deletedName }).where(eq(dessertsTable.id, validatedId));
 
-	const duration = performance.now() - start;
-	console.log(`deleteDessert: ${duration.toFixed(2)}ms`);
 	await runNextAppEffect(updateDessertTagsEffect());
 }
 
@@ -171,27 +152,21 @@ export async function updateDessertSequence(id: number, newScore: number) {
 	// Validate input
 	const validated = updateDessertSequenceSchema.parse({ id, newScore });
 
-	const start = performance.now();
-
 	await updateSequence(validated.id, validated.newScore);
 
-	const duration = performance.now() - start;
-	console.log(`updateDessertSequence: ${duration.toFixed(2)}ms`);
 	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function disableAllDesserts() {
 	await requireAuth();
-	const start = performance.now();
+
 	await db.update(dessertsTable).set({ enabled: false }).where(eq(dessertsTable.isDeleted, false));
-	const duration = performance.now() - start;
-	console.log(`disableAllDesserts: ${duration.toFixed(2)}ms`);
+
 	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function moveDessertToTop(id: number) {
 	await requireAuth();
-	const start = performance.now();
 
 	// PERFORMANCE: Use aggregate query instead of loading all desserts
 	// Get min sequence with a single query
@@ -207,14 +182,11 @@ export async function moveDessertToTop(id: number) {
 
 	await updateSequence(id, newSequence);
 
-	const duration = performance.now() - start;
-	console.log(`moveDessertToTop: ${duration.toFixed(2)}ms`);
 	await runNextAppEffect(updateDessertTagsEffect());
 }
 
 export async function moveDessertToBottom(id: number) {
 	await requireAuth();
-	const start = performance.now();
 
 	// PERFORMANCE: Use aggregate query instead of loading all desserts
 	// Get max sequence with a single query
@@ -230,7 +202,5 @@ export async function moveDessertToBottom(id: number) {
 
 	await updateSequence(id, newSequence);
 
-	const duration = performance.now() - start;
-	console.log(`moveDessertToBottom: ${duration.toFixed(2)}ms`);
 	await runNextAppEffect(updateDessertTagsEffect());
 }

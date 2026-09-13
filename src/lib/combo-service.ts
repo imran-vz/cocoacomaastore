@@ -1,4 +1,3 @@
-import { performance } from "node:perf_hooks";
 import { and, eq, type SQL } from "drizzle-orm";
 import { Effect } from "effect";
 import { unstable_cache } from "next/cache";
@@ -43,30 +42,22 @@ const comboDetailsWith = {
 	},
 } as const;
 
-async function queryCombos(label: string, where: SQL | undefined): Promise<ComboWithDetails[]> {
-	const start = performance.now();
-
+async function queryCombos(where: SQL | undefined): Promise<ComboWithDetails[]> {
 	const combos = await db.query.dessertCombosTable.findMany({
 		where,
 		orderBy: (combos, { asc }) => [asc(combos.sequence)],
 		with: comboDetailsWith,
 	});
 
-	const duration = performance.now() - start;
-	console.log(`${label}: ${duration.toFixed(2)}ms`);
-
 	return combos as ComboWithDetails[];
 }
 
 async function getAllCombos(): Promise<ComboWithDetails[]> {
-	return queryCombos("getAllCombos", eq(dessertCombosTable.isDeleted, false));
+	return queryCombos(eq(dessertCombosTable.isDeleted, false));
 }
 
 export async function getEnabledCombos(): Promise<ComboWithDetails[]> {
-	return queryCombos(
-		"getEnabledCombos",
-		and(eq(dessertCombosTable.isDeleted, false), eq(dessertCombosTable.enabled, true)),
-	);
+	return queryCombos(and(eq(dessertCombosTable.isDeleted, false), eq(dessertCombosTable.enabled, true)));
 }
 
 export const getCachedAllCombos = unstable_cache(getAllCombos, ["all-combos"], {
@@ -75,8 +66,6 @@ export const getCachedAllCombos = unstable_cache(getAllCombos, ["all-combos"], {
 });
 
 async function getBaseDesserts() {
-	const start = performance.now();
-
 	const desserts = await db.query.dessertsTable.findMany({
 		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "base")),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
@@ -88,9 +77,6 @@ async function getBaseDesserts() {
 		},
 	});
 
-	const duration = performance.now() - start;
-	console.log(`getBaseDesserts: ${duration.toFixed(2)}ms`);
-
 	return desserts;
 }
 
@@ -100,8 +86,6 @@ export const getCachedBaseDesserts = unstable_cache(getBaseDesserts, ["base-dess
 });
 
 async function getModifierDesserts() {
-	const start = performance.now();
-
 	const modifiers = await db.query.dessertsTable.findMany({
 		where: and(eq(dessertsTable.isDeleted, false), eq(dessertsTable.enabled, true), eq(dessertsTable.kind, "modifier")),
 		orderBy: (desserts, { asc }) => [asc(desserts.sequence)],
@@ -111,9 +95,6 @@ async function getModifierDesserts() {
 			price: true,
 		},
 	});
-
-	const duration = performance.now() - start;
-	console.log(`getModifierDesserts: ${duration.toFixed(2)}ms`);
 
 	return modifiers;
 }
@@ -134,8 +115,6 @@ export async function createCombo(data: {
 	enabled?: boolean;
 }) {
 	const validated = createComboSchema.parse(data);
-
-	const start = performance.now();
 
 	const [newCombo] = await runNextAppEffect(
 		Effect.gen(function* () {
@@ -159,8 +138,6 @@ export async function createCombo(data: {
 		}),
 	);
 
-	const duration = performance.now() - start;
-	console.log(`createCombo: ${duration.toFixed(2)}ms`);
 	return newCombo;
 }
 
@@ -174,8 +151,6 @@ export async function updateCombo(
 	},
 ) {
 	const validated = updateComboSchema.parse({ id, data });
-
-	const start = performance.now();
 
 	await runNextAppEffect(
 		Effect.gen(function* () {
@@ -195,15 +170,10 @@ export async function updateCombo(
 			yield* updateComboTagsEffect();
 		}),
 	);
-
-	const duration = performance.now() - start;
-	console.log(`updateCombo: ${duration.toFixed(2)}ms`);
 }
 
 export async function deleteCombo(id: number) {
 	const validated = deleteComboSchema.parse({ id });
-
-	const start = performance.now();
 
 	await runNextAppEffect(
 		Effect.gen(function* () {
@@ -217,14 +187,9 @@ export async function deleteCombo(id: number) {
 			yield* updateComboTagsEffect();
 		}),
 	);
-
-	const duration = performance.now() - start;
-	console.log(`deleteCombo: ${duration.toFixed(2)}ms`);
 }
 
 export async function toggleCombo(id: number, enabled: boolean) {
-	const start = performance.now();
-
 	await runNextAppEffect(
 		Effect.gen(function* () {
 			const database = yield* Database;
@@ -234,15 +199,10 @@ export async function toggleCombo(id: number, enabled: boolean) {
 			yield* updateComboTagsEffect();
 		}),
 	);
-
-	const duration = performance.now() - start;
-	console.log(`toggleCombo: ${duration.toFixed(2)}ms`);
 }
 
 export async function updateComboItems(comboId: number, items: Array<{ dessertId: number; quantity: number }>) {
 	const validated = updateComboItemsSchema.parse({ comboId, items });
-
-	const start = performance.now();
 
 	await runNextAppEffect(
 		Effect.gen(function* () {
@@ -280,9 +240,6 @@ export async function updateComboItems(comboId: number, items: Array<{ dessertId
 			yield* updateComboTagsEffect();
 		}),
 	);
-
-	const duration = performance.now() - start;
-	console.log(`updateComboItems: ${duration.toFixed(2)}ms`);
 }
 
 // ============================================================================

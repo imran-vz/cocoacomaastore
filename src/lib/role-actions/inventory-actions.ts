@@ -1,4 +1,3 @@
-import { performance } from "node:perf_hooks";
 import { Effect } from "effect";
 import {
 	getDailyInventoryDay,
@@ -16,29 +15,23 @@ type RoleActionUser = {
 };
 
 type RoleActionConfig = {
-	label: string;
 	requireUser: () => Promise<RoleActionUser>;
 };
 
-export function createInventoryActions({ label, requireUser }: RoleActionConfig) {
+export function createInventoryActions({ requireUser }: RoleActionConfig) {
 	return {
 		async upsertInventoryWithAudit(updates: InventoryUpdate[]): Promise<InventoryWriteResult> {
-			const start = performance.now();
 			const user = await requireUser();
 			const { updates: validatedUpdates } = upsertInventorySchema.parse({ updates });
 			const day = getDailyInventoryDay();
 
-			const result = await runNextAppEffect(
+			return runNextAppEffect(
 				Effect.gen(function* () {
 					const writeResult = yield* setInventoryWithAuditEffect({ day, updates: validatedUpdates, userId: user.id });
 					if (writeResult.ok) yield* updateInventoryTagsEffect(getDayKey(day));
 					return writeResult;
 				}),
 			);
-
-			const duration = performance.now() - start;
-			console.log(`[${label}] upsertInventoryWithAudit: ${duration.toFixed(2)}ms`);
-			return result;
 		},
 	};
 }

@@ -1,4 +1,3 @@
-import { performance } from "node:perf_hooks";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { Effect } from "effect";
 import { db } from "@/db";
@@ -47,7 +46,6 @@ export function getDailyInventoryDayKey(date: Date = new Date()) {
 }
 
 export async function getInventoryForDay(day: Date): Promise<TodayInventoryRow[]> {
-	const start = performance.now();
 	const rows = await db
 		.select({
 			dessertId: dailyDessertInventoryTable.dessertId,
@@ -55,8 +53,7 @@ export async function getInventoryForDay(day: Date): Promise<TodayInventoryRow[]
 		})
 		.from(dailyDessertInventoryTable)
 		.where(eq(dailyDessertInventoryTable.day, day));
-	const duration = performance.now() - start;
-	console.log(`getInventoryForDay: ${duration.toFixed(2)}ms`);
+
 	return rows;
 }
 

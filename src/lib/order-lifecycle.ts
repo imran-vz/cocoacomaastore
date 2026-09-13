@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { performance } from "node:perf_hooks";
 import { and, asc, desc, eq, gte, inArray, lt } from "drizzle-orm";
 import { Effect } from "effect";
 import { unstable_cache } from "next/cache";
@@ -595,7 +594,6 @@ function createCompletedOrderEffect(data: CreateCompletedOrderInput, userId: str
 }
 
 export async function getOrders(date?: Date): Promise<GetOrdersReturnType> {
-	const start = performance.now();
 	const dayStart = getStartOfDayIST(date);
 	const dayEnd = getEndOfDayIST(date);
 	const { db } = await import("@/db");
@@ -622,8 +620,6 @@ export async function getOrders(date?: Date): Promise<GetOrdersReturnType> {
 			},
 		},
 	});
-	const duration = performance.now() - start;
-	console.log(`getOrders: ${duration}ms`);
 
 	return orders.map(mapPersistedOrderDetails);
 }
@@ -648,12 +644,9 @@ export function serializeOrders(orders: GetOrdersReturnType): SerializedOrders {
 	}));
 }
 
-async function runOrderLifecycleOperation<T>(label: string, run: () => Promise<T>): Promise<T> {
-	const start = performance.now();
+async function runOrderLifecycleOperation<T>(run: () => Promise<T>): Promise<T> {
 	try {
-		const result = await run();
-		console.log(`${label}: ${performance.now() - start}ms`);
-		return result;
+		return await run();
 	} catch (error) {
 		if (isDatabaseUnavailableError(error)) {
 			throw new Error("Database is unavailable. Please try again.", { cause: error });
@@ -666,9 +659,8 @@ export async function createCompletedOrder(
 	data: CreateCompletedOrderInput,
 	userId: string,
 ): Promise<CreateCompletedOrderResult> {
-	const created: { order: OrderDetails; replayed: boolean } = await runOrderLifecycleOperation(
-		"createCompletedOrder",
-		() => runNextAppEffect(createCompletedOrderEffect(data, userId)),
+	const created: { order: OrderDetails; replayed: boolean } = await runOrderLifecycleOperation(() =>
+		runNextAppEffect(createCompletedOrderEffect(data, userId)),
 	);
 
 	const [serializedOrder] = serializeOrders([created.order]);
@@ -773,7 +765,5 @@ function cancelOrderAsNormalPathEffect(orderId: number, userId: string, reason?:
 }
 
 export async function cancelOrderAsNormalPath(orderId: number, userId: string, reason?: string) {
-	await runOrderLifecycleOperation("cancelOrder", () =>
-		runNextAppEffect(cancelOrderAsNormalPathEffect(orderId, userId, reason)),
-	);
+	await runOrderLifecycleOperation(() => runNextAppEffect(cancelOrderAsNormalPathEffect(orderId, userId, reason)));
 }

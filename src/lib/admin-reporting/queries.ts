@@ -1,6 +1,5 @@
 import "server-only";
 
-import { performance } from "node:perf_hooks";
 import { and, desc, eq, gte, lt, lte, sql, sum } from "drizzle-orm";
 import { unstable_cache as next_unstable_cache } from "next/cache";
 
@@ -62,7 +61,6 @@ function unstable_cache<T extends Callback>(
 
 // Get dashboard stats for a specific day
 async function getDashboardStats(date: Date): Promise<DashboardStats> {
-	const start = performance.now();
 	const analyticsDay = getAnalyticsDay(date);
 	const currentAnalyticsDay = getAnalyticsDay(new Date());
 	const isCurrentISTDay = analyticsDay.getTime() === currentAnalyticsDay.getTime();
@@ -100,9 +98,6 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 					),
 				),
 		]);
-
-		const duration = performance.now() - start;
-		console.log(`getDashboardStats: ${duration.toFixed(2)}ms`);
 
 		return {
 			dayOrdersCount: dayRevenueRow[0]?.count ?? 0,
@@ -171,9 +166,6 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 	const weekOrdersCount = Number(weekStats[0]?.count ?? 0) + dayOrdersCount;
 	const weekRevenue = Number(weekStats[0]?.revenue ?? 0) + dayRevenue;
 
-	const duration = performance.now() - start;
-	console.log(`getDashboardStats: ${duration.toFixed(2)}ms`);
-
 	return {
 		dayOrdersCount,
 		dayRevenue,
@@ -185,8 +177,6 @@ async function getDashboardStats(date: Date): Promise<DashboardStats> {
 
 // Get stock per dessert for a specific day
 async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
-	const start = performance.now();
-
 	const dayStart = getAnalyticsDay(day);
 	const dayStartParam = timestampParam(dayStart);
 
@@ -209,16 +199,11 @@ async function getStockPerDessert(day: Date): Promise<DessertStock[]> {
 		.where(eq(dessertsTable.isDeleted, false))
 		.orderBy(dessertsTable.sequence);
 
-	const duration = performance.now() - start;
-	console.log(`getStockPerDessert: ${duration.toFixed(2)}ms`);
-
 	return desserts;
 }
 
 // Get audit logs for a specific day
 async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
-	const start = performance.now();
-
 	const dayStart = getStartOfDayIST(date);
 	const dayEnd = getEndOfDayIST(date);
 	const dayStartParam = timestampParam(dayStart);
@@ -241,9 +226,6 @@ async function getAuditLogs(date: Date, limit = 50): Promise<AuditLogEntry[]> {
 		.where(and(gte(inventoryAuditLogTable.createdAt, dayStartParam), lt(inventoryAuditLogTable.createdAt, dayEndParam)))
 		.orderBy(desc(inventoryAuditLogTable.createdAt))
 		.limit(limit);
-
-	const duration = performance.now() - start;
-	console.log(`getAuditLogs: ${duration.toFixed(2)}ms`);
 
 	// Serialize Date objects to ISO strings for client transfer
 	return logs.map((log) => ({
@@ -278,8 +260,6 @@ async function getLiveDayTotals(day: Date) {
 }
 
 async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]> {
-	const start = performance.now();
-
 	const endDay = getAnalyticsDay(endDate);
 	const startDay = new Date(endDay);
 	startDay.setDate(startDay.getDate() - (days - 1));
@@ -332,16 +312,11 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 		});
 	}
 
-	const duration = performance.now() - start;
-	console.log(`getDailyRevenue: ${duration.toFixed(2)}ms`);
-
 	return dailyData;
 }
 
 // Get monthly revenue for the past N months
 async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
-	const start = performance.now();
-
 	const results = await db
 		.select({
 			month: analyticsMonthlyRevenueTable.month,
@@ -351,9 +326,6 @@ async function getMonthlyRevenue(months = 6): Promise<MonthlyRevenue[]> {
 		.from(analyticsMonthlyRevenueTable)
 		.orderBy(desc(analyticsMonthlyRevenueTable.month))
 		.limit(months);
-
-	const duration = performance.now() - start;
-	console.log(`getMonthlyRevenue: ${duration.toFixed(2)}ms`);
 
 	return results.reverse().map((r) => ({
 		month: r.month,
@@ -376,8 +348,6 @@ function formatWeekDate(month: string, day: number): string {
 }
 
 async function getWeeklyRevenue(month: string): Promise<WeeklyRevenue[]> {
-	const start = performance.now();
-
 	if (!isValidMonthKey(month)) {
 		throw new Error("Invalid month");
 	}
@@ -456,9 +426,6 @@ async function getWeeklyRevenue(month: string): Promise<WeeklyRevenue[]> {
 		week.orderCount += row.orders;
 	}
 
-	const duration = performance.now() - start;
-	console.log(`getWeeklyRevenue: ${duration.toFixed(2)}ms`);
-
 	return weeks;
 }
 
@@ -474,8 +441,6 @@ export async function getCachedWeeklyRevenue(month: string) {
 
 // Get monthly per-dessert revenue for a specific month
 async function getMonthlyDessertRevenue(month?: string): Promise<MonthlyDessertRevenue[]> {
-	const start = performance.now();
-
 	// Default to current month if not specified
 	const targetMonth =
 		month ||
@@ -496,9 +461,6 @@ async function getMonthlyDessertRevenue(month?: string): Promise<MonthlyDessertR
 		.innerJoin(dessertsTable, eq(analyticsMonthlyDessertRevenueTable.dessertId, dessertsTable.id))
 		.where(eq(analyticsMonthlyDessertRevenueTable.month, targetMonth))
 		.orderBy(desc(analyticsMonthlyDessertRevenueTable.grossRevenue));
-
-	const duration = performance.now() - start;
-	console.log(`getMonthlyDessertRevenue: ${duration.toFixed(2)}ms`);
 
 	return results.map((r) => ({
 		month: r.month,
@@ -526,8 +488,6 @@ export async function getCachedMonthlyDessertRevenue(month?: string) {
 
 // Get EOD stock trends for the past N days for all desserts
 async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
-	const start = performance.now();
-
 	const currentDay = getAnalyticsDay(new Date());
 	const startDay = new Date(currentDay);
 	startDay.setUTCDate(startDay.getUTCDate() - days);
@@ -548,9 +508,6 @@ async function getEodStockTrends(days = 14): Promise<DailyEodStock[]> {
 			and(gte(analyticsDailyEodStockTable.day, startDayParam), lt(analyticsDailyEodStockTable.day, currentDayParam)),
 		)
 		.orderBy(analyticsDailyEodStockTable.day, dessertsTable.name);
-
-	const duration = performance.now() - start;
-	console.log(`getEodStockTrends: ${duration.toFixed(2)}ms`);
 
 	return results.map((r) => ({
 		day: r.day.toISOString().split("T")[0],
