@@ -9,26 +9,6 @@ import { Label } from "@/components/ui/label";
 import { ReactiveButton } from "@/components/ui/reactive-button";
 import { authClient, signIn } from "@/lib/auth-client";
 
-const SMIRKY_MESSAGES = [
-	"Melting the chocolate...",
-	"Preheating the oven...",
-	"Sprinkling cocoa dust...",
-	"Taste-testing the ganache...",
-	"Whipping the cream...",
-	"Tempering the couverture...",
-	"Folding in the batter...",
-	"Drizzling the caramel...",
-	"Dusting the truffles...",
-	"Checking the soufflé...",
-	"Unmolding the mousse...",
-	"Piping the frosting...",
-];
-
-function getRandomMessage(exclude?: string): string {
-	const available = exclude ? SMIRKY_MESSAGES.filter((m) => m !== exclude) : SMIRKY_MESSAGES;
-	return available[Math.floor(Math.random() * available.length)];
-}
-
 function redirectForRole(role: string | null | undefined, router: ReturnType<typeof useRouter>) {
 	if (role === "admin") {
 		router.replace("/admin");
@@ -41,19 +21,7 @@ function redirectForRole(role: string | null | undefined, router: ReturnType<typ
  * Loading state rendered inside the card stack aesthetic.
  * Shown while checking session or redirecting after login.
  */
-function CardLoadingState({ message }: { message?: string }) {
-	// Seed with a fixed message so the SSR markup and the first client render agree;
-	// picking randomly here would hydration-mismatch. Randomising starts after mount.
-	const [smirky, setSmirky] = useState(SMIRKY_MESSAGES[0]);
-
-	useEffect(() => {
-		setSmirky((prev) => getRandomMessage(prev));
-		const interval = setInterval(() => {
-			setSmirky((prev) => getRandomMessage(prev));
-		}, 2000);
-		return () => clearInterval(interval);
-	}, []);
-
+function CardLoadingState({ message }: { message: string }) {
 	return (
 		<div className="flex min-h-70 flex-col items-center justify-center gap-5 text-center">
 			<div className="relative">
@@ -61,8 +29,7 @@ function CardLoadingState({ message }: { message?: string }) {
 				<Sparkles className="relative size-10 text-[#f0b25f]" />
 			</div>
 			<div className="space-y-1">
-				<p className="text-sm font-semibold tracking-wide text-[#2c1810] animate-pulse">{message ?? smirky}</p>
-				<p className="text-xs text-[#a89080]">{smirky}</p>
+				<output className="block text-sm font-semibold tracking-wide text-[#2c1810]">{message}</output>
 			</div>
 		</div>
 	);
@@ -166,7 +133,7 @@ export default function LoginPage() {
 						{/* Main card */}
 						<div className="relative rounded-2xl border border-[#c9a87c]/25 bg-white/80 p-6 shadow-xl shadow-[#2c1810]/5 backdrop-blur-sm sm:p-8">
 							{showLoading ? (
-								<CardLoadingState message={isSessionPending ? "Checking session…" : undefined} />
+								<CardLoadingState message={isSessionPending ? "Checking session…" : "Opening store…"} />
 							) : (
 								<>
 									<div className="mb-6 flex items-center justify-between">
