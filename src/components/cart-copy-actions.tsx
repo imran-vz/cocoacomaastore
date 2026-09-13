@@ -133,7 +133,9 @@ export function CartCopyActions({
 							/>
 						</div>
 
-						{upiPaymentText && <QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />}
+						{isOpen && upiPaymentText && (
+							<QRCodeSVG ref={qrCodeRef} value={upiPaymentText} size={400} className="hidden" />
+						)}
 					</div>
 				</div>
 			</div>

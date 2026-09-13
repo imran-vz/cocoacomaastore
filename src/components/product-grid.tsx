@@ -2,6 +2,7 @@
 
 import { IconCake } from "@tabler/icons-react";
 import { AnimatePresence, motion } from "motion/react";
+import { memo } from "react";
 import { tweenFast } from "@/lib/motion";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -20,7 +21,7 @@ interface ProductGridProps {
 	searchQuery?: string;
 }
 
-export function ProductGrid({
+export const ProductGrid = memo(function ProductGrid({
 	desserts,
 	combos = [],
 	onAddToCart,
@@ -187,4 +188,4 @@ export function ProductGrid({
 			)}
 		</div>
 	);
-}
+});
