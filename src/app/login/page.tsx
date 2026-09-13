@@ -1,12 +1,12 @@
 "use client";
 
-import { ShieldCheck, Sparkles } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ReactiveButton } from "@/components/ui/reactive-button";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient, signIn } from "@/lib/auth-client";
 
 function redirectForRole(role: string | null | undefined, router: ReturnType<typeof useRouter>) {
@@ -17,20 +17,12 @@ function redirectForRole(role: string | null | undefined, router: ReturnType<typ
 	}
 }
 
-/**
- * Loading state rendered inside the card stack aesthetic.
- * Shown while checking session or redirecting after login.
- */
-function CardLoadingState({ message }: { message: string }) {
+/** Shown while checking the session or redirecting after a successful login. */
+function LoadingState({ message }: { message: string }) {
 	return (
-		<div className="flex min-h-70 flex-col items-center justify-center gap-5 text-center">
-			<div className="relative">
-				<div className="absolute inset-0 rounded-full bg-[#f0b25f]/30 blur-xl" />
-				<Sparkles className="relative size-10 text-[#f0b25f]" />
-			</div>
-			<div className="space-y-1">
-				<output className="block text-sm font-semibold tracking-wide text-[#2c1810]">{message}</output>
-			</div>
+		<div className="flex min-h-56 flex-col items-center justify-center gap-3">
+			<Spinner className="size-5 text-muted-foreground" />
+			<output className="text-sm text-muted-foreground">{message}</output>
 		</div>
 	);
 }
@@ -90,125 +82,71 @@ export default function LoginPage() {
 	const showLoading = isSessionPending || isRedirecting;
 
 	return (
-		<div className="relative h-dvh overflow-hidden bg-[#f5efe6] text-[#2c1810]">
-			{/* ── Fixed background ── */}
-			<div className="absolute -left-32 -top-32 h-125 w-125 rounded-full bg-[#e8d5c4]/60 blur-3xl" />
-			<div className="absolute -bottom-40 -right-40 h-150 w-150 rounded-full bg-[#d4a574]/25 blur-3xl" />
-			<div className="absolute left-1/3 top-1/4 h-80 w-80 rounded-full bg-[#f0b25f]/10 blur-3xl" />
-			<div className="absolute inset-0 opacity-[0.4] bg-[radial-gradient(#c9a87c_1px,transparent_1px)] bg-size-[24px_24px]" />
+		<main className="min-h-app w-full max-w-sm mx-auto flex flex-col px-4 pt-10 pb-24 sm:justify-center sm:py-12">
+			<Card>
+				{showLoading ? (
+					<CardContent>
+						<LoadingState message={isSessionPending ? "Checking session…" : "Opening store…"} />
+					</CardContent>
+				) : (
+					<>
+						<CardHeader>
+							<CardTitle className="text-lg">Sign in</CardTitle>
+							<CardDescription>Use your staff account to open the store.</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<form onSubmit={handleSubmit} className="space-y-4">
+								<div className="space-y-2">
+									<Label htmlFor={emailID}>Email</Label>
+									<Input
+										id={emailID}
+										type="email"
+										placeholder="you@example.com"
+										value={email}
+										onChange={(e) => {
+											setEmail(e.target.value);
+											setIsError(false);
+										}}
+										required
+										disabled={isLoading}
+										autoComplete="email"
+										inputMode="email"
+									/>
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor={passwordID}>Password</Label>
+									<Input
+										id={passwordID}
+										type="password"
+										placeholder="Enter your password"
+										value={password}
+										onChange={(e) => {
+											setPassword(e.target.value);
+											setIsError(false);
+										}}
+										required
+										disabled={isLoading}
+										autoComplete="current-password"
+									/>
+								</div>
+								<ReactiveButton
+									type="submit"
+									size="lg"
+									isLoading={isLoading}
+									isError={isError}
+									loadingLabel="Signing in…"
+									errorLabel="Invalid email or password"
+									className="w-full"
+								>
+									Sign in
+								</ReactiveButton>
+							</form>
+						</CardContent>
+					</>
+				)}
+			</Card>
 
-			{/* ── Scrollable content ── */}
-			<div className="relative z-10 h-full overflow-y-auto overscroll-y-none scroll-smooth">
-				{/*
-					Mobile: content starts from top (pt-8) with generous bottom padding (pb-32)
-					so the keyboard never covers inputs. No flex centering — the browser's native
-					scroll-into-view handles focus without fighting layout.
-
-					Desktop (sm+): vertically center with justify-center and normal padding.
-				*/}
-				<div className="mx-auto flex min-h-full w-full max-w-sm flex-col px-4 pt-8 pb-32 sm:justify-center sm:py-12 sm:pb-12">
-					{/* Brand */}
-					<div className="mb-8 text-center">
-						<div className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-white shadow-lg shadow-[#2c1810]/5">
-							<Image
-								src="/logo.png"
-								loading="eager"
-								alt="Cocoa Comaa"
-								width={36}
-								height={36}
-								className="size-9 object-contain"
-								priority
-							/>
-						</div>
-						<h1 className="text-xl font-bold tracking-tight text-[#2c1810]">Cocoa Comaa</h1>
-						<p className="mt-1 text-sm text-[#8b6914]">Staff portal</p>
-					</div>
-
-					{/* Card stack */}
-					<div className="relative">
-						{/* Back card layers */}
-						<div className="absolute -top-2 left-2 right-2 h-full rounded-2xl bg-[#e8d5c4]/60" />
-						<div className="absolute -top-1 left-1 right-1 h-full rounded-2xl bg-[#f0b25f]/20" />
-
-						{/* Main card */}
-						<div className="relative rounded-2xl border border-[#c9a87c]/25 bg-white/80 p-6 shadow-xl shadow-[#2c1810]/5 backdrop-blur-sm sm:p-8">
-							{showLoading ? (
-								<CardLoadingState message={isSessionPending ? "Checking session…" : "Opening store…"} />
-							) : (
-								<>
-									<div className="mb-6 flex items-center justify-between">
-										<h2 className="text-lg font-bold text-[#2c1810]">Sign in</h2>
-										<div className="flex h-7 items-center gap-1.5 rounded-full bg-[#f0b25f]/10 px-3 text-xs font-semibold text-[#8b6914]">
-											<ShieldCheck className="size-3" />
-											Secure
-										</div>
-									</div>
-
-									<form onSubmit={handleSubmit} className="space-y-4">
-										<div className="space-y-1.5">
-											<Label
-												htmlFor={emailID}
-												className="text-xs font-semibold uppercase tracking-wider text-[#8b6914]"
-											>
-												Email
-											</Label>
-											<Input
-												id={emailID}
-												type="email"
-												placeholder="you@example.com"
-												value={email}
-												onChange={(e) => {
-													setEmail(e.target.value);
-													setIsError(false);
-												}}
-												required
-												disabled={isLoading}
-												autoComplete="email"
-												inputMode="email"
-												className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
-											/>
-										</div>
-										<div className="space-y-1.5">
-											<Label
-												htmlFor={passwordID}
-												className="text-xs font-semibold uppercase tracking-wider text-[#8b6914]"
-											>
-												Password
-											</Label>
-											<Input
-												id={passwordID}
-												type="password"
-												placeholder="••••••••"
-												value={password}
-												onChange={(e) => {
-													setPassword(e.target.value);
-													setIsError(false);
-												}}
-												required
-												disabled={isLoading}
-												autoComplete="current-password"
-												className="h-12 rounded-xl border-[#c9a87c]/30 bg-[#faf8f5] text-[#2c1810] placeholder:text-[#a89080] focus-visible:border-[#b8956a] focus-visible:ring-[#b8956a]/20"
-											/>
-										</div>
-										<ReactiveButton
-											type="submit"
-											isLoading={isLoading}
-											isError={isError}
-											errorLabel="Invalid email or password"
-											loadingLabel=""
-											className="h-12 w-full rounded-xl bg-[#2c1810] text-sm font-bold uppercase tracking-wider text-[#f5efe6] shadow-lg shadow-[#2c1810]/15 transition-transform hover:-translate-y-0.5 hover:bg-[#3d2218]"
-										>
-											Enter dashboard
-										</ReactiveButton>
-									</form>
-								</>
-							)}
-						</div>
-					</div>
-
-					<p className="mt-6 text-center text-xs text-[#a89080]">Trouble signing in? Ask your store manager.</p>
-				</div>
-			</div>
-		</div>
+			<p className="mt-4 text-center text-xs text-muted-foreground">Trouble signing in? Ask your store manager.</p>
+		</main>
 	);
 }
