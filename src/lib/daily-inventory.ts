@@ -170,7 +170,7 @@ export function setInventoryWithAuditEffect({
 				}),
 			)
 			.pipe(
-				Effect.catchAll((error) =>
+				Effect.catch((error) =>
 					error.cause instanceof InventoryConflictRollback
 						? Effect.succeed({ ok: false, code: "INVENTORY_CONFLICT", conflicts: error.cause.conflicts } as const)
 						: Effect.fail(error),

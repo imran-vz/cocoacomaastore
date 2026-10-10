@@ -4,7 +4,7 @@ import { BackendDatabaseError } from "@/server/effect/errors";
 
 type AppDatabase = typeof drizzleDb;
 
-export class Database extends Context.Tag("Database")<
+export class Database extends Context.Service<
 	Database,
 	{
 		readonly db: AppDatabase;
@@ -13,7 +13,7 @@ export class Database extends Context.Tag("Database")<
 			run: (db: AppDatabase) => Promise<A>,
 		) => Effect.Effect<A, BackendDatabaseError>;
 	}
->() {
+>()("Database") {
 	static readonly Live = Layer.effect(
 		this,
 		Effect.promise(async () => {

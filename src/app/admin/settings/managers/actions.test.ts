@@ -28,7 +28,7 @@ vi.mock("@/server/effect/next-runtime", async () => {
 			spies.databaseAttempts(operation);
 			return Effect.promise(() => run({ marker: "transaction-database" }));
 		},
-	} as unknown as import("effect").Context.Tag.Service<typeof Database>;
+	} as unknown as import("effect").Context.Service.Shape<typeof Database>;
 	return {
 		runNextAppEffect: (effect: unknown) =>
 			Effect.runPromise(

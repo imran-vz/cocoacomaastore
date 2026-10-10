@@ -11,7 +11,7 @@ type CacheRevalidationResult =
 			readonly reason: string;
 	  };
 
-export class CacheRevalidator extends Context.Tag("CacheRevalidator")<
+export class CacheRevalidator extends Context.Service<
 	CacheRevalidator,
 	{
 		readonly revalidateAnalyticsCaches: () => Effect.Effect<
@@ -19,7 +19,7 @@ export class CacheRevalidator extends Context.Tag("CacheRevalidator")<
 			BackendConfigError | BackendHttpError
 		>;
 	}
->() {
+>()("CacheRevalidator") {
 	static readonly Live = Layer.succeed(this, {
 		revalidateAnalyticsCaches: () =>
 			Effect.gen(function* () {
