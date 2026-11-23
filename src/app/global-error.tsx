@@ -1,16 +1,14 @@
 "use client";
 
-import { ErrorScreen } from "@/components/error-screen";
+import "./globals.css";
 
-export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+import { ErrorScreen } from "@/features/shell/error-screen";
+
+export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
 	return (
 		<html lang="en">
-			<body className="antialiased bg-[url(/bg-grid.svg)]">
-				<ErrorScreen
-					error={error}
-					reset={reset}
-					mainClassName="min-h-screen flex items-center justify-center p-4 md:p-6 lg:p-8"
-				/>
+			<body className="antialiased">
+				<ErrorScreen error={error} retry={retry} />
 			</body>
 		</html>
 	);

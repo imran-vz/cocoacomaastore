@@ -3,11 +3,11 @@
 # Clone the Supabase public schema into the local Postgres instance.
 #
 # Required:
-#   SUPABASE_DATABASE_URL or REMOTE_DATABASE_URL
+#   SUPABASE_DATABASE_URL (from the shell or .env), or the first argument
 #
 # Optional:
-#   LOCAL_DATABASE_URL or DATABASE_URL
-#   local URL defaults to postgresql://postgres:password@localhost:5432/postgres
+#   DATABASE_URL (from the shell or .env), or the second argument;
+#   defaults to postgresql://postgres:password@localhost:5432/postgres
 #
 # Usage:
 #   pnpm db:clone:supabase
@@ -35,15 +35,8 @@ env_file_value() {
 	printf "%s" "$value"
 }
 
-REMOTE_URL="${1:-${SUPABASE_DATABASE_URL:-${REMOTE_DATABASE_URL:-$(env_file_value SUPABASE_DATABASE_URL)}}}"
-if [[ -z "$REMOTE_URL" ]]; then
-	REMOTE_URL="$(env_file_value REMOTE_DATABASE_URL)"
-fi
-
-LOCAL_URL="${2:-${LOCAL_DATABASE_URL:-${DATABASE_URL:-$(env_file_value LOCAL_DATABASE_URL)}}}"
-if [[ -z "$LOCAL_URL" ]]; then
-	LOCAL_URL="$(env_file_value DATABASE_URL)"
-fi
+REMOTE_URL="${1:-${SUPABASE_DATABASE_URL:-$(env_file_value SUPABASE_DATABASE_URL)}}"
+LOCAL_URL="${2:-${DATABASE_URL:-$(env_file_value DATABASE_URL)}}"
 LOCAL_URL="${LOCAL_URL:-$DEFAULT_LOCAL_URL}"
 DUMP_FILE="$(mktemp "${TMPDIR:-/tmp}/cocoacomaa-supabase.XXXXXX.dump")"
 
@@ -75,7 +68,6 @@ require_command pg_restore
 require_command psql
 
 [[ -n "$REMOTE_URL" ]] || die "Set SUPABASE_DATABASE_URL or pass the Supabase database URL as the first argument"
-[[ -n "$LOCAL_URL" ]] || die "Set LOCAL_DATABASE_URL or pass the local database URL as the second argument"
 
 if [[ "$REMOTE_URL" == "$LOCAL_URL" ]]; then
 	die "Remote and local database URLs are identical"
@@ -90,9 +82,8 @@ echo "Local:  $(mask_url "$LOCAL_URL")"
 echo
 echo "This will drop and recreate the local public schema."
 
-# Skip the prompt when CONFIRM_CLONE=clone (non-interactive environments).
-# Otherwise read from /dev/tty so the prompt works even when stdin is not a
-# terminal (e.g. when run via `vp run`, which provides non-blocking stdin).
+# CONFIRM_CLONE=clone skips the prompt (non-interactive environments). The prompt reads
+# /dev/tty so it still works when a task runner doesn't give the script a terminal stdin.
 if [[ "${CONFIRM_CLONE:-}" != "clone" ]]; then
 	if [[ -r /dev/tty && -w /dev/tty ]]; then
 		read -r -p "Continue? Type 'clone' to proceed: " CONFIRM < /dev/tty

@@ -1,4 +1,4 @@
-import { createSafeDiagnostic } from "@/server/safe-diagnostics";
+import { createSafeDiagnostic } from "@/lib/safe-diagnostics";
 
 type QueryLike = Promise<unknown> & {
 	values?: (...args: unknown[]) => Promise<unknown>;
@@ -30,22 +30,14 @@ function getSlowQueryMs() {
 	return Number.isFinite(value) && value >= 0 ? value : DEFAULT_SLOW_QUERY_MS;
 }
 
-function shouldLogQuery(durationMs: number, status: QueryLogStatus) {
-	return status === "error" || durationMs >= getSlowQueryMs();
-}
+type Timing = { params: unknown[]; start: number; slowQueryMs: number };
 
-function logQueryTiming({
-	params,
-	durationMs,
-	status,
-	error,
-}: {
-	params: unknown[];
-	durationMs: number;
-	status: QueryLogStatus;
-	error?: unknown;
-}) {
-	if (!shouldLogQuery(durationMs, status)) return;
+function logQueryTiming(
+	{ params, start, slowQueryMs }: Timing,
+	{ status, error }: { status: QueryLogStatus; error?: unknown },
+) {
+	const durationMs = performance.now() - start;
+	if (status !== "error" && durationMs < slowQueryMs) return;
 
 	const diagnostic = createSafeDiagnostic({
 		operation: "query",
@@ -63,49 +55,29 @@ function logQueryTiming({
 	console.log("[db] query timing", diagnostic);
 }
 
-function observeQuery<T>(
-	promise: Promise<T>,
-	{
-		params,
-		start,
-	}: {
-		params: unknown[];
-		start: number;
-	},
-) {
+function observeQuery<T>(promise: Promise<T>, timing: Timing) {
 	return promise.then(
 		(result) => {
-			logQueryTiming({
-				params,
-				durationMs: performance.now() - start,
-				status: "ok",
-			});
+			logQueryTiming(timing, { status: "ok" });
 			return result;
 		},
 		(error) => {
-			logQueryTiming({
-				params,
-				durationMs: performance.now() - start,
-				status: "error",
-				error,
-			});
+			logQueryTiming(timing, { status: "error", error });
 			throw error;
 		},
 	);
 }
 
-function wrapQuery<TQuery extends QueryLike>(queryResult: TQuery, params: unknown[], start: number): TQuery {
-	if (!isQueryTimingEnabled()) return queryResult;
-
+function wrapQuery<TQuery extends QueryLike>(queryResult: TQuery, timing: Timing): TQuery {
 	return new Proxy(queryResult, {
 		get(target, property, receiver) {
 			if (property === "values" && typeof target.values === "function") {
-				return (...args: unknown[]) => observeQuery(target.values?.(...args) ?? Promise.resolve([]), { params, start });
+				return (...args: unknown[]) => observeQuery(target.values?.(...args) ?? Promise.resolve([]), timing);
 			}
 
 			if (property === "then") {
 				return (onFulfilled: unknown, onRejected: unknown) =>
-					observeQuery(target, { params, start }).then(
+					observeQuery(target, timing).then(
 						onFulfilled as Parameters<Promise<unknown>["then"]>[0],
 						onRejected as Parameters<Promise<unknown>["then"]>[1],
 					);
@@ -113,12 +85,12 @@ function wrapQuery<TQuery extends QueryLike>(queryResult: TQuery, params: unknow
 
 			if (property === "catch") {
 				return (onRejected: unknown) =>
-					observeQuery(target, { params, start }).catch(onRejected as Parameters<Promise<unknown>["catch"]>[0]);
+					observeQuery(target, timing).catch(onRejected as Parameters<Promise<unknown>["catch"]>[0]);
 			}
 
 			if (property === "finally") {
 				return (onFinally: unknown) =>
-					observeQuery(target, { params, start }).finally(onFinally as Parameters<Promise<unknown>["finally"]>[0]);
+					observeQuery(target, timing).finally(onFinally as Parameters<Promise<unknown>["finally"]>[0]);
 			}
 
 			return Reflect.get(target, property, receiver);
@@ -154,10 +126,11 @@ export function withQueryTiming<TClient extends object>(client: TClient): TClien
 
 	const timedClient = client as TClient & TimedClient;
 	const originalUnsafe = timedClient.unsafe.bind(timedClient);
+	const slowQueryMs = getSlowQueryMs();
 
 	timedClient.unsafe = ((query: string, params: unknown[] = [], options?: unknown) => {
 		const start = performance.now();
-		return wrapQuery(originalUnsafe(query, params as never[], options), params, start);
+		return wrapQuery(originalUnsafe(query, params as never[], options), { params, start, slowQueryMs });
 	}) as TimedClient["unsafe"];
 
 	if (timedClient.begin) {

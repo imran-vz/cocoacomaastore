@@ -1,76 +1,76 @@
 "use client";
 
-import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { IconDots, IconX } from "@tabler/icons-react";
+import { Trash2 } from "lucide-react";
 import * as React from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-	ConfirmSheet,
-	responsiveBackdropClassName,
-	responsivePopupClassName,
-	SheetGrabber,
-} from "@/components/ui/confirm-sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FocusTrap } from "@/components/ui/use-modal-focus";
-import { cn } from "@/lib/utils";
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, MoreMenuTrigger } from "@/components/ui/dropdown-menu";
+import { FEEDBACK_MS } from "@/components/ui/feedback";
+import { OverlayContent, OverlayDescription, OverlayHeader, OverlayRoot } from "@/components/ui/overlay";
+import { useReactiveButton } from "@/components/ui/reactive-button";
+import { type ActionResult, useRunAction } from "@/lib/action-result";
+
+const SAVE_FAILED = "Couldn't save. Try again.";
+
+type Save = () => Promise<ActionResult<unknown>>;
+
+type FormState = {
+	/** True when any field differs from its initial value. */
+	dirty: boolean;
+	/** Saves the form. Runs once per submit; the sheet can't close until it settles. */
+	onSave: Save;
+};
+
+const FormSheetContext = React.createContext<{
+	setDirty: (dirty: boolean) => void;
+	saveRef: React.RefObject<Save | null>;
+} | null>(null);
+
+/** Called by the fields inside a `FormSheet`: tells the sheet whether they changed and how to save them. */
+export function useFormSheet({ dirty, onSave }: FormState) {
+	const sheet = React.useContext(FormSheetContext);
+	if (!sheet) throw new Error("useFormSheet is called from the fields inside a FormSheet");
+	const { setDirty, saveRef } = sheet;
+	React.useLayoutEffect(() => setDirty(dirty), [setDirty, dirty]);
+	React.useLayoutEffect(() => {
+		saveRef.current = onSave;
+	});
+}
 
 /**
- * The one container for add/edit forms (DESIGN.md §Forms). A full-height bottom sheet below
- * md, a centred dialog from md, with the same header at every width:
- *
- *   ✕ · Title ·········· [⋯] [Save]
- *
- * - The primary action sits in the header, so it is always in the same place and stays
- *   visible above the phone keyboard. It is disabled until the form is `dirty`.
- * - Closing a dirty form (✕, Escape, scrim) asks "Discard changes?" through `ConfirmSheet`.
- *   Closing after a successful save is the caller's own `onOpenChange(false)`, so it never asks.
- * - Destructive actions (Delete dessert / Delete combo) live behind the `⋯` (`menu`), each
- *   opening its own `ConfirmSheet`; they never sit next to Save.
- * - Focus: the first field on open (keyboard/mouse; touch focuses the sheet so the keyboard
- *   doesn't pop), trapped while open, back to the trigger on close.
+ * The one container for add/edit forms (DESIGN.md §Forms). Its children are the fields, a
+ * component that keeps the form's values and calls `useFormSheet`; the sheet mounts them afresh on
+ * every opening, so each opening starts from the saved values. It renders the `<form>` and runs
+ * the save: `onSave` while the submit button shows "Saving…", then a failed result's `error`
+ * flashed on the button, or, once the lists showing the change have refreshed, a success flash and
+ * the sheet closing. `onDelete` adds a confirmed delete to the `⋯` menu.
  *
  * ```tsx
- * const formId = "dessert-form";
- * <FormSheet
- *   open={open}
- *   onOpenChange={setOpen}
- *   title={editing ? "Edit dessert" : "Add dessert"}
- *   dirty={isDirty}
- *   busy={saveButton.isBusy}
- *   primary={<SubmitButton type="submit" form={formId} size="sm" />}
- *   menu={editing ? <DropdownMenuItem variant="destructive" onClick={() => setConfirmDelete(true)}>Delete dessert</DropdownMenuItem> : null}
- * >
- *   <form id={formId} onSubmit={handleSubmit} className="space-y-4">…</form>
+ * <FormSheet open={open} onOpenChange={setOpen} title="Edit dessert" submitLabel="Save" savedLabel="Updated"
+ *   onDelete={() => deleteDessert(id)} deleteLabel="Delete dessert" deleteTitle="Delete Brownie?">
+ *   <DessertFields dessert={dessert} />
  * </FormSheet>
  * ```
  */
-export type FormSheetProps = {
+type FormSheetProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	title: React.ReactNode;
-	/** One muted line under the header ("They sign in with this email and password."). */
+	/** One muted line above the fields. */
 	description?: React.ReactNode;
-	/** True when any field differs from its initial value. Drives the primary state and the discard prompt. */
-	dirty: boolean;
-	/** True while saving: blocks closing and keeps the primary enabled for its busy state. */
-	busy?: boolean;
-	/**
-	 * The primary action, usually a submit button tied to the form by `form={formId}`.
-	 * FormSheet disables it while the form is clean; its own `disabled` adds to that.
-	 * Use `size="sm"` so it fits the header.
-	 */
-	primary: React.ReactElement<{ disabled?: boolean }>;
-	/** `DropdownMenuItem`s for the `⋯` menu (destructive actions). Omit for no menu. */
-	menu?: React.ReactNode;
-	/** Discard prompt copy. */
-	discardTitle?: React.ReactNode;
-	discardDescription?: React.ReactNode;
+	/** The submit button's label: "Save", "Add". */
+	submitLabel: string;
+	/** Flashed on the submit button once saved: "Updated", "Added". */
+	savedLabel: string;
+	/** Deletes the record once confirmed, then the sheet closes. */
+	onDelete?: Save;
+	/** Verb + noun, on the menu item and the confirm button: "Delete dessert". */
+	deleteLabel?: string;
+	/** The confirmation's question: "Delete Brownie?". */
+	deleteTitle?: React.ReactNode;
+	/** The confirmation's consequence line. */
+	deleteDescription?: React.ReactNode;
 	children: React.ReactNode;
-	/** Extra classes for the scrolling body. */
-	bodyClassName?: string;
-	/** Focus target on close when the trigger is gone. */
-	finalFocus?: DialogPrimitive.Popup.Props["finalFocus"];
 };
 
 const FIELD_SELECTOR =
@@ -81,113 +81,150 @@ export function FormSheet({
 	onOpenChange,
 	title,
 	description,
-	dirty,
-	busy = false,
-	primary,
-	menu,
-	discardTitle = "Discard changes?",
-	discardDescription = "Your changes won't be saved.",
+	submitLabel,
+	savedLabel,
+	onDelete,
+	deleteLabel = "Delete",
+	deleteTitle,
+	deleteDescription,
 	children,
-	bodyClassName,
-	finalFocus,
 }: FormSheetProps) {
+	const runAction = useRunAction();
+	const formId = React.useId();
 	const bodyRef = React.useRef<HTMLDivElement>(null);
-	const popupRef = React.useRef<HTMLDivElement>(null);
-	const [confirmDiscard, setConfirmDiscard] = React.useState(false);
+	const saveRef = React.useRef<Save | null>(null);
+	const [dirty, setDirty] = React.useState(false);
+	const form = React.useMemo(() => ({ setDirty, saveRef }), []);
+	const [controls, SubmitButton] = useReactiveButton({
+		label: submitLabel,
+		loading: { label: "Saving…" },
+		success: { label: savedLabel, duration: FEEDBACK_MS.beforeClose },
+	});
+	const [confirm, setConfirm] = React.useState<"discard" | "delete" | null>(null);
+	const [opening, setOpening] = React.useState(0);
+	const [wasOpen, setWasOpen] = React.useState(open);
+	if (open !== wasOpen) {
+		setWasOpen(open);
+		if (open) {
+			setOpening(opening + 1);
+			setDirty(false);
+		} else {
+			setConfirm(null);
+		}
+	}
+	const busy = controls.isBusy;
 
-	React.useEffect(() => {
-		if (!open) setConfirmDiscard(false);
-	}, [open]);
+	const close = () => {
+		controls.reset();
+		onOpenChange(false);
+	};
 
 	const requestClose = () => {
 		if (busy) return;
 		if (dirty) {
-			setConfirmDiscard(true);
+			setConfirm("discard");
 			return;
 		}
-		onOpenChange(false);
+		close();
 	};
 
-	const primaryElement = React.cloneElement(primary, {
-		disabled: Boolean(primary.props.disabled) || (!dirty && !busy),
-	});
+	const save = async () => {
+		const onSave = saveRef.current;
+		if (!onSave || controls.status === "loading" || controls.status === "success") return;
+		const token = controls.setLoading();
+		const result = await runAction(onSave(), { fallback: SAVE_FAILED });
+		if (!result.ok) {
+			controls.setError(result.error, { token });
+			return;
+		}
+		controls.setSuccess(undefined, { token, onComplete: () => onOpenChange(false) });
+	};
+
+	const remove = async () => {
+		if (!onDelete) return;
+		const result = await runAction(onDelete());
+		if (!result.ok) return result;
+		close();
+	};
+
+	const setConfirmOpen = (kind: "discard" | "delete") => (next: boolean) => setConfirm(next ? kind : null);
 
 	return (
-		<DialogPrimitive.Root
+		<OverlayRoot
 			open={open}
 			onOpenChange={(next) => {
 				if (next) onOpenChange(true);
 				else requestClose();
 			}}
 		>
-			<DialogPrimitive.Portal>
-				<DialogPrimitive.Backdrop data-slot="form-sheet-overlay" className={responsiveBackdropClassName} />
-				<FocusTrap containerRef={popupRef} />
-				<DialogPrimitive.Popup
-					ref={popupRef}
-					data-slot="form-sheet"
-					initialFocus={(type) => {
-						if (type === "touch") return true;
-						return bodyRef.current?.querySelector<HTMLElement>(FIELD_SELECTOR) ?? true;
-					}}
-					finalFocus={finalFocus}
-					className={cn(
-						responsivePopupClassName,
-						"max-md:top-[calc(env(safe-area-inset-top)+0.75rem)] md:max-h-[calc(100dvh-4rem)] md:max-w-lg",
-					)}
+			<OverlayContent
+				// A touch open focuses the sheet, not the first field, so the phone keyboard doesn't pop up.
+				initialFocus={(type) => {
+					if (type === "touch") return true;
+					return bodyRef.current?.querySelector<HTMLElement>(FIELD_SELECTOR) ?? true;
+				}}
+				className="max-md:top-[calc(env(safe-area-inset-top)+0.75rem)] md:max-h-[calc(100dvh-4rem)] md:max-w-lg"
+			>
+				<OverlayHeader
+					title={title}
+					closeDisabled={busy}
+					className="border-b"
+					actions={
+						<>
+							{onDelete ? (
+								<DropdownMenu>
+									<MoreMenuTrigger label="More actions" disabled={busy} />
+									<DropdownMenuContent align="end" className="min-w-52">
+										<DropdownMenuItem variant="destructive" onClick={() => setConfirm("delete")}>
+											<Trash2 aria-hidden="true" />
+											{deleteLabel}
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
+							) : null}
+							<SubmitButton type="submit" form={formId} size="sm" disabled={!dirty && !busy} />
+						</>
+					}
+				/>
+				<div
+					ref={bodyRef}
+					className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-safe-6 md:px-6 md:pb-6"
 				>
-					<SheetGrabber />
-					<header className="flex h-14 shrink-0 items-center gap-1 border-b px-2 md:px-3">
-						<Button variant="ghost" size="icon-touch" aria-label="Close" onClick={requestClose} disabled={busy}>
-							<IconX />
-						</Button>
-						<DialogPrimitive.Title className="min-w-0 flex-1 truncate px-1 text-[17px] font-semibold text-foreground md:text-base">
-							{title}
-						</DialogPrimitive.Title>
-						{menu ? (
-							<DropdownMenu>
-								<DropdownMenuTrigger
-									render={
-										<Button variant="ghost" size="icon-touch" aria-label="More actions" disabled={busy}>
-											<IconDots />
-										</Button>
-									}
-								/>
-								<DropdownMenuContent align="end" className="min-w-52">
-									{menu}
-								</DropdownMenuContent>
-							</DropdownMenu>
-						) : null}
-						<div className="flex shrink-0 items-center pr-1 pl-1">{primaryElement}</div>
-					</header>
-					<div
-						ref={bodyRef}
-						className={cn(
-							"min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-4 pb-[max(env(safe-area-inset-bottom),1.5rem)] md:px-6 md:pb-6",
-							bodyClassName,
-						)}
+					{description ? <OverlayDescription className="mb-4">{description}</OverlayDescription> : null}
+					<form
+						id={formId}
+						onSubmit={(event) => {
+							event.preventDefault();
+							void save();
+						}}
+						className="space-y-4"
 					>
-						{description ? (
-							<DialogPrimitive.Description className="mb-4 text-sm text-muted-foreground text-pretty">
-								{description}
-							</DialogPrimitive.Description>
-						) : null}
-						{children}
-					</div>
-				</DialogPrimitive.Popup>
-			</DialogPrimitive.Portal>
+						<FormSheetContext value={form}>
+							<React.Fragment key={opening}>{children}</React.Fragment>
+						</FormSheetContext>
+					</form>
+				</div>
+			</OverlayContent>
 			<ConfirmSheet
-				open={confirmDiscard}
-				onOpenChange={setConfirmDiscard}
-				title={discardTitle}
-				description={discardDescription}
+				open={confirm === "discard"}
+				onOpenChange={setConfirmOpen("discard")}
+				title="Discard changes?"
+				description="Your changes won't be saved."
 				confirmLabel="Discard"
 				cancelLabel="Keep editing"
-				onConfirm={() => {
-					setConfirmDiscard(false);
-					onOpenChange(false);
-				}}
+				onConfirm={close}
 			/>
-		</DialogPrimitive.Root>
+			{onDelete ? (
+				<ConfirmSheet
+					open={confirm === "delete"}
+					onOpenChange={setConfirmOpen("delete")}
+					title={deleteTitle ?? `${deleteLabel}?`}
+					description={deleteDescription}
+					confirmLabel={deleteLabel}
+					pendingLabel="Deleting…"
+					onConfirm={remove}
+				/>
+			) : null}
+		</OverlayRoot>
 	);
 }

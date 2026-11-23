@@ -1,29 +1,21 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import { AdminPageShell } from "@/components/admin/admin-page-shell";
-import { DashboardSkeleton } from "../loading-skeletons";
-import { getAdminDashboardReport } from "./actions";
-import { DashboardContent } from "./dashboard-content";
+import { REPORT_DAY_PARAM } from "@/features/insights/client";
+import { DashboardContent } from "@/features/insights/dashboard-content";
+import { getDashboardReport } from "@/features/insights/reporting";
+import { pageMetadata } from "@/features/shell/routes";
+import { snapshot } from "@/lib/server-snapshot";
+import { parseDayKey } from "@/lib/shop-calendar";
 
-export const dynamic = "force-dynamic";
+export const metadata: Metadata = pageMetadata("/admin/dashboard");
 
-export const metadata: Metadata = {
-	title: "Dashboard | Admin",
-	description: "Monitor orders, revenue, stock and audit logs",
-};
-
-export default async function DashboardPage() {
-	const report = getAdminDashboardReport();
-	const stats = report.then((data) => data.stats);
-	const stock = report.then((data) => data.stock);
-	const auditLogs = report.then((data) => data.auditLogs);
-	const dailyRevenue = report.then((data) => data.dailyRevenue);
-
-	return (
-		<AdminPageShell frame="wide">
-			<Suspense fallback={<DashboardSkeleton includeMain={false} />}>
-				<DashboardContent stats={stats} stock={stock} auditLogs={auditLogs} dailyRevenue={dailyRevenue} />
-			</Suspense>
-		</AdminPageShell>
-	);
+export default function DashboardPage({
+	searchParams,
+}: {
+	searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+	const report = searchParams.then((params) => {
+		const picked = params[REPORT_DAY_PARAM];
+		return snapshot(getDashboardReport(parseDayKey(typeof picked === "string" ? picked : null) ?? undefined));
+	});
+	return <DashboardContent report={report} />;
 }

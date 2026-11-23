@@ -1,16 +1,15 @@
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { Effect, Layer } from "effect";
+import { Layer } from "effect";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
-import { BackendDatabaseError } from "@/server/effect/errors";
-import { Database } from "@/server/effect/services/db";
+import { Database, databaseService } from "@/server/effect/services/db";
 import {
 	assertDatabaseName,
 	getTestDatabaseUrls,
 	parseTestDatabaseUrl,
 	TEST_DATABASE_NAME,
-} from "../../../scripts/test-database-url";
+} from "@/test/integration/test-database-url";
 
 const { targetUrl } = getTestDatabaseUrls();
 const databaseTargetUrl = parseTestDatabaseUrl(process.env.DATABASE_URL, "DATABASE_URL").targetUrl;
@@ -36,14 +35,7 @@ try {
 
 export const integrationDb = drizzle(client, { schema });
 
-export const integrationDatabaseLayer = Layer.succeed(Database, {
-	db: integrationDb,
-	attempt: (operation, run) =>
-		Effect.tryPromise({
-			try: () => run(integrationDb),
-			catch: (cause) => new BackendDatabaseError({ operation, cause }),
-		}),
-});
+export const integrationDatabaseLayer = Layer.succeed(Database, databaseService(integrationDb));
 
 export async function resetIntegrationData() {
 	await assertConnectedToTestDatabase();

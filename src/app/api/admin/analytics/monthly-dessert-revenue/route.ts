@@ -1,4 +1,5 @@
-import { getCachedMonthlyDessertRevenue } from "@/app/admin/dashboard/actions";
-import { createMonthlyAnalyticsGET } from "@/lib/monthly-analytics-route";
+import { adminRoute, snapshotRoute } from "@/features/access/route";
+import { getDessertSales } from "@/features/insights/reporting";
+import { parseMonthKey } from "@/lib/shop-calendar";
 
-export const GET = createMonthlyAnalyticsGET(getCachedMonthlyDessertRevenue);
+export const GET = snapshotRoute(adminRoute, getDessertSales, { param: "month", parse: parseMonthKey });

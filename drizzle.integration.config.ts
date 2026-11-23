@@ -1,5 +1,5 @@
 import { defineConfig } from "drizzle-kit";
-import { getTestDatabaseUrls } from "./scripts/test-database-url";
+import { getTestDatabaseUrls } from "./src/test/integration/test-database-url";
 
 const { targetUrl } = getTestDatabaseUrls();
 

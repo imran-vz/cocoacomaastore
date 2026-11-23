@@ -1,5 +1,5 @@
-import { UpiAccountsSkeleton } from "../../loading-skeletons";
+import { UpiAccountsSkeleton } from "@/features/upi/upi-accounts-page";
 
-export default function AdminLoading() {
+export default function Loading() {
 	return <UpiAccountsSkeleton />;
 }

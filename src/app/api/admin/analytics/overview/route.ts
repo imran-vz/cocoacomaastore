@@ -1,16 +1,4 @@
-import { NextResponse } from "next/server";
-import { getAdminAnalyticsReport } from "@/app/admin/dashboard/actions";
-import { adminRouteGuard } from "@/lib/auth/guards";
+import { adminRoute, snapshotRoute } from "@/features/access/route";
+import { getAnalyticsOverview } from "@/features/insights/reporting";
 
-export async function GET() {
-	const authError = await adminRouteGuard();
-	if (authError) return authError;
-
-	const { monthlyRevenue, availableMonths, initialMonth } = await getAdminAnalyticsReport();
-
-	return NextResponse.json({
-		monthlyRevenue,
-		availableMonths,
-		initialMonth,
-	});
-}
+export const GET = snapshotRoute(adminRoute, getAnalyticsOverview);

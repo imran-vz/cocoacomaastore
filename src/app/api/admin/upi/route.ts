@@ -1,11 +1,4 @@
-import { NextResponse } from "next/server";
-import { getCachedAdminUpiAccounts } from "@/app/admin/settings/upi/actions";
-import { adminRouteGuard } from "@/lib/auth/guards";
+import { adminRoute, snapshotRoute } from "@/features/access/route";
+import { listUpiAccounts } from "@/features/upi/queries";
 
-export async function GET() {
-	const authError = await adminRouteGuard();
-	if (authError) return authError;
-
-	const accounts = await getCachedAdminUpiAccounts();
-	return NextResponse.json(accounts);
-}
+export const GET = snapshotRoute(adminRoute, listUpiAccounts);

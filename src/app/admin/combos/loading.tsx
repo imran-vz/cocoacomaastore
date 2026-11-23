@@ -1,5 +1,5 @@
-import { CombosSkeleton } from "../loading-skeletons";
+import { CatalogSkeleton } from "@/features/catalog/catalog-skeleton";
 
 export default function Loading() {
-	return <CombosSkeleton />;
+	return <CatalogSkeleton area="admin" />;
 }

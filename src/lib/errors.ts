@@ -1,64 +1,70 @@
-function getErrorCode(error: unknown): string | undefined {
-	if (!error || typeof error !== "object") return undefined;
-
-	const code = (error as { code?: unknown }).code;
-	return typeof code === "string" ? code : undefined;
+/** An error whose message is written for staff and is safe to show in the UI. */
+export class UserFacingError extends Error {
+	override name = "UserFacingError";
 }
 
-function getErrorMessage(error: unknown): string {
-	if (error instanceof Error) return error.message;
-	if (typeof error === "string") return error;
-	if (error && typeof error === "object") {
-		const message = (error as { message?: unknown }).message;
-		if (typeof message === "string") return message;
-	}
-	return "";
-}
+const DATABASE_UNAVAILABLE_MESSAGE = "Database is unavailable. Please try again.";
 
-function getNestedErrorMessage(error: unknown): string {
-	if (!error || typeof error !== "object") return "";
-
-	const cause = (error as { cause?: unknown }).cause;
-	return getErrorMessage(cause);
-}
-
-export class DatabaseUnavailableError extends Error {
+export class DatabaseUnavailableError extends UserFacingError {
 	override name = "DatabaseUnavailableError";
 
-	constructor(message = "Database unavailable", options?: { cause?: unknown }) {
-		super(message, options);
+	constructor(options?: { cause?: unknown }) {
+		super(DATABASE_UNAVAILABLE_MESSAGE, options);
 	}
 }
 
-export function isDatabaseUnavailableError(error: unknown): boolean {
-	if (error instanceof DatabaseUnavailableError) return true;
+const MAX_CAUSE_DEPTH = 6;
 
-	const code = getErrorCode(error);
-	if (
-		code &&
-		[
-			"ECONNREFUSED",
-			"ETIMEDOUT",
-			"ENOTFOUND",
-			"EHOSTUNREACH",
-			"57P01", // admin_shutdown
-			"57P02", // crash_shutdown
-			"57P03", // cannot_connect_now
-		].includes(code)
-	) {
-		return true;
+/** The error followed by its `cause`s, outermost first (at most six, in case a chain loops). */
+export function* causeChain(error: unknown): Generator<object> {
+	let current = error;
+	for (let depth = 0; depth < MAX_CAUSE_DEPTH && current && typeof current === "object"; depth += 1) {
+		yield current;
+		current = (current as { cause?: unknown }).cause;
 	}
+}
 
-	const message = `${getErrorMessage(error)}\n${getNestedErrorMessage(error)}`.toLowerCase().trim();
+function stringField(error: object, field: "code" | "message"): string | undefined {
+	const value = (error as Record<string, unknown>)[field];
+	return typeof value === "string" ? value : undefined;
+}
 
-	return [
-		"database_url is not set",
-		"econnrefused",
-		"connect etimedout",
-		"getaddrinfo enotfound",
-		"connection terminated unexpectedly",
-		"terminating connection due to administrator command",
-		"the database system is starting up",
-		"remaining connection slots are reserved",
-	].some((needle) => message.includes(needle));
+// Connection-level failures from Node's socket layer and Postgres (SQLSTATE class 57P).
+const UNAVAILABLE_CODES = new Set([
+	"ECONNREFUSED",
+	"ETIMEDOUT",
+	"ENOTFOUND",
+	"EHOSTUNREACH",
+	"57P01",
+	"57P02",
+	"57P03",
+]);
+const UNAVAILABLE_MESSAGES = [
+	"econnrefused",
+	"connect etimedout",
+	"getaddrinfo enotfound",
+	"connection terminated unexpectedly",
+	"terminating connection due to administrator command",
+	"the database system is starting up",
+	"remaining connection slots are reserved",
+];
+
+export function isDatabaseUnavailableError(error: unknown): boolean {
+	for (const link of causeChain(error)) {
+		if (link instanceof DatabaseUnavailableError) return true;
+		const code = stringField(link, "code");
+		if (code && UNAVAILABLE_CODES.has(code)) return true;
+		const message = stringField(link, "message")?.toLowerCase() ?? "";
+		if (UNAVAILABLE_MESSAGES.some((needle) => message.includes(needle))) return true;
+	}
+	return false;
+}
+
+/** The message staff should see for `error`, or `undefined` when it is an unexpected failure. */
+export function userFacingMessage(error: unknown): string | undefined {
+	if (isDatabaseUnavailableError(error)) return DATABASE_UNAVAILABLE_MESSAGE;
+	for (const link of causeChain(error)) {
+		if (link instanceof UserFacingError) return link.message;
+	}
+	return undefined;
 }

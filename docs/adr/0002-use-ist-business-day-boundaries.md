@@ -8,23 +8,15 @@ Accepted
 
 Cocoa Comaa operates in India, so dashboard and analytics dates must match Asia/Kolkata business days. JavaScript `Date`, PostgreSQL timestamps, and server runtime defaults can otherwise drift into UTC/local-machine assumptions, especially around daily analytics and date switchers.
 
-Analytics had bugs caused by inconsistent day and month boundaries. The current code centralizes reporting time helpers in `src/lib/ist-date.ts`.
+Analytics had bugs caused by inconsistent day and month boundaries. The current code centralizes shop time in `src/lib/shop-calendar.ts`.
 
 ## Decision
 
 Use Asia/Kolkata as the business reporting timezone.
 
-All business-day and reporting-month calculations should go through `src/lib/ist-date.ts` helpers:
+All business-day and reporting-month calculations go through `src/lib/shop-calendar.ts`, which names shop days and months as `DayKey` ("YYYY-MM-DD") and `MonthKey` ("YYYY-MM") and converts them to UTC instants (`dayStart`, `dayEnd`, `monthStart`, `monthEnd`) and analytics `date` values (`analyticsDate`).
 
-- `getStartOfDayIST`
-- `getEndOfDayIST`
-- `getAnalyticsDay`
-- `getDayKey`
-- `getISTMonthKey`
-- `istMidnightToUTC`
-- `pgTimestamp`
-
-Dashboard live queries should filter orders using IST day start/end bounds. Analytics rows should use normalized analytics day/month keys.
+Dashboard live queries filter orders between a shop day's start and end instants. Analytics rows should use normalized analytics day/month keys.
 
 ## Consequences
 

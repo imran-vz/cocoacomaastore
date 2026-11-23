@@ -1,13 +1,7 @@
 "use client";
 
-import { ErrorScreen } from "@/components/error-screen";
+import { ErrorScreen } from "@/features/shell/error-screen";
 
-export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-	return (
-		<ErrorScreen
-			error={error}
-			reset={reset}
-			mainClassName="min-h-app flex items-center justify-center p-4 md:p-6 lg:p-8"
-		/>
-	);
+export default function AppError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
+	return <ErrorScreen error={error} retry={retry} />;
 }

@@ -1,31 +1,10 @@
 import type { Metadata } from "next";
-import { RedirectType, redirect } from "next/navigation";
-import { PageFrame } from "@/components/page-frame";
-import { getServerSession } from "@/lib/auth";
-import SettingsClient from "./settings-client";
+import { requireArea } from "@/features/access/session";
+import { pageMetadata } from "@/features/shell/routes";
+import { SettingsPage } from "@/features/shell/settings-page";
 
-export const metadata: Metadata = {
-	title: "Settings",
-	description: "Manage your account settings",
-};
+export const metadata: Metadata = pageMetadata("/manager/settings");
 
-export default async function SettingsPage() {
-	const session = await getServerSession();
-
-	if (!session?.user) {
-		redirect("/login", RedirectType.replace);
-	}
-
-	return (
-		<PageFrame as="main" frame="narrow" centered>
-			<SettingsClient
-				user={{
-					id: session.user.id,
-					name: session.user.name,
-					email: session.user.email,
-					role: session.user.role ?? "user",
-				}}
-			/>
-		</PageFrame>
-	);
+export default async function ManagerSettingsPage() {
+	return <SettingsPage user={await requireArea("manager")} />;
 }

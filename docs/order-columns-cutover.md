@@ -39,7 +39,7 @@ Do not use `cocoacomaa_test`: `pnpm test:integration` destroys and recreates tha
 2. Clone the shared database into it with an explicit loopback target:
 
    ```sh
-   LOCAL_DATABASE_URL='postgresql://postgres:password@localhost:5432/cocoacomaa_order_cutover_rehearsal' \
+   DATABASE_URL='postgresql://postgres:password@localhost:5432/cocoacomaa_order_cutover_rehearsal' \
    pnpm db:clone:supabase
    ```
 

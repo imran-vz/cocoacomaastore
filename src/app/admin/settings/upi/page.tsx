@@ -1,17 +1,11 @@
-import { Suspense } from "react";
-import { AdminPageShell } from "@/components/admin/admin-page-shell";
-import { UpiAccountsSkeleton } from "../../loading-skeletons";
-import { getCachedAdminUpiAccounts } from "./actions";
-import UpiClientPage from "./component/upi-client-page";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/features/shell/routes";
+import { listUpiAccounts } from "@/features/upi/queries";
+import { UpiAccountsPage } from "@/features/upi/upi-accounts-page";
+import { snapshot } from "@/lib/server-snapshot";
+
+export const metadata: Metadata = pageMetadata("/admin/settings/upi");
 
 export default function UpiPage() {
-	const upiAccounts = getCachedAdminUpiAccounts();
-
-	return (
-		<AdminPageShell frame="narrow">
-			<Suspense fallback={<UpiAccountsSkeleton includeMain={false} />}>
-				<UpiClientPage upiAccounts={upiAccounts} />
-			</Suspense>
-		</AdminPageShell>
-	);
+	return <UpiAccountsPage accounts={snapshot(listUpiAccounts())} />;
 }

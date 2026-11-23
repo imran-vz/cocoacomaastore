@@ -12,26 +12,23 @@ The app has multiple surfaces with different responsibilities:
 - Manager operations.
 - Admin operations and analytics.
 
-Admin routes are protected by `src/app/admin/layout.tsx`, but API routes are directly addressable and must not assume layout-level protection.
+Area layouts redirect visitors who are signed out or in the other area, but server actions and API routes are directly addressable, and Next.js renders pages alongside their layouts, so no entry point may rely on layout-level protection.
 
 ## Decision
 
-Use Better Auth as configured in `src/lib/auth.ts`.
+Use Better Auth as configured in `src/features/access/auth.ts`.
 
-Server-side route protection should use `getServerSession()`.
+Every entry point checks the session itself, once, through `src/features/access`:
 
-Admin-only code paths must check:
+- Each area layout calls `requireArea(area)` (through `AppShell`), which redirects visitors to sign in and staff to their own area. A page calls it again only when it needs the signed-in user; otherwise the page is protected by its data reads.
+- Server actions are built with `staffAction` or `adminAction` and return an `ActionResult`.
+- API routes are built with `staffRoute` or `adminRoute`.
+- Data reads called by pages call `requireStaff()` or `requireAdmin()` (a data access layer); the session lookup is cached per request, so repeating it is cheap.
 
-- A session exists.
-- A user exists.
-- `user.role === "admin"`.
-
-Manager/user code paths should also verify the session and allowed role before returning protected data or mutating state.
-
-API routes that expose protected data must repeat these checks even if they are only called by protected pages.
+"Staff" is any signed-in account; "admin" is Better Auth's `admin` role. Future role additions change `src/features/access/area.ts` and these helpers.
 
 ## Consequences
 
 - Auth behavior is explicit at each trust boundary.
-- Protected API routes remain safe when called directly.
+- Protected API routes and server actions remain safe when called directly; `src/features/access/entry-points.test.ts` checks that every one refuses a signed-out caller before touching the database.
 - Future role additions should update these checks deliberately.
