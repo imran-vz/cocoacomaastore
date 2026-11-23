@@ -65,7 +65,7 @@ function TabContent({ icon: TabIcon, label, active }: { icon: LucideIcon; label:
 					active ? "bg-primary/10 text-primary" : "text-muted-foreground group-active:bg-muted",
 				)}
 			>
-				<TabIcon className="size-[22px]" strokeWidth={active ? 2.1 : 1.75} />
+				<TabIcon className="size-5.5" strokeWidth={active ? 2.1 : 1.75} />
 			</span>
 			<span className={active ? "text-primary" : "text-muted-foreground"}>{label}</span>
 		</>
