@@ -1,36 +1,9 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { DessertsRoute } from "@/features/catalog/catalog-routes";
+import { pageMetadata } from "@/features/shell/routes";
 
-import { getCachedDesserts } from "@/app/desserts/actions";
-import { getCachedTodayInventory } from "@/app/manager/inventory/actions";
-import { AdminPageShell } from "@/components/admin/admin-page-shell";
-import ManageDessertsInventory from "@/components/manage-desserts-inventory";
-import { upsertInventoryWithAudit } from "@/lib/role-actions/admin-inventory";
-import { DessertsSkeleton } from "../loading-skeletons";
+export const metadata: Metadata = pageMetadata("/admin/desserts");
 
-export const dynamic = "force-dynamic"; // forces dynamic rendering
-
-export const metadata: Metadata = {
-	title: "Desserts",
-	description: "Desserts, visibility and today's stock",
-};
-
-export default async function page() {
-	const desserts = getCachedDesserts({
-		shouldShowDisabled: true,
-	});
-	const inventory = getCachedTodayInventory();
-
-	return (
-		<AdminPageShell frame="narrow">
-			<Suspense fallback={<DessertsSkeleton includeMain={false} />}>
-				<ManageDessertsInventory
-					initialDesserts={desserts}
-					initialInventory={inventory}
-					onSaveInventory={upsertInventoryWithAudit}
-					area="admin"
-				/>
-			</Suspense>
-		</AdminPageShell>
-	);
+export default function AdminDessertsPage() {
+	return <DessertsRoute area="admin" />;
 }

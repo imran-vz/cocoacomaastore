@@ -1,12 +1,10 @@
-"use client";
-
 import type * as React from "react";
 
 import { cn } from "@/lib/utils";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
 	return (
-		<div data-slot="table-container" className="relative w-full overflow-x-auto">
+		<div data-slot="table-container" className="relative w-full overflow-x-auto rounded-[inherit]">
 			<table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
 		</div>
 	);
@@ -22,11 +20,7 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
 
 function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
 	return (
-		<tr
-			data-slot="table-row"
-			className={cn("hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors", className)}
-			{...props}
-		/>
+		<tr data-slot="table-row" className={cn("hover:bg-muted/50 border-b transition-colors", className)} {...props} />
 	);
 }
 

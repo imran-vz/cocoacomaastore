@@ -1,5 +1,5 @@
-import { AdminRouteSkeleton } from "./loading-skeletons";
+import { RouteSkeleton } from "@/features/shell/route-skeleton";
 
-export default function AdminLoading() {
-	return <AdminRouteSkeleton />;
+export default function Loading() {
+	return <RouteSkeleton />;
 }

@@ -1,12 +1,21 @@
 /**
  * Display formatting for every number, amount, date and label on screen.
  *
- * This module is the single source of truth (docs/design/DESIGN.md §Formatting).
+ * This module is the single source of truth (docs/design/DESIGN.md, "Numbers and formatting").
  * Components never call `toFixed`, `toLocaleString`, `toLocaleDateString` or build
  * `₹`/`Rs` strings themselves. Dates and times are always shown in shop time (IST).
  */
 
-export const SHOP_TIME_ZONE = "Asia/Kolkata";
+import {
+	addDays,
+	type DayKey,
+	dayKeyParts,
+	type MonthKey,
+	parseDayKey,
+	parseMonthKey,
+	type ShopParts,
+	shopParts,
+} from "@/lib/shop-calendar";
 
 const MONTHS_LONG = [
 	"January",
@@ -29,19 +38,13 @@ const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "S
 const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
 const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
-// ---------------------------------------------------------------------------
-// Money
-// ---------------------------------------------------------------------------
-
-export type Paise = "auto" | "always" | "never";
-
-export type FormatINROptions = {
+type FormatINROptions = {
 	/**
 	 * - `"auto"` (default): whole rupees show no decimals (`₹7,750`), fractional amounts show two (`₹92.50`).
 	 * - `"always"`: always two decimals (`₹7,750.00`). Use only where paise must line up, e.g. invoices.
 	 * - `"never"`: round to whole rupees (`₹93`). Use for reports and chart labels.
 	 */
-	paise?: Paise;
+	paise?: "auto" | "always" | "never";
 };
 
 type Numeric = number | string | null | undefined;
@@ -98,10 +101,6 @@ export function formatINRCompact(value: Numeric): string {
 	return inrCompact.format(amount);
 }
 
-// ---------------------------------------------------------------------------
-// Numbers and counts
-// ---------------------------------------------------------------------------
-
 const integer = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
 
 /** Indian digit grouping for plain counts: `1,23,456`. */
@@ -109,184 +108,173 @@ export function formatNumber(value: Numeric): string {
 	return integer.format(Math.round(toNumber(value)));
 }
 
-/** A ratio (0–1) as a percentage: `formatPercent(0.4231)` → `"42%"`, `formatPercent(0.4231, 1)` → `"42.3%"`. */
-export function formatPercent(ratio: Numeric, fractionDigits = 0): string {
-	const value = toNumber(ratio) * 100;
-	return `${value.toLocaleString("en-IN", {
-		minimumFractionDigits: fractionDigits,
-		maximumFractionDigits: fractionDigits,
-	})}%`;
+/** A count in a small badge, capped so it fits: `7`, `99+`. */
+export function formatBadgeCount(count: number): string {
+	return count > 99 ? "99+" : String(count);
 }
 
-export type CountUnit = string | { one: string; other: string };
-
-/** Nouns whose singular differs from the plural form we pass around. */
-const SINGULARS: Record<string, string> = {
-	items: "item",
-	orders: "order",
-	desserts: "dessert",
-	combos: "combo",
-	changes: "change",
-	managers: "manager",
-	accounts: "account",
-	days: "day",
-	units: "unit",
-	extras: "extra",
-};
+/** A ratio (0–1) as a whole percentage: `formatPercent(0.4231)` → `"42%"`. */
+export function formatPercent(ratio: Numeric): string {
+	return `${formatNumber(toNumber(ratio) * 100)}%`;
+}
 
 /**
- * A count with its unit, singular when the count is 1.
+ * A change with its sign, the size shown by `format`: `+12`, `−3` (a true minus sign), and no
+ * sign when it shows as zero.
  *
- * formatCount(75, "sold")   → "75 sold"
- * formatCount(5, "items")   → "5 items"
- * formatCount(1, "items")   → "1 item"
- * formatCount(2, { one: "box", other: "boxes" }) → "2 boxes"
+ * formatSigned(-3) → "−3"
+ * formatSigned(0.124, formatPercent) → "+12%"
+ * formatSigned(0.004, formatPercent) → "0%"
  */
-export function formatCount(value: Numeric, unit: CountUnit): string {
+export function formatSigned(change: number, format: (size: number) => string = formatNumber): string {
+	const size = format(Math.abs(change));
+	if (size === format(0)) return size;
+	return `${change > 0 ? "+" : "\u2212"}${size}`;
+}
+
+/** An order's number as staff say it: `#1042`. */
+export function formatOrderNumber(orderId: number): string {
+	return `#${orderId}`;
+}
+
+/** The nouns counted on screen, for `formatCount`. */
+export const UNIT = {
+	change: { one: "change", other: "changes" },
+	combo: { one: "combo", other: "combos" },
+	dessert: { one: "dessert", other: "desserts" },
+	hour: { one: "hour", other: "hours" },
+	item: { one: "item", other: "items" },
+	month: { one: "month", other: "months" },
+	order: { one: "order", other: "orders" },
+} as const;
+
+/**
+ * A count with its unit: a word that never changes (`"sold"`, `"left"`) or a noun's two forms.
+ *
+ * formatCount(75, "sold") → "75 sold"
+ * formatCount(1, UNIT.item) → "1 item"
+ */
+export function formatCount(value: Numeric, unit: string | { one: string; other: string }): string {
 	const n = toNumber(value);
-	const label =
-		typeof unit === "string" ? (n === 1 ? (SINGULARS[unit] ?? unit) : unit) : n === 1 ? unit.one : unit.other;
+	const label = typeof unit === "string" ? unit : n === 1 ? unit.one : unit.other;
 	return `${formatNumber(n)} ${label}`;
 }
 
-// ---------------------------------------------------------------------------
-// Dates and times (shop time, IST)
-// ---------------------------------------------------------------------------
+/** A shop day (`YYYY-MM-DD`), or an instant (a Date or an ISO string) shown in shop time. */
+type DateInput = Date | string;
 
-export type DateInput = Date | string | number;
-
-type ShopDateParts = {
-	year: number;
-	/** 1–12 */
-	month: number;
-	day: number;
-	/** 0 = Sunday */
-	weekday: number;
-	hour: number;
-	minute: number;
-};
-
-const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
-
-const partsFormatter = new Intl.DateTimeFormat("en-US", {
-	timeZone: SHOP_TIME_ZONE,
-	year: "numeric",
-	month: "numeric",
-	day: "numeric",
-	hour: "numeric",
-	minute: "numeric",
-	hourCycle: "h23",
-});
-
-function shopParts(input: DateInput): ShopDateParts | null {
+function partsOf(input: DateInput): ShopParts | null {
 	if (typeof input === "string") {
-		const match = DATE_ONLY.exec(input);
-		if (match) {
-			// A calendar day key ("2026-11-23") is already a shop day: no time-zone shift.
-			const year = Number(match[1]);
-			const month = Number(match[2]);
-			const day = Number(match[3]);
-			return { year, month, day, weekday: new Date(Date.UTC(year, month - 1, day)).getUTCDay(), hour: 0, minute: 0 };
-		}
+		const dayKey = parseDayKey(input);
+		if (dayKey) return dayKeyParts(dayKey);
 	}
 	const date = input instanceof Date ? input : new Date(input);
-	if (Number.isNaN(date.getTime())) return null;
-	const parts: Record<string, number> = {};
-	for (const part of partsFormatter.formatToParts(date)) {
-		if (part.type !== "literal") parts[part.type] = Number(part.value);
-	}
-	const { year, month, day } = parts;
-	return {
-		year,
-		month,
-		day,
-		weekday: new Date(Date.UTC(year, month - 1, day)).getUTCDay(),
-		hour: parts.hour % 24,
-		minute: parts.minute,
-	};
+	return Number.isNaN(date.getTime()) ? null : shopParts(date);
+}
+
+function clock12(hour: number) {
+	const normalized = ((hour % 24) + 24) % 24;
+	return { hour12: normalized % 12 === 0 ? 12 : normalized % 12, suffix: normalized < 12 ? "AM" : "PM" };
 }
 
 /** `12:30 AM`, `4:05 PM` (shop time). */
 export function formatTime(input: DateInput): string {
-	const p = shopParts(input);
+	const p = partsOf(input);
 	if (!p) return "";
-	const suffix = p.hour < 12 ? "AM" : "PM";
-	const hour12 = p.hour % 12 === 0 ? 12 : p.hour % 12;
+	const { hour12, suffix } = clock12(p.hour);
 	return `${hour12}:${String(p.minute).padStart(2, "0")} ${suffix}`;
+}
+
+/** An hour of the day (0–23): `0` → `12 AM`, `13` → `1 PM`. */
+export function formatHour(hour: number): string {
+	const { hour12, suffix } = clock12(hour);
+	return `${hour12} ${suffix}`;
+}
+
+/** The hour starting at `hour`: `13` → `1–2 PM`, `11` → `11 AM–12 PM`. */
+export function formatHourRange(hour: number): string {
+	const start = clock12(hour);
+	const end = clock12(hour + 1);
+	return start.suffix === end.suffix
+		? `${start.hour12}–${end.hour12} ${end.suffix}`
+		: `${formatHour(hour)}–${formatHour(hour + 1)}`;
+}
+
+/** `Mon` / `Monday` for a weekday number (0 = Sunday). */
+export function formatWeekday(weekday: number, style: "short" | "long" = "short"): string {
+	return (style === "short" ? WEEKDAYS_SHORT : WEEKDAYS_LONG)[weekday] ?? "";
 }
 
 /** `23 Nov 2026`. */
 export function formatDate(input: DateInput): string {
-	const p = shopParts(input);
+	const p = partsOf(input);
 	if (!p) return "";
 	return `${p.day} ${MONTHS_SHORT[p.month - 1]} ${p.year}`;
 }
 
 /** `23 Nov` — chart axes, compact rows within the current year. */
 export function formatDateShort(input: DateInput): string {
-	const p = shopParts(input);
+	const p = partsOf(input);
 	if (!p) return "";
 	return `${p.day} ${MONTHS_SHORT[p.month - 1]}`;
 }
 
-/** `Monday, 23 November` — the day heading on Orders and Stock. */
-export function formatDayHeading(input: DateInput): string {
-	const p = shopParts(input);
-	if (!p) return "";
-	return `${WEEKDAYS_LONG[p.weekday]}, ${p.day} ${MONTHS_LONG[p.month - 1]}`;
-}
-
 /** `Mon, 23 Nov` — date switchers and other tight controls. */
 export function formatDayShort(input: DateInput): string {
-	const p = shopParts(input);
+	const p = partsOf(input);
 	if (!p) return "";
 	return `${WEEKDAYS_SHORT[p.weekday]}, ${p.day} ${MONTHS_SHORT[p.month - 1]}`;
 }
 
-/** `23 Nov 2026, 12:30 AM`. */
-export function formatDateTime(input: DateInput): string {
-	const date = formatDate(input);
-	return date ? `${date}, ${formatTime(input)}` : "";
+/** `Monday, 23 November 2026`: a shop day named in full, e.g. a calendar day's accessible name. */
+export function formatFullDate(day: DayKey): string {
+	const p = dayKeyParts(day);
+	return `${WEEKDAYS_LONG[p.weekday]}, ${p.day} ${MONTHS_LONG[p.month - 1]} ${p.year}`;
 }
 
-export type MonthInput = string | { year: number; month: number } | Date;
-
-function monthParts(input: MonthInput): { year: number; month: number } | null {
-	if (typeof input === "string") {
-		const match = /^(\d{4})-(\d{2})/.exec(input);
-		if (!match) return null;
-		const month = Number(match[2]);
-		if (month < 1 || month > 12) return null;
-		return { year: Number(match[1]), month };
-	}
-	if (input instanceof Date) {
-		const p = shopParts(input);
-		return p ? { year: p.year, month: p.month } : null;
-	}
-	return input;
+/**
+ * A shop day relative to `today`: `Today · 23 Nov`, `Yesterday · 22 Nov`, otherwise
+ * `Sat, 21 Nov`. `compact` drops "Yesterday · " so the date fits a phone's date stepper.
+ */
+export function formatRelativeDay(day: DayKey, today: DayKey, { compact = false } = {}): string {
+	if (day === today) return `Today · ${formatDateShort(day)}`;
+	if (!compact && day === addDays(today, -1)) return `Yesterday · ${formatDateShort(day)}`;
+	return formatDayShort(day);
 }
 
-/** `formatMonth("2026-09")` → `September 2026`. Accepts `YYYY-MM`, `{ year, month }` or a Date. */
-export function formatMonth(input: MonthInput): string {
-	const p = monthParts(input);
+function monthParts(month: MonthKey): { year: number; month: number } | null {
+	const key = parseMonthKey(month);
+	if (!key) return null;
+	const [year, monthNumber] = key.split("-").map(Number);
+	return { year, month: monthNumber };
+}
+
+/** `formatMonth("2026-09")` → `September 2026`. */
+export function formatMonth(month: MonthKey): string {
+	const p = monthParts(month);
 	return p ? `${MONTHS_LONG[p.month - 1]} ${p.year}` : "";
 }
 
 /** `formatMonthShort("2026-09")` → `Sep`; with `{ withYear: true }` → `Sep 2026`. */
-export function formatMonthShort(input: MonthInput, options: { withYear?: boolean } = {}): string {
-	const p = monthParts(input);
+export function formatMonthShort(month: MonthKey, options: { withYear?: boolean } = {}): string {
+	const p = monthParts(month);
 	if (!p) return "";
 	const label = MONTHS_SHORT[p.month - 1];
 	return options.withYear ? `${label} ${p.year}` : label;
 }
 
-// ---------------------------------------------------------------------------
-// People
-// ---------------------------------------------------------------------------
+/** The months `first` through `last`: `Jan–Sep 2026`, `Nov 2025–Sep 2026`, or `September 2026` for one month. */
+export function formatMonthRange(first: MonthKey, last: MonthKey): string {
+	if (first === last) return formatMonth(first);
+	const sameYear = monthParts(first)?.year === monthParts(last)?.year;
+	return `${formatMonthShort(first, { withYear: !sameYear })}–${formatMonthShort(last, { withYear: true })}`;
+}
 
-/** The role as staff say it: `admin` → "Admin", anything else (`user`, null) → "Manager". */
-export function roleLabel(role: string | null | undefined): "Admin" | "Manager" {
-	return role === "admin" ? "Admin" : "Manager";
+const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
+
+/** Names joined for a sentence: `Brownie`, `Brownie and Oreo`, `Brownie, Oreo, and Nutella`. */
+export function formatList(items: readonly string[]): string {
+	return listFormat.format(items);
 }
 
 /**
@@ -299,4 +287,12 @@ export function formatInitials(name: string | null | undefined): string {
 	if (words.length === 0) return "?";
 	if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
 	return `${words[0][0]}${words[words.length - 1][0]}`.toUpperCase();
+}
+
+/** Each space-separated word starts with a capital: "choco fudge" → "Choco Fudge". */
+export function capitalizeWords(text: string): string {
+	return text
+		.split(" ")
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(" ");
 }

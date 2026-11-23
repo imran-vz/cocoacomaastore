@@ -1,5 +1,5 @@
-import { ManagersSkeleton } from "../../loading-skeletons";
+import { StaffSkeleton } from "@/features/staff/staff-page";
 
-export default function AdminLoading() {
-	return <ManagersSkeleton />;
+export default function Loading() {
+	return <StaffSkeleton />;
 }

@@ -1,13 +1,11 @@
-// Vendored shadcn/ui kit: unused exports are intentional surface for future use.
-// fallow-ignore-file unused-export
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-import { ChevronRightIcon, MoreHorizontalIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<"nav">) {
-	return <nav aria-label="breadcrumb" data-slot="breadcrumb" className={cn(className)} {...props} />;
+	return <nav aria-label="breadcrumb" data-slot="breadcrumb" className={className} {...props} />;
 }
 
 function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
@@ -42,8 +40,8 @@ function BreadcrumbLink({ className, render, ...props }: useRender.ComponentProp
 
 function BreadcrumbPage({ className, ...props }: React.ComponentProps<"span">) {
 	return (
-		// biome-ignore lint/a11y/useFocusableInteractive: this is for shadcn
-		// biome-ignore lint/a11y/useSemanticElements: this is for shadcn
+		// biome-ignore lint/a11y/useFocusableInteractive: the current page is the trail's last link, disabled, so it takes no focus
+		// biome-ignore lint/a11y/useSemanticElements: an <a> without href is not announced as a link
 		<span
 			data-slot="breadcrumb-page"
 			role="link"
@@ -64,32 +62,9 @@ function BreadcrumbSeparator({ children, className, ...props }: React.ComponentP
 			className={cn("[&>svg]:size-3.5", className)}
 			{...props}
 		>
-			{children ?? <ChevronRightIcon className="cn-rtl-flip" />}
+			{children ?? <ChevronRightIcon />}
 		</li>
 	);
 }
 
-function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<"span">) {
-	return (
-		<span
-			data-slot="breadcrumb-ellipsis"
-			role="presentation"
-			aria-hidden="true"
-			className={cn("size-5 [&>svg]:size-4 flex items-center justify-center", className)}
-			{...props}
-		>
-			<MoreHorizontalIcon />
-			<span className="sr-only">More</span>
-		</span>
-	);
-}
-
-export {
-	Breadcrumb,
-	BreadcrumbList,
-	BreadcrumbItem,
-	BreadcrumbLink,
-	BreadcrumbPage,
-	BreadcrumbSeparator,
-	BreadcrumbEllipsis,
-};
+export { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator };

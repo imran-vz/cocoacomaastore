@@ -3,23 +3,17 @@
 import * as React from "react";
 
 /**
- * Modal focus helpers (DESIGN.md §Overlays).
- *
- * - `useFocusTrap(containerRef, enabled)`: Tab / Shift+Tab wrap inside the container. Base UI
- *   modals (`Sheet`, `Dialog`, `ConfirmSheet`, `FormSheet`) hide the page from assistive tech
- *   and handle Escape and focus return, but its focus guards let Tab walk out to the page, so
- *   those primitives add this trap. Traps stack: only the innermost open overlay wraps focus,
- *   so a ConfirmSheet over a FormSheet keeps focus in the ConfirmSheet. Focus that has moved
- *   into a popup opened from the overlay (a menu, a select) is left alone.
- * - `useModalFocus(options)`: everything for a hand-built overlay (the POS cart sheet, which
- *   keeps its own drag gesture): the trap, a truly `inert` background, initial focus, Escape,
- *   and focus return with a fallback for when the trigger is gone.
+ * Modal focus (DESIGN.md §Overlays). `FocusTrap` wraps Tab inside a Base UI overlay
+ * (`OverlayContent`). Traps stack: only the innermost open overlay wraps focus, so a confirmation
+ * over a form keeps focus in the confirmation; focus in a popup opened from the overlay (a menu, a
+ * select) is left alone. `useModalFocus` is everything for the hand-built POS cart sheet, which
+ * keeps its own drag gesture: the trap, an `inert` page, initial focus, Escape and focus return.
  */
 
 const TABBABLE =
 	'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
 
-export function tabbableIn(container: HTMLElement): HTMLElement[] {
+function tabbableIn(container: HTMLElement): HTMLElement[] {
 	return Array.from(container.querySelectorAll<HTMLElement>(TABBABLE)).filter(
 		(element) =>
 			// tabIndex < 0 drops programmatic-only targets, e.g. the hidden native input behind a
@@ -68,7 +62,7 @@ function onTrapKeyDown(event: KeyboardEvent) {
 	next.focus();
 }
 
-export function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, enabled = true) {
+function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, enabled = true) {
 	React.useEffect(() => {
 		const container = containerRef.current;
 		if (!enabled || !container) return;
@@ -88,19 +82,15 @@ export function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, 
 	}, [containerRef, enabled]);
 }
 
-/**
- * Render inside a Base UI `Portal`, next to the `Popup` whose ref is `containerRef`: it mounts
- * and unmounts with the popup, so the trap is live exactly while the overlay is shown.
- */
+/** Rendered inside a Base UI `Portal` next to the `Popup`, it is live exactly while the overlay is shown. */
 export function FocusTrap({ containerRef }: { containerRef: React.RefObject<HTMLElement | null> }) {
 	useFocusTrap(containerRef);
 	return null;
 }
 
-export type ModalFocusOptions = {
+type ModalFocusOptions = {
 	open: boolean;
 	containerRef: React.RefObject<HTMLElement | null>;
-	initialFocusRef?: React.RefObject<HTMLElement | null>;
 	returnFocusRef?: React.RefObject<HTMLElement | null>;
 	/** Where focus goes when neither the return target nor the opener is still on screen. */
 	fallbackFocus?: () => HTMLElement | null | undefined;
@@ -129,18 +119,11 @@ function inertOutside(container: HTMLElement): () => void {
 
 /**
  * Focus for a hand-built modal overlay. While `open`: the page outside `containerRef` is
- * `inert`, Tab wraps inside, Escape calls `onEscape`. On open, focus moves to
- * `initialFocusRef` (or the first tabbable element). On close, focus returns to
+ * `inert`, Tab wraps inside, Escape calls `onEscape`. On open, focus moves to the first
+ * tabbable element. On close, focus returns to
  * `returnFocusRef`, else the element focused when it opened, else `fallbackFocus()`.
  */
-export function useModalFocus({
-	open,
-	containerRef,
-	initialFocusRef,
-	returnFocusRef,
-	fallbackFocus,
-	onEscape,
-}: ModalFocusOptions) {
+export function useModalFocus({ open, containerRef, returnFocusRef, fallbackFocus, onEscape }: ModalFocusOptions) {
 	const onEscapeRef = React.useRef(onEscape);
 	const fallbackRef = React.useRef(fallbackFocus);
 	React.useEffect(() => {
@@ -159,7 +142,7 @@ export function useModalFocus({
 		const undoInert = inertOutside(container);
 
 		const frame = requestAnimationFrame(() => {
-			const target = initialFocusRef?.current ?? tabbableIn(container)[0] ?? container;
+			const target = tabbableIn(container)[0] ?? container;
 			if (target === container && !container.hasAttribute("tabindex")) container.tabIndex = -1;
 			target.focus({ preventScroll: true });
 		});
@@ -181,5 +164,5 @@ export function useModalFocus({
 			// Restore after the overlay's own unmount work.
 			requestAnimationFrame(() => next?.focus({ preventScroll: true }));
 		};
-	}, [open, containerRef, initialFocusRef, returnFocusRef]);
+	}, [open, containerRef, returnFocusRef]);
 }

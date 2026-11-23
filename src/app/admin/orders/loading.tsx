@@ -1,5 +1,5 @@
-import { OrdersSkeleton } from "../loading-skeletons";
+import { OrdersPageSkeleton } from "@/features/orders/orders-page-skeleton";
 
 export default function Loading() {
-	return <OrdersSkeleton />;
+	return <OrdersPageSkeleton area="admin" />;
 }

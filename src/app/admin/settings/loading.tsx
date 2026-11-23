@@ -1,5 +1,5 @@
-import { SettingsSkeleton } from "../loading-skeletons";
+import { SettingsSkeleton } from "@/features/shell/settings-page";
 
 export default function Loading() {
-	return <SettingsSkeleton />;
+	return <SettingsSkeleton area="admin" />;
 }

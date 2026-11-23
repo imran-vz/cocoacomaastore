@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR 0009](0009-use-one-revenue-bar-chart-with-a-selected-slot.md)
 
 ## Context
 

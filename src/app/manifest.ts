@@ -1,14 +1,16 @@
 import type { MetadataRoute } from "next";
+import { THEME_COLOR } from "@/app/theme-color";
+import { BRAND_NAME } from "@/components/ui/brand";
 
 export default function manifest(): MetadataRoute.Manifest {
 	return {
-		name: "Cocoa Comaa - Store",
-		short_name: "Cocoa Comaa",
-		description: "Cocoa Comaa - Store",
+		name: `${BRAND_NAME} - Store`,
+		short_name: BRAND_NAME,
+		description: `${BRAND_NAME} - Store`,
 		start_url: "/?from=pwa",
 		display: "standalone",
-		background_color: "#faf8f4",
-		theme_color: "#faf8f4",
+		background_color: THEME_COLOR,
+		theme_color: THEME_COLOR,
 		orientation: "natural",
 		categories: ["food", "dessert"],
 		lang: "en",

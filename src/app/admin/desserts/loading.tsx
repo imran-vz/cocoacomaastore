@@ -1,5 +1,5 @@
-import { DessertsSkeleton } from "../loading-skeletons";
+import { CatalogSkeleton } from "@/features/catalog/catalog-skeleton";
 
-export default function DessertsLoading() {
-	return <DessertsSkeleton />;
+export default function Loading() {
+	return <CatalogSkeleton area="admin" />;
 }

@@ -1,36 +1,43 @@
 import type * as React from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
-/**
- * The one section heading style (DESIGN.md §Type): sentence case, 15/600, foreground,
- * with an optional count in muted text and an optional quiet trailing action
- * ("Show all"). Never coloured, never an emoji.
- */
-export type SectionHeadingProps = Omit<React.ComponentProps<"div">, "title"> & {
+const ROW_CLASS = "flex min-h-8 items-center justify-between gap-3 pb-2";
+
+/** The one section heading (DESIGN.md §Type): a title, an optional muted count and a quiet action ("Show all"). */
+function SectionHeading({
+	title,
+	count,
+	action,
+	className,
+	...props
+}: Omit<React.ComponentProps<"div">, "title"> & {
 	title: React.ReactNode;
 	count?: number | string;
 	action?: React.ReactNode;
-	/** Heading level; defaults to h2. */
-	as?: "h2" | "h3";
-};
-
-function SectionHeading({ title, count, action, as: Tag = "h2", className, ...props }: SectionHeadingProps) {
+}) {
 	return (
-		<div
-			data-slot="section-heading"
-			className={cn("flex min-h-8 items-center justify-between gap-3 pb-2", className)}
-			{...props}
-		>
-			<Tag className="text-[15px] leading-5 font-semibold text-foreground">
+		<div data-slot="section-heading" className={cn(ROW_CLASS, className)} {...props}>
+			<h2 className="text-row text-foreground">
 				{title}
 				{count !== undefined ? (
 					<span className="ml-1.5 font-normal text-muted-foreground tabular-nums">{count}</span>
 				) : null}
-			</Tag>
+			</h2>
 			{action ? <div className="shrink-0 text-sm">{action}</div> : null}
 		</div>
 	);
 }
 
-export { SectionHeading };
+/** `SectionHeading` while its page loads. */
+function SectionHeadingSkeleton({ width = "w-28", action }: { width?: string; action?: React.ReactNode }) {
+	return (
+		<div className={ROW_CLASS}>
+			<Skeleton className={cn("h-4", width)} />
+			{action}
+		</div>
+	);
+}
+
+export { SectionHeading, SectionHeadingSkeleton };
