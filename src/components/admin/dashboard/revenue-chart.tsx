@@ -1,150 +1,111 @@
 "use client";
 
-import { TrendingUp } from "lucide-react";
 import { lazy, useState } from "react";
-import type { DailyRevenue } from "@/app/admin/dashboard/actions";
 import { DesktopChartSlot } from "@/components/desktop-chart-slot";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency } from "@/lib/utils";
+import { formatCount, formatDayShort, formatINR, formatPercent } from "@/lib/format";
+import { bestSlot, type ChartSlot, ChartSlotDetail, RevenueBarChart, slotStepper } from "./bar-chart";
+import { type HourSlot, hourRangeLabel } from "./hourly-sales";
 
 const DesktopRevenueChart = lazy(() => import("./revenue-desktop-chart"));
 
-export default function RevenueChart({ data, isLoading }: { data: DailyRevenue[]; isLoading?: boolean }) {
-	const [selectedDate, setSelectedDate] = useState<string | null>(null);
+/** A day slot for the last-7-days chart. `key` is the calendar day (`2026-11-23`). */
+export type DaySlot = ChartSlot & { title: string };
 
-	if (isLoading) {
-		return (
-			<Card className="col-span-4">
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<TrendingUp className="size-5" />
-						Revenue Trend
-					</CardTitle>
-					<CardDescription>Last 7 days revenue</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="space-y-3 md:hidden">
-						<div className="flex h-40 items-end gap-2">
-							{[40, 65, 30, 85, 100, 90, 55].map((height, index) => (
-								// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton slots
-								<div key={index} className="flex h-full flex-1 items-end justify-center">
-									<Skeleton className="w-full max-w-[30px] rounded-t-md" style={{ height: `${height}%` }} />
-								</div>
-							))}
-						</div>
-						<div className="space-y-2 rounded-xl border bg-muted/30 px-4 py-3.5">
-							<div className="flex items-center justify-between gap-3">
-								<Skeleton className="h-4 w-16" />
-								<Skeleton className="h-5 w-20" />
-							</div>
-							<Skeleton className="h-3 w-24" />
-						</div>
-					</div>
-					<Skeleton className="hidden h-75 w-full md:block" />
-				</CardContent>
-			</Card>
-		);
-	}
+function describe(slot: ChartSlot) {
+	return `${formatDayShort(slot.key)}, ${formatINR(slot.revenue)}, ${formatCount(slot.orders, "orders")}`;
+}
 
-	const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
-	const totalOrders = data.reduce((sum, d) => sum + d.orders, 0);
-	const maxRevenue = Math.max(...data.map((d) => d.revenue), 1);
-	const bestDay = data.reduce((best, day) => (day.revenue > best.revenue ? day : best), data[0]);
-	const selectedDay = data.find((day) => day.date === selectedDate) ?? bestDay;
+/** Card-sized placeholder for either chart while its data loads. */
+export function ChartCardSkeleton() {
+	return (
+		<div className="rounded-xl border bg-card p-4" aria-hidden="true">
+			<Skeleton className="h-40 w-full md:h-48" />
+			<Skeleton className="mx-auto mt-4 h-4 w-40" />
+		</div>
+	);
+}
+
+/**
+ * Revenue by day for the 7 days ending on the selected day (Insights › Day), shown once
+ * at least two of those days had sales. The selected day starts selected so the chart and
+ * the figures above it tell the same story; 44px arrows step through the days on phones.
+ */
+export default function RevenueChart({ slots, selectedDayKey }: { slots: DaySlot[]; selectedDayKey: string }) {
+	const [selectedKey, setSelectedKey] = useState<string | null>(null);
+	const best = bestSlot(slots);
+	const selected = slots.find((slot) => slot.key === (selectedKey ?? selectedDayKey)) ?? slots.at(-1) ?? null;
 
 	return (
-		<Card className="col-span-4">
-			<CardHeader>
-				<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-					<div>
-						<CardTitle className="flex items-center gap-2">
-							<TrendingUp className="size-5" />
-							Revenue Trend
-						</CardTitle>
-						<CardDescription>Last 7 days revenue</CardDescription>
-					</div>
-					<div className="flex gap-4 text-sm">
-						<div>
-							<p className="text-muted-foreground">Total Revenue</p>
-							<p className="font-semibold">{formatCurrency(totalRevenue)}</p>
-						</div>
-						<div>
-							<p className="text-muted-foreground">Total Orders</p>
-							<p className="font-semibold">{totalOrders}</p>
-						</div>
-					</div>
-				</div>
-			</CardHeader>
-			<CardContent>
-				<div className="space-y-4 md:hidden">
-					{selectedDay ? (
-						<>
-							<div className="flex h-40 items-end gap-2">
-								{data.map((day) => {
-									const isSelected = day.date === selectedDay.date;
+		<div className="@container rounded-xl border bg-card p-4">
+			<div className="@xl:hidden">
+				<RevenueBarChart
+					slots={slots}
+					selectedKey={selected?.key ?? null}
+					onSelect={setSelectedKey}
+					describe={describe}
+				/>
+			</div>
+			<DesktopChartSlot fallbackClassName="h-64 w-full">
+				<DesktopRevenueChart
+					slots={slots}
+					axisKey="title"
+					selectedKey={selected?.key ?? null}
+					onSelect={setSelectedKey}
+				/>
+			</DesktopChartSlot>
+			{selected ? (
+				<ChartSlotDetail
+					className="mt-4"
+					title={formatDayShort(selected.key)}
+					meta={selected.revenue > 0 ? formatCount(selected.orders, "orders") : "No sales"}
+					value={formatINR(selected.revenue)}
+					note={selected.key === best?.key ? "Best day" : undefined}
+					stepper={slotStepper(slots, selected, setSelectedKey, "day")}
+				/>
+			) : null}
+		</div>
+	);
+}
 
-									return (
-										<button
-											key={day.date}
-											type="button"
-											aria-pressed={isSelected}
-											aria-label={`${day.date}, ${formatCurrency(day.revenue)}, ${day.orders} orders`}
-											onClick={() => setSelectedDate(day.date)}
-											className="flex h-full flex-1 flex-col items-center gap-2"
-										>
-											<div className="flex w-full flex-1 items-end justify-center">
-												{day.revenue > 0 ? (
-													<div
-														className={`w-full max-w-[30px] rounded-t-md bg-[#f2b38d] transition-opacity ${isSelected ? "opacity-100" : "opacity-40"}`}
-														style={{ height: `${Math.round((day.revenue / maxRevenue) * 100)}%` }}
-													/>
-												) : (
-													<div
-														className={`h-1.5 w-full max-w-[30px] rounded-full transition-colors ${isSelected ? "bg-muted-foreground/50" : "bg-muted"}`}
-													/>
-												)}
-											</div>
-											<span
-												className={`text-[11px] font-semibold tabular-nums ${isSelected ? "text-foreground" : "text-muted-foreground"}`}
-											>
-												{day.date.split(" ")[0]}
-											</span>
-										</button>
-									);
-								})}
-							</div>
-							<div className="rounded-xl border bg-muted/30 px-4 py-3.5">
-								<div className="flex items-baseline justify-between gap-3">
-									<p className="text-sm font-semibold">{selectedDay.date}</p>
-									<p className="text-lg font-bold tabular-nums text-[#c9702e] dark:text-[#f0a06a]">
-										{formatCurrency(selectedDay.revenue)}
-									</p>
-								</div>
-								<div className="mt-1 flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
-									<p className="tabular-nums">
-										{selectedDay.orders} order{selectedDay.orders === 1 ? "" : "s"}
-									</p>
-									{selectedDay.date === bestDay?.date && selectedDay.revenue > 0 ? (
-										<p className="font-semibold text-[#12877f]">Best day</p>
-									) : (
-										<p className="tabular-nums">
-											{selectedDay.revenue > 0
-												? `${Math.round((selectedDay.revenue / totalRevenue) * 100)}% of week`
-												: "no sales"}
-										</p>
-									)}
-								</div>
-							</div>
-						</>
-					) : (
-						<p className="py-8 text-center text-sm text-muted-foreground">No revenue data yet</p>
-					)}
-				</div>
-				<DesktopChartSlot fallbackClassName="hidden h-75 w-full md:block">
-					<DesktopRevenueChart data={data} />
-				</DesktopChartSlot>
-			</CardContent>
-		</Card>
+/**
+ * Sales by hour for the selected day (Insights › Day when the week has fewer than two
+ * trading days). A picture, not a control: the bars are not buttons, and the hourly
+ * figures are listed for screen readers. The line under it names the busiest hour and its
+ * share of the day, so it never repeats the Revenue or Orders figures above.
+ */
+export function HourlySalesChart({ slots }: { slots: HourSlot[] }) {
+	const total = slots.reduce((sum, slot) => sum + slot.revenue, 0);
+	const busiest = bestSlot(slots);
+	const salesHours = slots.filter((slot) => slot.revenue > 0);
+
+	return (
+		<div className="rounded-xl border bg-card p-4">
+			<RevenueBarChart
+				slots={slots}
+				selectedKey={busiest?.key ?? null}
+				labelEvery={slots.length > 12 ? 4 : slots.length > 8 ? 3 : 2}
+			/>
+			<ul className="sr-only">
+				{salesHours.map((slot) => (
+					<li key={slot.key}>
+						{hourRangeLabel(slot.hour)}: {formatINR(slot.revenue)}, {formatCount(slot.orders, "orders")}
+					</li>
+				))}
+			</ul>
+			{busiest ? (
+				<ChartSlotDetail
+					className="mt-4"
+					title="Busiest hour"
+					value={hourRangeLabel(busiest.hour)}
+					meta={`${formatPercent(total > 0 ? busiest.revenue / total : 0)} of the day's revenue`}
+					note={
+						salesHours.length > 1
+							? `Sales in ${formatCount(salesHours.length, { one: "hour", other: "hours" })}`
+							: undefined
+					}
+				/>
+			) : null}
+		</div>
 	);
 }

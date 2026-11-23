@@ -1,12 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { use, useCallback, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { useReactiveButton } from "@/components/ui/reactive-button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getInventorySaveLabel, useInventory } from "@/components/use-inventory";
+import Link from "next/link";
+import { use, useCallback } from "react";
+import { InventorySaveBar, StockField } from "@/components/desserts-table";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListRow, ListSection, RecordList } from "@/components/ui/list-row";
+import { PageHeader } from "@/components/ui/page-header";
+import { useInventory } from "@/components/use-inventory";
 import type { TodayInventoryRow } from "@/lib/daily-inventory";
+import { formatCount, formatINR } from "@/lib/format";
 import type { Dessert } from "@/lib/types";
 import { upsertTodayInventory } from "./actions";
 
@@ -55,81 +59,78 @@ export default function InventoryPage({
 		onSave: upsertTodayInventory,
 		onRefetch,
 	});
-	const [saveButton, SaveButton] = useReactiveButton({
-		label: "Save",
-		loading: { label: "Saving..." },
-		success: { label: "Saved" },
-		feedbackStyle: "brand",
-	});
-	const { setLoading, setSuccess, setError, reset } = saveButton;
-	const { saveSuccessCount, saveError, isSaving } = inventory;
-
-	// Loading is driven by the inventory hook's isSaving flag. When a save ends
-	// without producing a success (failure paths report through saveError to
-	// flash an error below), return the button to idle first.
-	useEffect(() => {
-		if (isSaving) setLoading();
-		else reset({ ifStatus: "loading" });
-	}, [isSaving, setLoading, reset]);
-
-	// Flash the reported message on the button when a save fails. The id bumps
-	// on every failure so repeated identical failures still re-trigger the flash.
-	useEffect(() => {
-		if (saveError) setError(saveError.message);
-	}, [saveError, setError]);
-
-	// Flash success once a save completes; clearing the count (e.g. on edit)
-	// dismisses a still-visible success flash.
-	useEffect(() => {
-		if (saveSuccessCount === null) {
-			reset({ ifStatus: "success" });
-			return;
-		}
-		setSuccess(getInventorySaveLabel(saveSuccessCount));
-	}, [saveSuccessCount, reset, setSuccess]);
-
 	if (inventoryError) {
 		console.error("Failed to fetch today's inventory:", inventoryError);
 	}
 
-	return (
-		<div className="space-y-4">
-			<div className="flex items-baseline justify-between gap-2">
-				<div>
-					<h1 className="text-2xl font-bold">Inventory</h1>
-					<p className="text-sm text-muted-foreground">Today: {inventory.todayLabel}</p>
-				</div>
-				<SaveButton onClick={inventory.onSaveInventory} disabled={!inventory.hasChanges} />
-			</div>
+	const tracked = desserts.filter((dessert) => !dessert.hasUnlimitedStock);
+	const unlimited = desserts.filter((dessert) => dessert.hasUnlimitedStock);
 
-			<div className="overflow-x-auto">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Dessert</TableHead>
-							<TableHead className="w-40">Qty</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{desserts.map((dessert) => (
-							<TableRow key={dessert.id}>
-								<TableCell className="font-medium">{dessert.name}</TableCell>
-								<TableCell>
-									<Input
-										type="number"
-										min={0}
-										step={1}
-										value={inventory.quantities[dessert.id] ?? "0"}
-										onChange={(event) => inventory.onQuantityChange(dessert.id, event.target.value)}
-										disabled={!dessert.enabled || dessert.hasUnlimitedStock}
-										className="h-9"
-									/>
-								</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
-			</div>
+	const renderRow = (dessert: Dessert) => {
+		const changed = inventory.changedDessertIds.has(dessert.id);
+		const saved = inventory.serverQuantities.get(dessert.id) ?? 0;
+		const meta = [formatINR(dessert.price), !dessert.enabled ? "Hidden" : null, changed ? `was ${saved}` : null]
+			.filter(Boolean)
+			.join(" · ");
+		return (
+			<ListRow
+				key={dessert.id}
+				title={dessert.name}
+				meta={meta}
+				action={
+					<StockField
+						dessert={dessert}
+						value={inventory.quantities[dessert.id] ?? "0"}
+						changed={changed}
+						onChange={(value) => inventory.onQuantityChange(dessert.id, value)}
+						disabled={!dessert.enabled}
+					/>
+				}
+			/>
+		);
+	};
+
+	return (
+		<div className="w-full">
+			<PageHeader title="Stock" description={`Today · ${inventory.todayLabel}`} />
+
+			{desserts.length === 0 ? (
+				<EmptyState
+					variant="block"
+					title="Nothing is on sale today"
+					description="Turn desserts on in Catalog to count their stock here."
+					action={
+						<Button variant="outline" render={<Link href="/manager/desserts" />}>
+							Open Catalog
+						</Button>
+					}
+				/>
+			) : (
+				<div className="flex flex-col gap-6">
+					{tracked.length > 0 ? (
+						<ListSection title="To count" count={tracked.length}>
+							<RecordList aria-label="Stock to count today">{tracked.map(renderRow)}</RecordList>
+						</ListSection>
+					) : (
+						<EmptyState
+							variant="block"
+							title="Nothing to count today"
+							description="Every dessert on sale has unlimited stock."
+						/>
+					)}
+					{unlimited.length > 0 ? (
+						<RecordList aria-label="Desserts with unlimited stock">
+							<ListRow
+								href="/manager/desserts"
+								title={`${formatCount(unlimited.length, { one: "dessert has", other: "desserts have" })} unlimited stock`}
+								meta="Not counted. Change it in Catalog."
+							/>
+						</RecordList>
+					) : null}
+				</div>
+			)}
+
+			<InventorySaveBar inventory={inventory} />
 		</div>
 	);
 }

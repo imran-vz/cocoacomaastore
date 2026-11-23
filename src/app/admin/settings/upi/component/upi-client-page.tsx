@@ -1,18 +1,24 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit, Plus, Trash2 } from "lucide-react";
+import { Plus, QrCode, Trash2 } from "lucide-react";
 import { use, useId, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FormSheet } from "@/components/ui/form-sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ListRow, ListRowTile, ListSection, RecordList } from "@/components/ui/list-row";
+import { PageHeader, PageHeaderAction } from "@/components/ui/page-header";
 import { useReactiveButton } from "@/components/ui/reactive-button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
+import { formatDate } from "@/lib/format";
 import { type AdminUpiAccount, createUpiAccount, deleteUpiAccount, updateUpiAccount } from "../actions";
 
 const upiAccountsQueryKey = ["admin-upi-accounts"] as const;
+const UPI_FORM_ID = "upi-account-form";
 
 function UpiAccountRow({
 	account,
@@ -23,52 +29,65 @@ function UpiAccountRow({
 	onEdit: (account: AdminUpiAccount) => void;
 	onDeleted: () => Promise<void> | void;
 }) {
-	const [deleteButton, DeleteButton] = useReactiveButton({
-		label: <Trash2 className="h-4 w-4" />,
-		icon: null,
-		loading: { label: "" },
-		error: { label: "Failed" },
-	});
+	const [confirmOpen, setConfirmOpen] = useState(false);
 
+	/** Runs from the confirmation; a throw keeps it open with the message. */
 	const handleDelete = async () => {
-		if (deleteButton.status === "loading" || deleteButton.status === "success") return;
-		if (!confirm("Are you sure you want to delete this UPI account?")) {
-			return;
-		}
-
-		const token = deleteButton.setLoading();
+		let result: Awaited<ReturnType<typeof deleteUpiAccount>>;
 		try {
-			const result = await deleteUpiAccount(account.id);
-			if (!result.success) {
-				console.error("Failed to delete UPI account:", result.error);
-				deleteButton.setError("Failed", { token });
-				return;
-			}
-			// The row disappears on success — that is the feedback.
-			await onDeleted();
+			result = await deleteUpiAccount(account.id);
 		} catch (error) {
 			console.error("Failed to delete UPI account:", error);
-			deleteButton.setError("Failed", { token });
+			throw new Error("Couldn't delete this UPI account. Try again.");
 		}
+		if (!result.success) {
+			console.error("Failed to delete UPI account:", result.error);
+			throw new Error("Couldn't delete this UPI account. Try again.");
+		}
+		// The row disappears on success — that is the feedback.
+		await onDeleted();
 	};
 
 	return (
-		<TableRow>
-			<TableCell className="font-medium">{account.label}</TableCell>
-			<TableCell>{account.upiId}</TableCell>
-			<TableCell>
-				<Badge variant={account.enabled ? "default" : "secondary"}>{account.enabled ? "Enabled" : "Disabled"}</Badge>
-			</TableCell>
-			<TableCell>{new Date(account.createdAt).toLocaleDateString()}</TableCell>
-			<TableCell className="text-right">
-				<div className="flex justify-end gap-2">
-					<Button variant="ghost" size="sm" onClick={() => onEdit(account)}>
-						<Edit className="h-4 w-4" />
+		<ListRow
+			leading={
+				<ListRowTile>
+					<QrCode aria-hidden="true" />
+				</ListRowTile>
+			}
+			title={account.label}
+			meta={
+				<>
+					<span className="font-mono text-[13px] break-all">{account.upiId}</span>
+					<span className="block">Added {formatDate(account.createdAt)}</span>
+				</>
+			}
+			trailingMeta={account.enabled ? null : <Badge variant="destructive">Disabled</Badge>}
+			onClick={() => onEdit(account)}
+			rowLabel={`Edit ${account.label}`}
+			action={
+				<>
+					<Button
+						variant="ghost"
+						size="icon-touch"
+						aria-label={`Delete ${account.label}`}
+						className="text-muted-foreground hover:text-destructive"
+						onClick={() => setConfirmOpen(true)}
+					>
+						<Trash2 aria-hidden="true" />
 					</Button>
-					<DeleteButton variant="ghost" size="sm" onClick={handleDelete} />
-				</div>
-			</TableCell>
-		</TableRow>
+					<ConfirmSheet
+						open={confirmOpen}
+						onOpenChange={setConfirmOpen}
+						title={`Delete ${account.label}?`}
+						description={`${account.upiId} no longer shows at checkout.`}
+						confirmLabel="Delete UPI account"
+						pendingLabel="Deleting…"
+						onConfirm={handleDelete}
+					/>
+				</>
+			}
+		/>
 	);
 }
 
@@ -105,10 +124,17 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Ad
 		upiId: "",
 		enabled: true,
 	});
+	const initialForm = editingAccount
+		? { label: editingAccount.label, upiId: editingAccount.upiId, enabled: editingAccount.enabled }
+		: { label: "", upiId: "", enabled: true };
+	const dirty =
+		formData.label !== initialForm.label ||
+		formData.upiId !== initialForm.upiId ||
+		formData.enabled !== initialForm.enabled;
 
 	const [submitButton, SubmitButton] = useReactiveButton({
-		label: editingAccount ? "Update UPI Account" : "Create UPI Account",
-		loading: { label: "Saving..." },
+		label: editingAccount ? "Save" : "Add",
+		loading: { label: "Saving…" },
 		success: { label: editingAccount ? "Updated" : "Created", duration: 900 },
 	});
 
@@ -175,86 +201,77 @@ export default function UpiClientPage({ upiAccounts }: { upiAccounts: Promise<Ad
 	}
 
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center justify-between">
-				<div>
-					<h2 className="text-3xl font-bold tracking-tight">UPI Accounts</h2>
-					<p className="text-muted-foreground">Manage UPI payment accounts</p>
-				</div>
-				<Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-					<Button
-						type="button"
-						onClick={() => {
-							setIsDialogOpen(true);
-						}}
-					>
-						<Plus className="mr-2 h-4 w-4" />
-						Add UPI Account
-					</Button>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>{editingAccount ? "Edit UPI Account" : "Add New UPI Account"}</DialogTitle>
-							<DialogDescription>
-								{editingAccount ? "Update UPI account details" : "Create a new UPI payment account"}
-							</DialogDescription>
-						</DialogHeader>
-						<form onSubmit={handleSubmit} className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor={labelID}>Label</Label>
-								<Input
-									id={labelID}
-									value={formData.label}
-									onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-									placeholder="e.g., Primary Account"
-									required
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor={upiIdID}>UPI ID</Label>
-								<Input
-									id={upiIdID}
-									value={formData.upiId}
-									onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
-									placeholder="e.g., username@upi"
-									required
-								/>
-							</div>
-							<div className="flex items-center space-x-2">
-								<input
-									type="checkbox"
-									id={enabledID}
-									checked={formData.enabled}
-									onChange={(e) => setFormData({ ...formData, enabled: e.target.checked })}
-									className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-								/>
-								<Label htmlFor={enabledID} className="cursor-pointer">
-									Enabled
-								</Label>
-							</div>
-							<SubmitButton type="submit" className="w-full" />
-						</form>
-					</DialogContent>
-				</Dialog>
-			</div>
+		<div className="w-full">
+			<FormSheet
+				open={isDialogOpen}
+				onOpenChange={handleDialogOpenChange}
+				title={editingAccount ? "Edit UPI account" : "Add UPI account"}
+				description={
+					editingAccount ? "Change how this account appears at checkout." : "Customers pay to this UPI ID at checkout."
+				}
+				dirty={dirty}
+				busy={submitButton.isBusy}
+				primary={<SubmitButton type="submit" form={UPI_FORM_ID} size="sm" />}
+			>
+				<form id={UPI_FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor={labelID}>Label</Label>
+						<Input
+							id={labelID}
+							value={formData.label}
+							onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+							placeholder="PhonePe"
+							autoComplete="off"
+							required
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor={upiIdID}>UPI ID</Label>
+						<Input
+							id={upiIdID}
+							value={formData.upiId}
+							onChange={(e) => setFormData({ ...formData, upiId: e.target.value })}
+							placeholder="name@bank"
+							autoComplete="off"
+							autoCapitalize="none"
+							spellCheck={false}
+							required
+						/>
+					</div>
+					<div className="flex min-h-11 items-center gap-3">
+						<Switch
+							id={enabledID}
+							checked={formData.enabled}
+							onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
+						/>
+						<Label htmlFor={enabledID} className="cursor-pointer">
+							Show at checkout
+						</Label>
+					</div>
+				</form>
+			</FormSheet>
 
-			<div className="rounded-md border">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Label</TableHead>
-							<TableHead>UPI ID</TableHead>
-							<TableHead>Status</TableHead>
-							<TableHead>Created At</TableHead>
-							<TableHead className="text-right">Actions</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
+			<PageHeader
+				title="UPI accounts"
+				description="Payment handles offered at checkout."
+				action={<PageHeaderAction icon={Plus} label="Add UPI account" onClick={() => setIsDialogOpen(true)} />}
+			/>
+
+			{accounts.length > 0 ? (
+				<ListSection title="Accounts" count={accounts.length}>
+					<RecordList aria-label="UPI accounts">
 						{accounts.map((account) => (
 							<UpiAccountRow key={account.id} account={account} onEdit={handleEdit} onDeleted={handleDeleted} />
 						))}
-					</TableBody>
-				</Table>
-			</div>
+					</RecordList>
+				</ListSection>
+			) : (
+				<EmptyState
+					variant="block"
+					title="No UPI accounts yet"
+					description="Add one so the cart can show a UPI QR code."
+				/>
+			)}
 		</div>
 	);
 }

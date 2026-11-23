@@ -20,7 +20,7 @@ export default async function AnalyticsPage() {
 	const monthlyDessertRevenue = report.then((data) => data.monthlyDessertRevenue);
 
 	return (
-		<AdminPageShell>
+		<AdminPageShell frame="wide">
 			<Suspense fallback={<AnalyticsSkeleton includeMain={false} />}>
 				<AnalyticsContent
 					monthlyRevenue={monthlyRevenue}

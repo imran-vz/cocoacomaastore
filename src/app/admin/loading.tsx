@@ -1,5 +1,5 @@
-import { AdminHomeSkeleton } from "./loading-skeletons";
+import { AdminRouteSkeleton } from "./loading-skeletons";
 
 export default function AdminLoading() {
-	return <AdminHomeSkeleton />;
+	return <AdminRouteSkeleton />;
 }

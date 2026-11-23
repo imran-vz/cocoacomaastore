@@ -168,8 +168,8 @@ export function ActionFeedbackCheckOverlay({
 			<motion.span
 				aria-hidden="true"
 				className={cn(
-					"pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] text-white",
-					phase === "error" ? "bg-red-500" : "bg-emerald-500",
+					"pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-[inherit]",
+					phase === "error" ? "bg-destructive text-destructive-foreground" : "bg-success text-success-foreground",
 					className,
 				)}
 				initial={false}

@@ -31,7 +31,7 @@ export type ReactiveButtonConfig = {
 	error?: ReactiveButtonStateContent & { duration?: number };
 	/**
 	 * Success/error tint. Defaults to "brand" (primary tint) for the default button
-	 * variant and "neutral" (emerald tint) for every other variant.
+	 * variant and "neutral" (success-token tint) for every other variant.
 	 */
 	feedbackStyle?: "brand" | "neutral";
 };
@@ -64,7 +64,7 @@ const SUCCESS_DURATION = 1500;
 const ERROR_DURATION = 2500;
 
 const feedbackNeutralClass =
-	"data-[feedback=success]:border-emerald-200 data-[feedback=success]:bg-emerald-50 data-[feedback=success]:text-emerald-700 data-[feedback=success]:opacity-100 data-[feedback=success]:hover:bg-emerald-50 dark:data-[feedback=success]:border-emerald-800 dark:data-[feedback=success]:bg-emerald-950/40 dark:data-[feedback=success]:text-emerald-300 motion-reduce:transition-none";
+	"data-[feedback=success]:border-success/30 data-[feedback=success]:bg-success/10 data-[feedback=success]:text-success data-[feedback=success]:opacity-100 data-[feedback=success]:hover:bg-success/10 motion-reduce:transition-none";
 
 const feedbackBrandClass =
 	"data-[feedback=success]:border-primary/30 data-[feedback=success]:bg-primary/15 data-[feedback=success]:text-primary data-[feedback=success]:opacity-100 data-[feedback=success]:hover:bg-primary/20 motion-reduce:transition-none";

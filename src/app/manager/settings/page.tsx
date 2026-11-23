@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { RedirectType, redirect } from "next/navigation";
+import { PageFrame } from "@/components/page-frame";
 import { getServerSession } from "@/lib/auth";
 import SettingsClient from "./settings-client";
 
@@ -16,7 +17,7 @@ export default async function SettingsPage() {
 	}
 
 	return (
-		<main className="min-h-app p-4 pb-8 w-full max-w-lg mx-auto">
+		<PageFrame as="main" frame="narrow" centered>
 			<SettingsClient
 				user={{
 					id: session.user.id,
@@ -25,6 +26,6 @@ export default async function SettingsPage() {
 					role: session.user.role ?? "user",
 				}}
 			/>
-		</main>
+		</PageFrame>
 	);
 }

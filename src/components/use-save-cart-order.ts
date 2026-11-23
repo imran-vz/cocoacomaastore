@@ -3,6 +3,7 @@
 import { useCallback, useRef } from "react";
 import { createOrderWithLines } from "@/app/manager/orders/actions";
 import { useReactiveButton } from "@/components/ui/reactive-button";
+import { formatINR } from "@/lib/format";
 import type { OrderSubmissionIdentity, SubmittedOrderSnapshot } from "@/lib/pos-cart-behaviour";
 import { completeAcknowledgedOrder, resolveOrderSubmissionIdentity, saveCartOrder } from "@/lib/pos-cart-behaviour";
 import type { CartLine } from "@/lib/types";
@@ -40,8 +41,8 @@ export function useSaveCartOrder({
 	const cartInteractionVersionRef = useRef(0);
 
 	const [saveControls, SaveButton] = useReactiveButton({
-		label: cart.length === 0 ? "Add items to save" : `Save Order · ₹${total.toFixed(0)}`,
-		loading: { label: "Saving order..." },
+		label: cart.length === 0 ? "Add items to save" : `Save order · ${formatINR(total)}`,
+		loading: { label: "Saving order…" },
 		success: { duration: 1200 },
 		feedbackStyle: "brand",
 	});

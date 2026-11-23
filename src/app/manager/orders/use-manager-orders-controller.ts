@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import type { CancelOrderHandler } from "@/components/orders/order-cancel-action";
 import type { SerializedOrders } from "@/lib/order-lifecycle";
 import { cancelOrder } from "./actions";
@@ -20,9 +20,9 @@ async function fetchManagerOrders(signal?: AbortSignal): Promise<SerializedOrder
 	return response.json();
 }
 
-export function useManagerOrdersController(initialOrders: SerializedOrders) {
+/** `todayLabel` comes from the server render (shop time), so the heading never mismatches on hydration. */
+export function useManagerOrdersController(initialOrders: SerializedOrders, todayLabel: string) {
 	const queryClient = useQueryClient();
-	const [todayLabel, setTodayLabel] = useState("");
 	const {
 		data: orders,
 		error,
@@ -41,17 +41,6 @@ export function useManagerOrdersController(initialOrders: SerializedOrders) {
 			await queryClient.invalidateQueries({ queryKey: ["manager-orders", "today"] });
 		},
 	});
-
-	useEffect(() => {
-		setTodayLabel(
-			new Date().toLocaleDateString("en-IN", {
-				weekday: "long",
-				day: "numeric",
-				month: "long",
-				timeZone: "Asia/Kolkata",
-			}),
-		);
-	}, []);
 
 	if (error) {
 		console.error("Failed to fetch manager orders:", error);

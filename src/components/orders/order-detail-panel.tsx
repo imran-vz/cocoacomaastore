@@ -17,21 +17,23 @@ export function OrderDetailPanel({
 		<div className={cn("space-y-3", className)}>
 			<OrderLineItems order={order} />
 
-			<div className="space-y-1.5 border-t pt-3 text-sm">
+			<dl className="space-y-1.5 border-t pt-3 text-sm">
 				{order.deliveryCostLabel && (
-					<div className="flex items-center justify-between gap-4 text-muted-foreground">
-						<span>Delivery</span>
-						<span className="font-mono tabular-nums">{order.deliveryCostLabel}</span>
+					<div className="flex items-baseline justify-between gap-4 text-muted-foreground">
+						<dt>Delivery</dt>
+						<dd className="tabular-nums">{order.deliveryCostLabel}</dd>
 					</div>
 				)}
-				<div className="flex items-center justify-between gap-4 font-semibold">
-					<span>Order total</span>
-					<span className="font-mono text-base tabular-nums">{order.totalLabel}</span>
+				<div className="flex items-baseline justify-between gap-4 text-[15px] font-semibold text-foreground">
+					<dt>Total</dt>
+					<dd className={cn("tabular-nums", order.isCancelled && "text-muted-foreground line-through")}>
+						{order.totalLabel}
+					</dd>
 				</div>
-			</div>
+			</dl>
 
-			<div className={cn("grid gap-2", cancelAction && "sm:grid-cols-2")}>
-				<OrderInvoiceButton order={order.source} className="h-11 md:h-8" />
+			<div className="flex flex-wrap gap-2 pt-1 md:justify-end">
+				<OrderInvoiceButton order={order.source} className="flex-1 md:flex-none" />
 				{cancelAction}
 			</div>
 		</div>

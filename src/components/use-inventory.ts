@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { InventoryUpdate, InventoryWriteResult } from "@/lib/daily-inventory";
+import { formatDate } from "@/lib/format";
 import type { Dessert } from "@/lib/types";
 
 type TodayInventoryRow = {
@@ -82,15 +83,7 @@ export function useInventory({ desserts, initialInventory, onSave, onRefetch }: 
 
 	const hasChanges = changedDessertIds.size > 0;
 
-	const todayLabel = useMemo(
-		() =>
-			new Date().toLocaleDateString("en-IN", {
-				year: "numeric",
-				month: "short",
-				day: "numeric",
-			}),
-		[],
-	);
+	const todayLabel = useMemo(() => formatDate(new Date()), []);
 
 	const onQuantityChange = useCallback((dessertId: number, value: string) => {
 		setSaveSuccessCount(null);

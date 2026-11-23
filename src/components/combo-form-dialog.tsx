@@ -1,18 +1,44 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { FormSheet } from "@/components/ui/form-sheet";
 import { useReactiveButton } from "@/components/ui/reactive-button";
-
+import { formatINR } from "@/lib/format";
+import type { ComboWithDetails } from "@/lib/types";
 import { useComboStore } from "@/store/combo-store";
-import { Button } from "./ui/button";
 import { Checkbox } from "./ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Switch } from "./ui/switch";
+
+const COMBO_FORM_ID = "combo-form";
+
+type ComboFormValues = ReturnType<typeof useComboStore.getState>["formData"];
+
+/** The values the form opens with, to tell whether anything changed. */
+function initialValuesFor(combo: ComboWithDetails | null): ComboFormValues {
+	if (!combo) return { name: "", baseDessertId: null, overridePrice: "", enabled: true, items: [] };
+	return {
+		name: combo.name,
+		baseDessertId: combo.baseDessertId,
+		overridePrice: combo.overridePrice?.toString() ?? "",
+		enabled: combo.enabled,
+		items: combo.items.map((item) => ({ dessertId: item.dessertId, quantity: item.quantity })),
+	};
+}
+
+function isSameForm(a: ComboFormValues, b: ComboFormValues) {
+	if (a.name !== b.name || a.baseDessertId !== b.baseDessertId) return false;
+	if (a.overridePrice !== b.overridePrice || a.enabled !== b.enabled) return false;
+	if (a.items.length !== b.items.length) return false;
+	const quantities = new Map(b.items.map((item) => [item.dessertId, item.quantity]));
+	return a.items.every((item) => quantities.get(item.dessertId) === item.quantity);
+}
 
 export function ComboFormDialog() {
 	const {
@@ -41,44 +67,58 @@ export function ComboFormDialog() {
 	}, [closeModal]);
 
 	const [submitButton, SubmitButton] = useReactiveButton({
-		label: editingCombo ? "Update" : "Create",
-		loading: { label: "Saving..." },
-		success: { label: editingCombo ? "Updated" : "Created", duration: 900 },
+		label: editingCombo ? "Save" : "Add",
+		loading: { label: "Saving…" },
+		success: { label: editingCombo ? "Updated" : "Added", duration: 900 },
 		error: { label: "Failed to save" },
 		feedbackStyle: "brand",
 	});
-	const [deleteButton, DeleteButton] = useReactiveButton({
-		label: "Delete",
-		icon: Trash2,
-		loading: { label: "Deleting..." },
-		error: { label: "Delete failed" },
-	});
+	const [confirmDelete, setConfirmDelete] = useState(false);
+	// Kept while the confirmation closes, after the store has cleared `editingCombo`.
+	const [deleteName, setDeleteName] = useState("");
 	const closeWithFeedbackCancellation = () => {
 		submitButton.reset();
-		deleteButton.reset();
+		setConfirmDelete(false);
 		closeModal();
 	};
 
 	const isSubmitBusy = submitButton.status === "loading" || submitButton.status === "success";
-	const isDeleteBusy = deleteButton.status === "loading";
+	const isDeleteBusy = confirmDelete && isLoading;
+	const dirty = !isSameForm(formData, initialValuesFor(editingCombo));
 
 	const baseDessertLabel = useMemo(() => {
 		const match = bases.find((b) => b.id === formData.baseDessertId);
-		return match ? `${match.name} (₹${match.price})` : null;
+		return match ? `${match.name} · ${formatINR(match.price)}` : null;
 	}, [bases, formData.baseDessertId]);
 
 	return (
-		<Dialog
-			open={openModal}
-			onOpenChange={(open) => {
-				if (!open) closeWithFeedbackCancellation();
-			}}
-		>
-			<DialogContent className="mx-2 max-w-[calc(100vw-1rem)] sm:mx-4 sm:max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 max-h-[90vh] overflow-y-auto">
-				<DialogHeader>
-					<DialogTitle>{editingCombo ? "Edit Combo" : "Add New Combo"}</DialogTitle>
-				</DialogHeader>
+		<>
+			<FormSheet
+				open={openModal}
+				onOpenChange={(open) => {
+					if (!open) closeWithFeedbackCancellation();
+				}}
+				title={editingCombo ? "Edit combo" : "Add combo"}
+				dirty={dirty}
+				busy={isLoading || submitButton.isBusy}
+				primary={<SubmitButton type="submit" form={COMBO_FORM_ID} size="sm" disabled={isLoading || isDeleteBusy} />}
+				menu={
+					editingCombo ? (
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() => {
+								setDeleteName(editingCombo.name);
+								setConfirmDelete(true);
+							}}
+						>
+							<Trash2 aria-hidden="true" />
+							Delete combo
+						</DropdownMenuItem>
+					) : null
+				}
+			>
 				<form
+					id={COMBO_FORM_ID}
 					onSubmit={async (e) => {
 						e.preventDefault();
 						if (isLoading || isSubmitBusy || isDeleteBusy) return;
@@ -101,28 +141,28 @@ export function ComboFormDialog() {
 					className="space-y-4"
 				>
 					<div className="space-y-2">
-						<Label htmlFor="combo-name">Combo Name</Label>
+						<Label htmlFor="combo-name">Name</Label>
 						<Input
 							id="combo-name"
 							value={formData.name}
 							onChange={(e) => setFormField({ name: e.target.value })}
-							placeholder="e.g., Brownie + Ice Cream"
+							placeholder="Brownie + ice cream"
 						/>
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="combo-base">Base Dessert</Label>
+						<Label htmlFor="combo-base">Base dessert</Label>
 						<Select
 							value={formData.baseDessertId?.toString() ?? ""}
 							onValueChange={(value) => setFormField({ baseDessertId: Number.parseInt(value || "", 10) })}
 						>
-							<SelectTrigger className="w-full">
+							<SelectTrigger id="combo-base" className="w-full">
 								<SelectValue placeholder="Select base dessert">{baseDessertLabel}</SelectValue>
 							</SelectTrigger>
 							<SelectContent className="min-w-64">
 								{bases.map((dessert) => (
 									<SelectItem key={dessert.id} value={dessert.id.toString()}>
-										{dessert.name} (₹{dessert.price})
+										{dessert.name} · {formatINR(dessert.price)}
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -130,59 +170,67 @@ export function ComboFormDialog() {
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="combo-override-price">Override Price (leave empty to compute)</Label>
+						<Label htmlFor="combo-override-price">Price override</Label>
 						<Input
 							id="combo-override-price"
 							type="number"
 							min="0"
 							value={formData.overridePrice}
+							inputMode="numeric"
 							onChange={(e) => setFormField({ overridePrice: e.target.value })}
-							placeholder="e.g., 150"
+							aria-describedby="combo-override-price-help"
 						/>
+						<p id="combo-override-price-help" className="text-[13px] text-muted-foreground">
+							Leave empty to charge the base dessert plus its add-ons.
+						</p>
 					</div>
 
-					<div className="flex items-center gap-2">
+					<div className="flex min-h-11 items-center gap-3">
 						<Switch
 							id="combo-enabled"
 							checked={formData.enabled}
 							onCheckedChange={(checked) => setFormField({ enabled: checked })}
 						/>
-						<Label htmlFor="combo-enabled">Enabled</Label>
+						<Label htmlFor="combo-enabled">Available on the Sell screen</Label>
 					</div>
 
 					<div className="space-y-2">
-						<Label>Modifiers (Add-ons)</Label>
+						<p className="text-sm leading-none font-medium">Add-ons</p>
 						{modifiers.length === 0 ? (
-							<div className="border rounded-md p-3 text-sm text-muted-foreground">
-								No modifier desserts found. Create a dessert with Type = <strong>Modifier (Add-on)</strong>, then come
-								back here.
+							<div className="rounded-lg border bg-card p-3 text-sm text-muted-foreground">
+								No add-ons yet. Add a dessert with the type <strong>Add-on</strong>, then come back here.
 							</div>
 						) : (
-							<div className="border rounded-md p-3 space-y-2 max-h-48 overflow-y-auto">
+							<div className="divide-y rounded-lg border bg-card">
 								{modifiers.map((modifier) => {
 									const selected = formData.items.find((i) => i.dessertId === modifier.id);
 									return (
-										<div key={modifier.id} className="flex items-center justify-between">
-											<div className="flex items-center gap-2">
+										<div key={modifier.id} className="flex min-h-12 items-center justify-between gap-3 px-3 py-1">
+											<div className="flex min-w-0 items-center gap-3">
 												<Checkbox
 													id={`mod-${modifier.id}`}
 													checked={!!selected}
 													onCheckedChange={() => toggleModifier(modifier.id)}
 												/>
-												<Label htmlFor={`mod-${modifier.id}`} className="text-sm">
-													{modifier.name} (₹{modifier.price})
+												<Label htmlFor={`mod-${modifier.id}`} className="min-w-0 flex-wrap gap-x-1.5 text-sm leading-5">
+													<span>{modifier.name}</span>
+													<span className="font-normal text-muted-foreground tabular-nums">
+														{formatINR(modifier.price)}
+													</span>
 												</Label>
 											</div>
 											{selected && (
 												<Input
 													type="number"
+													inputMode="numeric"
+													aria-label={`Quantity of ${modifier.name}`}
 													min="1"
 													max="10"
 													value={selected.quantity}
 													onChange={(e) =>
 														updateModifierQuantity(modifier.id, Number.parseInt(e.target.value, 10) || 1)
 													}
-													className="w-16 h-8 text-sm"
+													className="w-16 shrink-0 text-center"
 												/>
 											)}
 										</div>
@@ -191,32 +239,22 @@ export function ComboFormDialog() {
 							</div>
 						)}
 					</div>
-
-					<div className="flex gap-2 pt-2">
-						{editingCombo && (
-							<DeleteButton
-								type="button"
-								variant="destructive"
-								disabled={isLoading || isSubmitBusy}
-								onClick={async () => {
-									if (isLoading || isSubmitBusy || isDeleteBusy) return;
-									const token = deleteButton.setLoading();
-									const result = await handleDelete();
-									// On success the store closes the dialog and the combo leaves the
-									// list — the disappearance is the feedback, so no success flash.
-									if (!result.ok) {
-										deleteButton.setError("Delete failed", { token });
-									}
-								}}
-							/>
-						)}
-						<Button type="button" variant="outline" onClick={closeWithFeedbackCancellation} className="ml-auto">
-							Cancel
-						</Button>
-						<SubmitButton type="submit" disabled={isLoading || isDeleteBusy} />
-					</div>
 				</form>
-			</DialogContent>
-		</Dialog>
+			</FormSheet>
+			<ConfirmSheet
+				open={confirmDelete}
+				onOpenChange={setConfirmDelete}
+				title={`Delete ${deleteName}?`}
+				description="It leaves the catalog and the Sell screen. Past orders aren't affected."
+				confirmLabel="Delete combo"
+				pendingLabel="Deleting…"
+				onConfirm={async () => {
+					// On success the store closes the form and the combo leaves the list.
+					const result = await handleDelete();
+					if (!result.ok) throw new Error("Couldn't delete this combo. Try again.");
+					submitButton.reset();
+				}}
+			/>
+		</>
 	);
 }

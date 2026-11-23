@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Fragment } from "react";
+
+import { routeInfo } from "@/components/app-nav";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -11,92 +13,59 @@ import {
 	BreadcrumbPage,
 	BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { cn } from "@/lib/utils";
 
-interface BreadcrumbSegment {
-	label: string;
-	href?: string;
-}
-
-// Map route segments to user-friendly labels
-const segmentLabels: Record<string, string> = {
-	admin: "Home",
-	dashboard: "Dashboard",
-	desserts: "Desserts",
-	orders: "Orders",
-	customers: "Customers",
-	users: "Users",
-	managers: "Managers",
-	upi: "UPI Accounts",
-	workshops: "Workshops",
-	"workshop-orders": "Workshop Orders",
-	"postal-brownies": "Postal Brownies",
-	"postal-orders": "Postal Orders",
-	specials: "Specials",
-	settings: "Settings",
-	"order-days": "Order Days",
-	new: "New",
-	edit: "Edit",
-};
-
-function formatSegment(segment: string): string {
-	// Check if we have a custom label
-	if (segmentLabels[segment]) {
-		return segmentLabels[segment];
-	}
-
-	// Check if it's an ID (UUID or numeric)
-	if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segment) || /^\d+$/.test(segment)) {
-		return "Details";
-	}
-
-	// Default: capitalize and replace hyphens with spaces
-	return segment
-		.split("-")
-		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-		.join(" ");
-}
-
-export function BreadcrumbNavigation() {
+/**
+ * Admin header breadcrumbs (md and up), labelled with the same names as the sidebar and tabs.
+ * When the last crumb equals the page's own h1 (`pageTitle`), it is hidden while that heading
+ * is visible (`pageTitleVisible`) so the screen is never named twice on screen.
+ */
+export function BreadcrumbNavigation({
+	className,
+	pageTitle,
+	pageTitleVisible = false,
+}: {
+	className?: string;
+	pageTitle?: string;
+	pageTitleVisible?: boolean;
+}) {
 	const pathname = usePathname();
+	const crumbs = routeInfo(pathname).crumbs;
 
-	// Split pathname into segments and filter out empty strings
-	const segments = pathname.split("/").filter(Boolean);
-
-	// Build breadcrumb items
-	const breadcrumbs: BreadcrumbSegment[] = segments.map((segment, index) => {
-		const href = `/${segments.slice(0, index + 1).join("/")}`;
-		const label = formatSegment(segment);
-
-		// Don't make the last segment a link (current page)
-		const isLast = index === segments.length - 1;
-
-		return {
-			label,
-			href: isLast ? undefined : href,
-		};
-	});
-
-	// Don't show breadcrumbs on the main admin page
-	if (breadcrumbs.length <= 1) {
+	if (crumbs.length === 0) {
 		return null;
 	}
 
+	const lastIsTitle = crumbs[crumbs.length - 1].label === pageTitle;
+	const hideLast = lastIsTitle && pageTitleVisible;
+
 	return (
-		<Breadcrumb>
-			<BreadcrumbList>
-				{breadcrumbs.map((breadcrumb, index) => {
-					const isLast = index === breadcrumbs.length - 1;
+		<Breadcrumb className={className}>
+			<BreadcrumbList className="flex-nowrap">
+				{crumbs.map((crumb, index) => {
+					const isLast = index === crumbs.length - 1;
+					const hidden = isLast && hideLast;
 
 					return (
-						<Fragment key={breadcrumb.href || breadcrumb.label}>
-							<BreadcrumbItem>
-								{isLast ? (
-									<BreadcrumbPage>{breadcrumb.label}</BreadcrumbPage>
+						<Fragment key={`${crumb.label}-${index}`}>
+							<BreadcrumbItem
+								aria-hidden={hidden || undefined}
+								className={cn("min-w-0 transition-opacity duration-150", hidden && "pointer-events-none opacity-0")}
+							>
+								{isLast || !crumb.href ? (
+									<BreadcrumbPage className="truncate font-semibold">{crumb.label}</BreadcrumbPage>
 								) : (
-									<BreadcrumbLink render={<Link href={breadcrumb.href || "/"}>{breadcrumb.label}</Link>} />
+									<BreadcrumbLink render={<Link href={crumb.href}>{crumb.label}</Link>} />
 								)}
 							</BreadcrumbItem>
-							{!isLast && <BreadcrumbSeparator />}
+							{!isLast && (
+								<BreadcrumbSeparator
+									className={cn(
+										"transition-opacity duration-150",
+										index === crumbs.length - 2 && hideLast && "opacity-0",
+									)}
+								/>
+							)}
 						</Fragment>
 					);
 				})}

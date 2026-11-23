@@ -1,12 +1,15 @@
 "use client";
 
-import { ShoppingBag, Trash2 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import { Trash2 } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import type { UpiAccount } from "@/db/schema";
+import { formatCount } from "@/lib/format";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";
 import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
+import { Button } from "./ui/button";
+import { EmptyState } from "./ui/empty-state";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import type { ReactiveButtonComponent } from "./ui/reactive-button";
@@ -48,101 +51,91 @@ export function TabletCartSidebar({
 	};
 
 	return (
-		<div className="h-full flex flex-col bg-muted/30 rounded-2xl border-2 overflow-hidden">
-			<div className="shrink-0 px-4 py-3 bg-background border-b">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						<div className="relative">
-							<ShoppingBag className="size-5 text-primary" />
-							{itemCount > 0 && (
-								<span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[9px] font-bold rounded-full size-4 flex items-center justify-center">
-									{itemCount > 99 ? "99" : itemCount}
-								</span>
-							)}
-						</div>
-						<h2 className="font-semibold text-sm">Cart</h2>
-					</div>
-					{cart.length > 0 && (
-						<motion.button
-							type="button"
-							whileTap={{ scale: 0.95 }}
-							onClick={clearCart}
-							className="text-[10px] text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
-						>
-							<Trash2 className="size-3" />
-							Clear
-						</motion.button>
+		<section
+			aria-labelledby="pos-inline-cart-title"
+			className="flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-xs"
+		>
+			<div className="flex shrink-0 items-center justify-between gap-2 border-b py-2 pr-2 pl-4">
+				<h2 id="pos-inline-cart-title" className="text-[17px] font-bold">
+					Cart
+					{itemCount > 0 && (
+						<span className="ml-2 text-sm font-normal text-muted-foreground tabular-nums">
+							{formatCount(itemCount, "items")}
+						</span>
 					)}
-				</div>
+				</h2>
+				{cart.length > 0 ? (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={clearCart}
+						className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+					>
+						<Trash2 />
+						Clear
+					</Button>
+				) : (
+					<span className="h-11 md:h-8" aria-hidden="true" />
+				)}
 			</div>
 
-			<div className="shrink-0 px-4 py-3 bg-background/50 border-b">
-				<div className="grid grid-cols-2 gap-2">
-					<form.Field name="name">
-						{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
-						{(field: any) => (
-							<div className="space-y-1">
-								<Label
-									htmlFor={field.name}
-									className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
-								>
-									Customer
-								</Label>
-								<Input
-									id={field.name}
-									placeholder="Guest"
-									value={field.state.value}
-									onChange={(e) => field.handleChange(e.target.value)}
-									onBlur={field.handleBlur}
-									className="h-8 text-sm"
-								/>
-							</div>
-						)}
-					</form.Field>
+			<div className="grid shrink-0 grid-cols-2 gap-2 border-b px-4 py-3">
+				<form.Field name="name">
+					{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
+					{(field: any) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name} className="text-[13px] text-muted-foreground">
+								Customer
+							</Label>
+							<Input
+								id={field.name}
+								placeholder="Walk-in"
+								autoComplete="off"
+								value={field.state.value}
+								onChange={(e) => field.handleChange(e.target.value)}
+								onBlur={field.handleBlur}
+							/>
+						</div>
+					)}
+				</form.Field>
 
-					<form.Field name="deliveryCost">
-						{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
-						{(field: any) => (
-							<div className="space-y-1">
-								<Label
-									htmlFor={field.name}
-									className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide"
-								>
-									Delivery ₹
-								</Label>
-								<Input
-									id={field.name}
-									placeholder="0"
-									type="number"
-									step="0.01"
-									min="0"
-									max={MAX_DELIVERY_COST}
-									value={field.state.value}
-									onChange={(e) => field.handleChange(e.target.value)}
-									onBlur={field.handleBlur}
-									className="h-8 text-sm"
-								/>
-							</div>
-						)}
-					</form.Field>
-				</div>
+				<form.Field name="deliveryCost">
+					{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
+					{(field: any) => (
+						<div className="space-y-1">
+							<Label htmlFor={field.name} className="text-[13px] text-muted-foreground">
+								Delivery fee
+							</Label>
+							<Input
+								id={field.name}
+								placeholder="0"
+								type="number"
+								inputMode="decimal"
+								step="0.01"
+								min="0"
+								max={MAX_DELIVERY_COST}
+								value={field.state.value}
+								onChange={(e) => field.handleChange(e.target.value)}
+								onBlur={field.handleBlur}
+							/>
+						</div>
+					)}
+				</form.Field>
 			</div>
 
-			<ScrollArea className="flex-1">
-				<div className="p-3 space-y-2">
-					<AnimatePresence mode="popLayout">
-						{cart.length === 0 ? (
-							<motion.div
-								initial={{ opacity: 0 }}
-								animate={{ opacity: 1 }}
-								className="flex flex-col items-center justify-center py-12 text-center"
-							>
-								<ShoppingBag className="size-10 text-muted-foreground/20 mb-2" />
-								<p className="text-sm text-muted-foreground">Cart is empty</p>
-								<p className="text-[10px] text-muted-foreground/70 mt-1">Tap items to add</p>
-							</motion.div>
-						) : (
-							cart.map((line) => (
+			<ScrollArea className="min-h-0 flex-1">
+				{cart.length === 0 ? (
+					<EmptyState
+						variant="block"
+						framed={false}
+						title="Cart is empty"
+						description="Tap an item to add it."
+						className="px-6 py-12"
+					/>
+				) : (
+					<ul aria-label="Cart items" className="divide-y">
+						<AnimatePresence mode="popLayout" initial={false}>
+							{cart.map((line) => (
 								<CartLinePresenter
 									variant="tablet"
 									key={line.cartLineId}
@@ -150,28 +143,19 @@ export function TabletCartSidebar({
 									updateQuantity={updateQuantity}
 									removeFromCart={removeFromCart}
 								/>
-							))
-						)}
-					</AnimatePresence>
-				</div>
+							))}
+						</AnimatePresence>
+					</ul>
+				)}
 			</ScrollArea>
 
-			<div className="shrink-0 p-3 bg-background border-t space-y-3">
-				<div className="flex items-center justify-between px-1">
-					<span className="text-sm text-muted-foreground">Total</span>
-					<span className="text-xl font-bold text-primary tabular-nums">₹{total.toFixed(0)}</span>
-				</div>
-
+			<div className="shrink-0 space-y-3 border-t px-4 py-3">
 				{cart.length > 0 && (
-					<CartCopyActions cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
+					<CartCopyActions cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} compact />
 				)}
 
-				<SaveButton
-					onClick={handleSaveOrder}
-					disabled={cart.length === 0}
-					className="w-full h-11 text-sm font-semibold rounded-xl"
-				/>
+				<SaveButton onClick={handleSaveOrder} disabled={cart.length === 0} size="lg" className="w-full rounded-xl" />
 			</div>
-		</div>
+		</section>
 	);
 }

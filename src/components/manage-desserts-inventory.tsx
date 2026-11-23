@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SetStateAction } from "react";
 import { use, useCallback } from "react";
+import type { CatalogArea } from "@/components/catalog-toolbar";
 import { DessertsTable } from "@/components/desserts-table";
 import { useInventory } from "@/components/use-inventory";
 import type { InventoryUpdate, InventoryWriteResult, TodayInventoryRow } from "@/lib/daily-inventory";
@@ -41,14 +42,12 @@ export default function ManageDessertsInventory({
 	initialDesserts,
 	initialInventory,
 	onSaveInventory,
-	subtitle,
-	maxWidth,
+	area,
 }: {
 	initialDesserts: Promise<Dessert[]>;
 	initialInventory: Promise<TodayInventoryRow[]>;
 	onSaveInventory: (updates: InventoryUpdate[]) => Promise<InventoryWriteResult>;
-	subtitle?: string;
-	maxWidth: string;
+	area: CatalogArea;
 }) {
 	const dessertsData = use(initialDesserts);
 	const inventoryData = use(initialInventory);
@@ -119,9 +118,7 @@ export default function ManageDessertsInventory({
 			setDesserts={setDesserts}
 			onRefetch={refreshDesserts}
 			inventory={inventory}
-			title="Desserts & Inventory"
-			subtitle={subtitle}
-			maxWidth={maxWidth}
+			area={area}
 		/>
 	);
 }

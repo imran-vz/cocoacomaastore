@@ -1,17 +1,21 @@
 "use client";
 
-import { IconCake } from "@tabler/icons-react";
+import { ChevronDown } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { memo } from "react";
+import { memo, useState } from "react";
 import { tweenFast } from "@/lib/motion";
 import type { ComboWithDetails, Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { ComboCard, ProductCard } from "./product-card";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
+import { EmptyState } from "./ui/empty-state";
 
 interface ProductGridProps {
 	desserts: Dessert[];
 	combos?: ComboWithDetails[];
+	/** In-cart quantity per dessert id (plain dessert lines only). */
+	dessertQuantities?: ReadonlyMap<number, number>;
+	/** In-cart quantity per combo id. */
+	comboQuantities?: ReadonlyMap<number, number>;
 	onAddToCart: (dessert: Dessert) => boolean;
 	onAddComboToCart?: (combo: ComboWithDetails) => boolean;
 	onToggleStock?: (dessert: Dessert) => Promise<string>;
@@ -21,9 +25,21 @@ interface ProductGridProps {
 	searchQuery?: string;
 }
 
+const EMPTY_QUANTITIES: ReadonlyMap<number, number> = new Map();
+
+/**
+ * Tiles are at least 150px wide: two columns on every phone from 360px up, a single
+ * column below that, and more columns as the product pane (not the viewport) grows.
+ * From a 768px pane the minimum rises so wide desktops don't turn into a wall of tiles.
+ */
+const tileGridClass =
+	"grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2 @md/products:gap-3 @3xl/products:grid-cols-[repeat(auto-fill,minmax(176px,1fr))]";
+
 export const ProductGrid = memo(function ProductGrid({
 	desserts,
 	combos = [],
+	dessertQuantities = EMPTY_QUANTITIES,
+	comboQuantities = EMPTY_QUANTITIES,
 	onAddToCart,
 	onAddComboToCart,
 	onToggleStock,
@@ -32,76 +48,71 @@ export const ProductGrid = memo(function ProductGrid({
 	pinnedStockState = new Map(),
 	searchQuery = "",
 }: ProductGridProps) {
-	// Helper to check if dessert is unavailable
+	const [showOutOfStock, setShowOutOfStock] = useState(false);
+
 	const isUnavailable = (dessert: Dessert) =>
 		(pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock) ||
 		(!dessert.hasUnlimitedStock && (dessert.inventoryQuantity === undefined || dessert.inventoryQuantity <= 0));
 
-	// Filter desserts based on search
-	const filteredDesserts = desserts.filter((dessert) => dessert.name.toLowerCase().includes(searchQuery.toLowerCase()));
-
-	// Separate available and unavailable desserts
+	const query = searchQuery.toLowerCase();
+	const filteredDesserts = desserts.filter((dessert) => dessert.name.toLowerCase().includes(query));
 	const availableDesserts = filteredDesserts.filter((d) => !isUnavailable(d));
 	const unavailableDesserts = filteredDesserts.filter((d) => isUnavailable(d));
 
-	// Filter combos based on search
-	const filteredCombos = combos.filter(
-		(combo) =>
-			combo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			combo.baseDessert.name.toLowerCase().includes(searchQuery.toLowerCase()),
-	);
+	const filteredCombos = onAddComboToCart
+		? combos.filter(
+				(combo) => combo.name.toLowerCase().includes(query) || combo.baseDessert.name.toLowerCase().includes(query),
+			)
+		: [];
 
-	// Empty state
 	if (filteredDesserts.length === 0 && filteredCombos.length === 0) {
 		return (
-			<motion.div
-				initial={{ opacity: 0, y: 10 }}
-				animate={{ opacity: 1, y: 0 }}
-				className="flex flex-col items-center justify-center py-10 px-4 text-center"
-			>
-				<div className="size-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-					<IconCake className="size-8 text-muted-foreground/50" />
-				</div>
-				<h3 className="text-lg font-semibold text-foreground mb-1">No items found</h3>
-				<p className="text-sm text-muted-foreground max-w-xs">
-					{searchQuery
-						? `No items match "${searchQuery}". Try a different search.`
-						: "No items available at the moment."}
-				</p>
-			</motion.div>
+			<EmptyState
+				variant="block"
+				title="No items found"
+				description={searchQuery ? `Nothing matches "${searchQuery}".` : "Nothing is on sale right now."}
+			/>
 		);
 	}
 
-	// Column counts follow the product pane width (sidebar + fixed cart shrink it),
-	// not the viewport. Products stay 2-up on mobile; combos stay full-width until roomy.
-	// @xl ≈ 36rem / 576px, @4xl ≈ 56rem / 896px container width.
-	//
-	// Products render as one merged slab instead of floating cards: the frame owns the
-	// rounding and border, cells sit flush and are separated by hairlines. The grid's
-	// negative margins push the trailing column/row hairlines under the frame's own
-	// border, where overflow-hidden clips them.
-	const productFrameClass = "overflow-hidden rounded-xl border bg-card shadow-sm";
-	const productGridClass = "grid grid-cols-2 @xl/products:grid-cols-3 @4xl/products:grid-cols-4 -mr-px -mb-px";
-	const productCellClass = "border-r border-b border-border";
-	const comboGridClass = "grid grid-cols-1 @xl/products:grid-cols-2 @4xl/products:grid-cols-3 gap-2 @sm/products:gap-3";
-
 	return (
-		<div className="@container/products space-y-4 @md/products:space-y-6">
-			{/* Combos Section */}
-			{filteredCombos.length > 0 && onAddComboToCart && (
-				<section>
-					<h2 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 px-1">🎁 Combos</h2>
-					<div className={comboGridClass}>
+		<div className="@container/products space-y-6">
+			{(filteredCombos.length > 0 || availableDesserts.length > 0) && (
+				<section aria-label="Menu">
+					<div className={tileGridClass}>
 						<AnimatePresence mode="popLayout">
 							{filteredCombos.map((combo) => (
 								<motion.div
-									key={combo.id}
+									key={`combo-${combo.id}`}
 									initial={{ opacity: 0 }}
 									animate={{ opacity: 1 }}
-									exit={{ opacity: 0, scale: 0.95, pointerEvents: "none" }}
+									exit={{ opacity: 0, scale: 0.97, pointerEvents: "none" }}
 									transition={tweenFast}
 								>
-									<ComboCard combo={combo} onAddToCart={() => onAddComboToCart(combo)} compact />
+									<ComboCard
+										combo={combo}
+										cartQuantity={comboQuantities.get(combo.id) ?? 0}
+										onAddToCart={() => onAddComboToCart?.(combo) ?? false}
+									/>
+								</motion.div>
+							))}
+							{availableDesserts.map((dessert) => (
+								<motion.div
+									key={`dessert-${dessert.id}`}
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									exit={{ opacity: 0 }}
+									transition={tweenFast}
+								>
+									<ProductCard
+										dessert={dessert}
+										cartQuantity={dessertQuantities.get(dessert.id) ?? 0}
+										onAddToCart={onAddToCart}
+										onToggleStock={onToggleStock}
+										onToggleStockComplete={onToggleStockComplete}
+										isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+										stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
+									/>
 								</motion.div>
 							))}
 						</AnimatePresence>
@@ -109,81 +120,46 @@ export const ProductGrid = memo(function ProductGrid({
 				</section>
 			)}
 
-			{/* Available Products Section */}
-			{availableDesserts.length > 0 && (
-				<section>
-					{filteredCombos.length > 0 && (
-						<h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-							All Items
-						</h2>
-					)}
-					<div className={productFrameClass}>
-						<div className={productGridClass}>
-							<AnimatePresence mode="popLayout">
-								{availableDesserts.map((dessert) => (
-									<motion.div
-										key={dessert.id}
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1 }}
-										exit={{ opacity: 0 }}
-										transition={tweenFast}
-										className={productCellClass}
-									>
-										<ProductCard
-											dessert={dessert}
-											onAddToCart={onAddToCart}
-											onToggleStock={onToggleStock}
-											onToggleStockComplete={onToggleStockComplete}
-											isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
-											stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
-											compact
-										/>
-									</motion.div>
-								))}
-							</AnimatePresence>
-						</div>
-					</div>
-				</section>
-			)}
-
-			{/* Out of Stock Section */}
 			{unavailableDesserts.length > 0 && (
-				<section className="border-t pt-4">
-					<Accordion>
-						<AccordionItem value="out-of-stock" className="border-none">
-							<AccordionTrigger className="py-2 hover:no-underline">
-								<div className="flex items-center gap-2">
-									<span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-										Out of Stock
-									</span>
-									<span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
-										{unavailableDesserts.length}
-									</span>
-								</div>
-							</AccordionTrigger>
-							<AccordionContent>
-								<div className={cn(productFrameClass, "mt-2 mb-1")}>
-									<div className={productGridClass}>
-										<AnimatePresence mode="popLayout">
-											{unavailableDesserts.map((dessert) => (
-												<motion.div key={dessert.id} className={productCellClass}>
-													<ProductCard
-														dessert={dessert}
-														onAddToCart={onAddToCart}
-														onToggleStock={onToggleStock}
-														onToggleStockComplete={onToggleStockComplete}
-														isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
-														stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
-														compact
-													/>
-												</motion.div>
-											))}
-										</AnimatePresence>
-									</div>
-								</div>
-							</AccordionContent>
-						</AccordionItem>
-					</Accordion>
+				<section>
+					<h2>
+						<button
+							type="button"
+							aria-expanded={showOutOfStock}
+							aria-controls="pos-out-of-stock"
+							onClick={() => setShowOutOfStock((current) => !current)}
+							className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 text-left text-[15px] leading-5 font-semibold text-foreground hover:bg-accent focus-ring"
+						>
+							<span>
+								Out of stock
+								<span className="ml-1.5 font-normal text-muted-foreground tabular-nums">
+									{unavailableDesserts.length}
+								</span>
+							</span>
+							<ChevronDown
+								aria-hidden="true"
+								className={cn(
+									"size-5 text-muted-foreground transition-transform duration-200",
+									showOutOfStock && "rotate-180",
+								)}
+							/>
+						</button>
+					</h2>
+					{showOutOfStock && (
+						<div id="pos-out-of-stock" className={cn(tileGridClass, "mt-2")}>
+							{unavailableDesserts.map((dessert) => (
+								<ProductCard
+									key={dessert.id}
+									dessert={dessert}
+									onAddToCart={onAddToCart}
+									onToggleStock={onToggleStock}
+									onToggleStockComplete={onToggleStockComplete}
+									isStockToggleLoading={stockToggleLoadingIds.has(dessert.id)}
+									stockToggleIsOutOfStock={pinnedStockState.get(dessert.id) ?? dessert.isOutOfStock}
+								/>
+							))}
+						</div>
+					)}
 				</section>
 			)}
 		</div>

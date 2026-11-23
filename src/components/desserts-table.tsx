@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, Infinity as InfinityIcon, Pencil } from "lucide-react";
+import { ChevronDown, ChevronsDown, ChevronsUp, ChevronUp, MoreHorizontal, Trash2 } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
 	createDessert,
@@ -12,18 +13,36 @@ import {
 	updateDessert,
 	updateDessertSequence,
 } from "@/app/desserts/actions";
-import { DessertForm } from "@/components/dessert-form";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
-	ReactiveButton,
-	type ReactiveButtonControls,
-	type ReactiveButtonIcon,
-	useReactiveButton,
-} from "@/components/ui/reactive-button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+	CATALOG_INTENT_PARAM,
+	type CatalogArea,
+	type CatalogFilter,
+	CatalogFilterControl,
+	CatalogHeader,
+	CatalogReorderBar,
+	CatalogSearch,
+	readCatalogIntent,
+} from "@/components/catalog-toolbar";
+import { DessertForm } from "@/components/dessert-form";
+import { ActionFeedbackCheckOverlay, useActionFeedback } from "@/components/ui/action-feedback";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FormSheet } from "@/components/ui/form-sheet";
+import { Input } from "@/components/ui/input";
+import { ListRow, ListRowTile, ListSection, RecordList } from "@/components/ui/list-row";
+import { type ReactiveButtonIcon, useReactiveButton } from "@/components/ui/reactive-button";
+import { SaveBar } from "@/components/ui/save-bar";
+import { Switch } from "@/components/ui/switch";
 import { getInventorySaveLabel } from "@/components/use-inventory";
+import { formatINR } from "@/lib/format";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +53,7 @@ function capitalize(str: string) {
 		.join(" ");
 }
 
-type InventoryData = {
+export type InventoryData = {
 	quantities: Record<number, string>;
 	serverQuantities: Map<number, number>;
 	changedDessertIds: Set<number>;
@@ -43,83 +62,158 @@ type InventoryData = {
 	onSaveInventory: () => Promise<void>;
 	isSaving: boolean;
 	saveSuccessCount: number | null;
+	saveError: { id: number; message: string } | null;
 	todayLabel: string;
 };
+
+type StockFilter = CatalogFilter;
+
+const DESSERT_FORM_ID = "dessert-form";
 
 type DessertsTableProps = {
 	desserts: Dessert[];
 	setDesserts: React.Dispatch<React.SetStateAction<Dessert[]>>;
 	onRefetch: () => Promise<void>;
 	inventory?: InventoryData;
-	title?: string;
-	subtitle?: string;
-	maxWidth?: string;
+	/** Which role's catalog this is; sets the Desserts | Combos links. */
+	area: CatalogArea;
+	className?: string;
 };
 
-export function DessertsTable({
-	desserts,
-	setDesserts,
-	onRefetch,
-	inventory,
-	title = "Desserts",
-	subtitle,
-	maxWidth = "max-w-4xl",
-}: DessertsTableProps) {
+/**
+ * The "Save stock" button with its loading / saved / error feedback, driven by the
+ * inventory hook. Shared by Catalog (desserts) and Stock (manager inventory).
+ */
+export function useInventorySaveButton(inventory: InventoryData | undefined) {
+	const successCount = inventory?.saveSuccessCount ?? null;
+	const [controls, SaveButton] = useReactiveButton({
+		label: "Save stock",
+		loading: { label: "Saving…" },
+		success: { label: getInventorySaveLabel(successCount ?? 0) },
+		feedbackStyle: "brand",
+	});
+	const { setLoading, setSuccess, setError, reset } = controls;
+	const isSaving = inventory?.isSaving ?? false;
+	const saveError = inventory?.saveError ?? null;
+
+	// Loading follows the hook's isSaving flag; a save that ends without success returns to idle.
+	useEffect(() => {
+		if (isSaving) setLoading();
+		else reset({ ifStatus: "loading" });
+	}, [isSaving, setLoading, reset]);
+
+	// Flash the reported message when a save fails (the id bumps on every failure).
+	useEffect(() => {
+		if (saveError) setError(saveError.message);
+	}, [saveError, setError]);
+
+	// Flash success once a save completes; clearing the count (an edit) dismisses it.
+	useEffect(() => {
+		if (successCount === null) {
+			reset({ ifStatus: "success" });
+			return;
+		}
+		setSuccess(getInventorySaveLabel(successCount));
+	}, [successCount, reset, setSuccess]);
+
+	return [controls, SaveButton] as const;
+}
+
+/** Puts every changed quantity back to the last saved value. Local only; nothing is written. */
+export function discardInventoryChanges(inventory: InventoryData) {
+	for (const dessertId of inventory.changedDessertIds) {
+		inventory.onQuantityChange(dessertId, String(inventory.serverQuantities.get(dessertId) ?? 0));
+	}
+}
+
+/** The bottom save bar for stock edits: shown while dirty and while a save is giving feedback. */
+export function InventorySaveBar({ inventory }: { inventory: InventoryData }) {
+	const [controls, SaveButton] = useInventorySaveButton(inventory);
+	const open = inventory.hasChanges || controls.status !== "idle";
+	const message = inventory.hasChanges
+		? undefined
+		: controls.status === "error"
+			? "Stock not saved"
+			: controls.status === "success"
+				? "Stock saved"
+				: "Saving stock";
+
+	return (
+		<SaveBar
+			open={open}
+			changes={inventory.changedDessertIds.size}
+			message={message}
+			onDiscard={inventory.hasChanges ? () => discardInventoryChanges(inventory) : undefined}
+			saving={inventory.isSaving}
+			saveButton={<SaveButton onClick={inventory.onSaveInventory} disabled={!inventory.hasChanges} />}
+		/>
+	);
+}
+
+/** A 44px quantity field (36px from md) for one dessert's stock today. */
+export function StockField({
+	dessert,
+	value,
+	changed,
+	onChange,
+	disabled,
+}: {
+	dessert: Pick<Dessert, "id" | "name" | "hasUnlimitedStock">;
+	value: string;
+	changed: boolean;
+	onChange: (value: string) => void;
+	disabled?: boolean;
+}) {
+	if (dessert.hasUnlimitedStock) {
+		return (
+			<span className="inline-flex w-[72px] items-center justify-center text-[13px] text-muted-foreground md:w-20">
+				Unlimited
+			</span>
+		);
+	}
+
+	return (
+		<Input
+			type="number"
+			inputMode="numeric"
+			min={0}
+			step={1}
+			aria-label={`Stock for ${dessert.name}`}
+			value={value}
+			onChange={(event) => onChange(event.target.value)}
+			onFocus={(event) => event.target.select()}
+			disabled={disabled}
+			className={cn(
+				"w-[72px] [appearance:textfield] px-2 text-center font-semibold md:w-20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+				changed && "border-primary bg-primary/5 ring-1 ring-primary/30",
+			)}
+		/>
+	);
+}
+
+export function DessertsTable({ desserts, setDesserts, onRefetch, inventory, area, className }: DessertsTableProps) {
 	const [isDisablingAll, setIsDisablingAll] = useState(false);
-	const [disableAllError, setDisableAllError] = useState(false);
+	const [confirmDisableAll, setConfirmDisableAll] = useState(false);
+	const [confirmDelete, setConfirmDelete] = useState(false);
+	// Kept while the confirmation closes, after the edit form has let go of the dessert.
+	const [deleteName, setDeleteName] = useState("");
+	const [formDirty, setFormDirty] = useState(false);
 	const [movingIds, setMovingIds] = useState<Set<number>>(new Set());
 	const [searchTerm, setSearchTerm] = useState("");
+	const [filter, setFilter] = useState<StockFilter>("available");
+	const [reorderMode, setReorderMode] = useState(false);
 	const [openModal, setOpenModal] = useState(false);
 	const [editingDessert, setEditingDessert] = useState<Dessert | null>(null);
 	const [pinnedEnabled, setPinnedEnabled] = useState<Map<number, boolean>>(new Map());
-	const inventorySuccessCount = inventory?.saveSuccessCount ?? null;
-	const hasInventory = Boolean(inventory);
+	const toggleFeedback = useActionFeedback();
 	const isEditingDessert = Boolean(editingDessert);
 
 	const [formButton, FormSubmitButton] = useReactiveButton({
-		label: isEditingDessert ? "Update Dessert" : "Add Dessert",
-		loading: { label: "Saving..." },
+		label: isEditingDessert ? "Save" : "Add",
+		loading: { label: "Saving…" },
 		success: { label: isEditingDessert ? "Updated" : "Added" },
 		feedbackStyle: "brand",
 	});
-
-	const [inventoryButton, InventorySaveButton] = useReactiveButton({
-		label: (
-			<>
-				Save Stock
-				{inventory?.hasChanges && (
-					<span className="rounded-full bg-yellow-200 px-1.5 py-0.5 text-xs text-yellow-800">
-						{inventory.changedDessertIds.size}
-					</span>
-				)}
-			</>
-		),
-		loading: { label: "Saving..." },
-		success: { label: getInventorySaveLabel(inventorySuccessCount ?? 0) },
-		feedbackStyle: "brand",
-	});
-
-	const { setLoading: setInventoryLoading, setSuccess: setInventorySuccess, reset: resetInventory } = inventoryButton;
-
-	useEffect(() => {
-		if (!hasInventory) return;
-		if (inventory?.isSaving) {
-			setInventoryLoading();
-			return;
-		}
-		if (inventorySuccessCount !== null) {
-			setInventorySuccess(getInventorySaveLabel(inventorySuccessCount));
-		} else {
-			resetInventory();
-		}
-	}, [
-		hasInventory,
-		inventory?.isSaving,
-		inventorySuccessCount,
-		setInventoryLoading,
-		setInventorySuccess,
-		resetInventory,
-	]);
 
 	const allDessertNames = useMemo(() => desserts.map((d) => d.name), [desserts]);
 
@@ -127,8 +221,33 @@ export function DessertsTable({
 
 	const enabledDesserts = filteredDesserts.filter((d) => pinnedEnabled.get(d.id) ?? d.enabled);
 	const disabledDesserts = filteredDesserts.filter((d) => !(pinnedEnabled.get(d.id) ?? d.enabled));
+	const canDisableAll = !(inventory?.isSaving || desserts.every((d) => !d.enabled));
+	const isReordering = reorderMode && filter === "available";
+	// Unfiltered counts for the header subtitle; they don't move while searching.
+	const onSaleCount = desserts.filter((d) => pinnedEnabled.get(d.id) ?? d.enabled).length;
+	const hiddenCount = desserts.length - onSaleCount;
+	const canReorder = onSaleCount > 1;
 
-	const handleToggleDessert = async (dessert: Dessert, controls: ReactiveButtonControls) => {
+	// The Combos tab's ⋯ menu links here with ?do=reorder / ?do=hide-all. Open the mode or the
+	// confirmation once, then drop the parameter so a reload doesn't reopen it.
+	const searchParams = useSearchParams();
+	const router = useRouter();
+	const pathname = usePathname();
+	const intent = readCatalogIntent(searchParams.get(CATALOG_INTENT_PARAM));
+	useEffect(() => {
+		if (!intent) return;
+		if (intent === "reorder") {
+			setFilter("available");
+			setReorderMode(true);
+		} else if (canDisableAll) {
+			// Same guard as the in-page menu item: nothing to hide, or a stock save in flight.
+			setConfirmDisableAll(true);
+		}
+		router.replace(pathname, { scroll: false });
+	}, [intent, pathname, router, canDisableAll]);
+
+	const handleToggleDessert = async (dessert: Dessert) => {
+		const key = `dessert-toggle-${dessert.id}`;
 		const newEnabledState = !dessert.enabled;
 		const clearToggleLock = () => {
 			setPinnedEnabled((current) => {
@@ -139,12 +258,12 @@ export function DessertsTable({
 		};
 		setPinnedEnabled((current) => new Map(current).set(dessert.id, dessert.enabled));
 		setDesserts((prev) => prev.map((d) => (d.id === dessert.id ? { ...d, enabled: newEnabledState } : d)));
-		const token = controls.setLoading();
+		const generation = toggleFeedback.start(key);
 
 		try {
 			await toggleDessert(dessert.id, newEnabledState);
 		} catch (error) {
-			controls.setError(undefined, { token });
+			toggleFeedback.fail(key, { generation, announcement: `Couldn't update ${dessert.name}` });
 			console.error("Failed to toggle dessert:", error);
 			setDesserts((prev) => prev.map((d) => (d.id === dessert.id ? { ...d, enabled: dessert.enabled } : d)));
 			clearToggleLock();
@@ -163,9 +282,10 @@ export function DessertsTable({
 			console.error("Failed to refresh desserts after toggle success:", refreshError);
 		}
 
-		controls.setSuccess(undefined, {
-			token,
+		toggleFeedback.succeed(key, {
+			generation,
 			duration: 1200,
+			announcement: `${dessert.name} ${newEnabledState ? "available" : "hidden"}`,
 			onComplete: clearToggleLock,
 		});
 	};
@@ -175,17 +295,17 @@ export function DessertsTable({
 		setOpenModal(true);
 	};
 
-	const handleDisableAll = async () => {
-		setDisableAllError(false);
+	const handleDisableAll = async (): Promise<boolean> => {
 		try {
 			setIsDisablingAll(true);
 			setDesserts((prev) => prev.map((d) => ({ ...d, enabled: false })));
 			await disableAllDesserts();
 			await onRefetch();
+			return true;
 		} catch (error) {
-			setDisableAllError(true);
 			console.error(error);
 			await onRefetch();
+			return false;
 		} finally {
 			setIsDisablingAll(false);
 		}
@@ -318,194 +438,237 @@ export function DessertsTable({
 		}
 	};
 
+	/** Runs from the delete confirmation; a throw keeps the confirmation open with the message. */
 	const handleDelete = async () => {
 		if (!editingDessert) return;
-		const token = formButton.setLoading();
 		try {
 			await deleteDessert(editingDessert.id);
 			await onRefetch();
-			setEditingDessert(null);
-			setOpenModal(false);
 		} catch (error) {
-			formButton.setError("Delete failed", { token });
 			console.error("Failed to delete dessert:", error);
+			throw new Error("Couldn't delete this dessert. Try again.");
 		}
+		setConfirmDelete(false);
+		setEditingDessert(null);
+		setOpenModal(false);
 	};
 
-	const renderTableHeader = () => (
-		<TableHeader>
-			<TableRow className="bg-muted/50">
-				<TableHead className="w-16">#</TableHead>
-				<TableHead>Dessert</TableHead>
-				{inventory && <TableHead className="w-24 text-center">Stock</TableHead>}
-				<TableHead className="w-16 text-center">Edit</TableHead>
-				<TableHead className="w-20 text-center">Status</TableHead>
-			</TableRow>
-		</TableHeader>
-	);
+	const openCreate = () => {
+		setEditingDessert(null);
+		setOpenModal(true);
+	};
+
+	const changeFilter = (next: StockFilter) => {
+		setFilter(next);
+		if (next !== "available") setReorderMode(false);
+	};
+
+	const renderRow = (dessert: Dessert, index: number, list: Dessert[]) => {
+		const enabled = pinnedEnabled.get(dessert.id) ?? dessert.enabled;
+		return (
+			<DessertRow
+				key={dessert.id}
+				dessert={dessert}
+				enabled={enabled}
+				index={index}
+				totalCount={list.length}
+				reorder={isReordering && enabled}
+				isMoving={movingIds.has(dessert.id)}
+				inventory={inventory}
+				toggleFeedback={toggleFeedback.getState(`dessert-toggle-${dessert.id}`)}
+				onToggle={handleToggleDessert}
+				onEdit={handleEdit}
+				onMoveToTop={handleMoveToTop}
+				onMoveUp={handleMoveUp}
+				onMoveDown={handleMoveDown}
+				onMoveToBottom={handleMoveToBottom}
+			/>
+		);
+	};
+
+	const visibleList = filter === "available" ? enabledDesserts : disabledDesserts;
+	const showHiddenMatches = filter === "available" && searchTerm.trim() !== "" && disabledDesserts.length > 0;
 
 	return (
-		<div className={cn("space-y-4", maxWidth, "mx-auto")}>
-			<Dialog
+		<div className={cn("w-full", className)}>
+			<FormSheet
 				open={openModal}
 				onOpenChange={(open) => {
-					if (!open) formButton.reset();
+					if (!open) {
+						formButton.reset();
+						setEditingDessert(null);
+						setFormDirty(false);
+					}
 					setOpenModal(open);
-					if (!open) setEditingDessert(null);
 				}}
+				title={editingDessert ? "Edit dessert" : "Add dessert"}
+				dirty={formDirty}
+				busy={formButton.isBusy}
+				primary={<FormSubmitButton type="submit" form={DESSERT_FORM_ID} size="sm" />}
+				menu={
+					editingDessert ? (
+						<DropdownMenuItem
+							variant="destructive"
+							onClick={() => {
+								setDeleteName(editingDessert.name);
+								setConfirmDelete(true);
+							}}
+						>
+							<Trash2 aria-hidden="true" />
+							Delete dessert
+						</DropdownMenuItem>
+					) : null
+				}
 			>
-				<DialogContent className="mx-2 max-w-[calc(100vw-1rem)] sm:mx-4 sm:max-w-[calc(100vw-2rem)] md:max-w-lg md:mx-0 md:-mt-28">
-					<DialogHeader>
-						<DialogTitle>{editingDessert ? "Edit Dessert" : "Add New Dessert"}</DialogTitle>
-					</DialogHeader>
-					<DessertForm
-						key={editingDessert?.id}
-						initialData={editingDessert ?? undefined}
-						onSubmit={handleSubmit}
-						onDelete={handleDelete}
-						submitControls={formButton}
-						SubmitButton={FormSubmitButton}
-						existingNames={editingDessert ? allDessertNames.filter((n) => n !== editingDessert.name) : allDessertNames}
-					/>
-				</DialogContent>
-			</Dialog>
-
-			<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div>
-					<h1 className="text-2xl font-bold">{title}</h1>
-					{subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-					{inventory && <p className="text-sm text-muted-foreground">Today: {inventory.todayLabel}</p>}
-				</div>
-				<div className="flex flex-wrap gap-2">
-					<ReactiveButton
-						variant="outline"
-						size="sm"
-						isLoading={isDisablingAll}
-						isError={disableAllError}
-						loadingLabel="Disabling..."
-						successLabel="Disabled all"
-						errorLabel="Failed"
-						onClick={handleDisableAll}
-						disabled={inventory?.isSaving || desserts.every((d) => !d.enabled)}
-					>
-						Disable All
-					</ReactiveButton>
-					{inventory && (
-						<InventorySaveButton size="sm" onClick={inventory.onSaveInventory} disabled={!inventory.hasChanges} />
-					)}
-					<Button
-						onClick={() => {
-							setEditingDessert(null);
-							setOpenModal(true);
-						}}
-						size="sm"
-					>
-						Add Dessert
-					</Button>
-				</div>
-			</div>
-
-			<div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-				<Input
-					placeholder="Search desserts..."
-					value={searchTerm}
-					onChange={(e) => setSearchTerm(e.target.value)}
-					className="w-full sm:max-w-xs"
+				<DessertForm
+					key={editingDessert?.id ?? "new"}
+					formId={DESSERT_FORM_ID}
+					initialData={editingDessert ?? undefined}
+					onSubmit={handleSubmit}
+					onDirtyChange={setFormDirty}
+					existingNames={editingDessert ? allDessertNames.filter((n) => n !== editingDessert.name) : allDessertNames}
 				/>
-				{searchTerm && (
-					<Button variant="outline" size="sm" onClick={() => setSearchTerm("")}>
-						Clear
-					</Button>
+			</FormSheet>
+			<ConfirmSheet
+				open={confirmDelete}
+				onOpenChange={setConfirmDelete}
+				title={`Delete ${deleteName}?`}
+				description="It leaves the catalog and the Sell screen. Past orders aren't affected."
+				confirmLabel="Delete dessert"
+				pendingLabel="Deleting…"
+				onConfirm={handleDelete}
+			/>
+
+			<ConfirmSheet
+				open={confirmDisableAll}
+				onOpenChange={(open) => !isDisablingAll && setConfirmDisableAll(open)}
+				title="Hide all desserts?"
+				description="Every dessert leaves the Sell screen until you turn it back on. Use this at closing time."
+				confirmLabel="Hide all desserts"
+				pendingLabel="Hiding…"
+				onConfirm={async () => {
+					const ok = await handleDisableAll();
+					if (!ok) throw new Error("Couldn't hide the desserts. Try again.");
+					setFilter("available");
+					setReorderMode(false);
+				}}
+			/>
+
+			<CatalogHeader
+				area={area}
+				onSale={onSaleCount}
+				hidden={hiddenCount}
+				addLabel="Add dessert"
+				onAdd={openCreate}
+				onReorder={() => {
+					setFilter("available");
+					setReorderMode(true);
+				}}
+				reorderDisabled={!canReorder || isReordering}
+				onHideAll={() => setConfirmDisableAll(true)}
+				hideAllDisabled={!canDisableAll}
+			/>
+
+			<div className="flex flex-col gap-3 pb-4">
+				<CatalogSearch
+					label="Search desserts"
+					placeholder="Search desserts"
+					value={searchTerm}
+					onChange={setSearchTerm}
+				/>
+				{isReordering ? (
+					<CatalogReorderBar onDone={() => setReorderMode(false)} />
+				) : (
+					<CatalogFilterControl
+						label="Show desserts"
+						value={filter}
+						onValueChange={changeFilter}
+						availableCount={enabledDesserts.length}
+						hiddenCount={disabledDesserts.length}
+					/>
 				)}
 			</div>
 
-			{/* Enabled Desserts */}
-			{enabledDesserts.length > 0 && (
-				<div>
-					<h3 className="text-sm font-semibold mb-2 text-green-700">Available ({enabledDesserts.length})</h3>
-					<div className="border rounded-lg overflow-hidden bg-white shadow-sm">
-						<Table>
-							{renderTableHeader()}
-							<TableBody>
-								{enabledDesserts.map((dessert, index) => (
-									<DessertRow
-										key={dessert.id}
-										dessert={dessert}
-										index={index}
-										totalCount={enabledDesserts.length}
-										showReorder={true}
-										isMoving={movingIds.has(dessert.id)}
-										inventory={inventory}
-										onToggle={handleToggleDessert}
-										onEdit={handleEdit}
-										onMoveToTop={handleMoveToTop}
-										onMoveUp={handleMoveUp}
-										onMoveDown={handleMoveDown}
-										onMoveToBottom={handleMoveToBottom}
-									/>
-								))}
-							</TableBody>
-						</Table>
-					</div>
-				</div>
+			{visibleList.length > 0 ? (
+				<RecordList aria-label={filter === "available" ? "Available desserts" : "Hidden desserts"}>
+					{visibleList.map((dessert, index) => renderRow(dessert, index, visibleList))}
+				</RecordList>
+			) : (
+				<DessertsEmpty
+					searchTerm={searchTerm}
+					filter={filter}
+					onClearSearch={() => setSearchTerm("")}
+					onShowHidden={() => changeFilter("hidden")}
+					hiddenMatches={showHiddenMatches}
+				/>
 			)}
 
-			{/* Disabled Desserts */}
-			{disabledDesserts.length > 0 && (
-				<div>
-					<h3 className="text-sm font-semibold mb-2 text-red-700">Disabled ({disabledDesserts.length})</h3>
-					<div className="border rounded-lg overflow-hidden bg-white shadow-sm opacity-80">
-						<Table>
-							{renderTableHeader()}
-							<TableBody>
-								{disabledDesserts.map((dessert, index) => (
-									<DessertRow
-										key={dessert.id}
-										dessert={dessert}
-										index={index}
-										totalCount={disabledDesserts.length}
-										showReorder={false}
-										isMoving={movingIds.has(dessert.id)}
-										inventory={inventory}
-										onToggle={handleToggleDessert}
-										onEdit={handleEdit}
-										onMoveToTop={handleMoveToTop}
-										onMoveUp={handleMoveUp}
-										onMoveDown={handleMoveDown}
-										onMoveToBottom={handleMoveToBottom}
-									/>
-								))}
-							</TableBody>
-						</Table>
-					</div>
-				</div>
-			)}
+			{showHiddenMatches && !isReordering ? (
+				<ListSection title="Hidden" count={disabledDesserts.length} className="pt-6">
+					<RecordList aria-label="Hidden desserts matching your search">
+						{disabledDesserts.map((dessert, index) => renderRow(dessert, index, disabledDesserts))}
+					</RecordList>
+				</ListSection>
+			) : null}
 
-			{/* Empty state */}
-			{filteredDesserts.length === 0 && (
-				<div className="text-center py-12 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
-					<p className="font-medium">
-						{searchTerm ? "No desserts found matching your search." : "No desserts available."}
-					</p>
-					{searchTerm && (
-						<Button variant="link" onClick={() => setSearchTerm("")} className="mt-1 h-auto p-0 text-sm">
-							Clear search
-						</Button>
-					)}
-				</div>
-			)}
+			{inventory ? <InventorySaveBar inventory={inventory} /> : null}
 		</div>
+	);
+}
+
+function DessertsEmpty({
+	searchTerm,
+	filter,
+	hiddenMatches,
+	onClearSearch,
+	onShowHidden,
+}: {
+	searchTerm: string;
+	filter: StockFilter;
+	hiddenMatches: boolean;
+	onClearSearch: () => void;
+	onShowHidden: () => void;
+}) {
+	const term = searchTerm.trim();
+	if (hiddenMatches) return <EmptyState description={`No available desserts match “${term}”.`} />;
+	if (term) {
+		return (
+			<EmptyState
+				title={`No desserts match “${term}”`}
+				description="Check the spelling or clear the search."
+				action={
+					<Button variant="outline" size="sm" onClick={onClearSearch}>
+						Clear search
+					</Button>
+				}
+			/>
+		);
+	}
+	if (filter === "hidden") return <EmptyState description="No hidden desserts. Every dessert is on the Sell screen." />;
+	return (
+		<EmptyState
+			variant="block"
+			title="Nothing is on sale right now"
+			description="Turn desserts on from the Hidden list to sell them today."
+			action={
+				<Button variant="outline" onClick={onShowHidden}>
+					Show hidden desserts
+				</Button>
+			}
+		/>
 	);
 }
 
 type DessertRowProps = {
 	dessert: Dessert;
+	enabled: boolean;
 	index: number;
 	totalCount: number;
-	showReorder: boolean;
+	reorder: boolean;
 	isMoving: boolean;
 	inventory?: InventoryData;
-	onToggle: (dessert: Dessert, controls: ReactiveButtonControls) => void;
+	toggleFeedback: ReturnType<ReturnType<typeof useActionFeedback>["getState"]>;
+	onToggle: (dessert: Dessert) => void;
 	onEdit: (dessert: Dessert) => void;
 	onMoveToTop: (dessert: Dessert) => Promise<boolean>;
 	onMoveUp: (dessert: Dessert) => Promise<boolean>;
@@ -515,11 +678,13 @@ type DessertRowProps = {
 
 function DessertRow({
 	dessert,
+	enabled,
 	index,
 	totalCount,
-	showReorder,
+	reorder,
 	isMoving,
 	inventory,
+	toggleFeedback,
 	onToggle,
 	onEdit,
 	onMoveToTop,
@@ -528,110 +693,116 @@ function DessertRow({
 	onMoveToBottom,
 }: DessertRowProps) {
 	const isChanged = inventory?.changedDessertIds.has(dessert.id) ?? false;
-	const [toggleControls, ToggleButton] = useReactiveButton({
-		label: dessert.enabled ? "On" : "Off",
-		loading: { label: "" },
-		success: { label: "", duration: 1200 },
-		error: { label: "" },
-		feedbackStyle: "neutral",
-	});
+	const savedQuantity = inventory?.serverQuantities.get(dessert.id) ?? 0;
 
-	return (
-		<TableRow
-			className={cn(
-				!dessert.enabled && "opacity-60 bg-muted/50",
-				isMoving && "bg-primary/5",
-				isChanged && "bg-yellow-50",
-			)}
-		>
-			{/* Reorder controls */}
-			<TableCell className="w-25">
-				{showReorder && dessert.enabled && (
-					<div className="flex items-center gap-0.5">
+	const metaParts: React.ReactNode[] = [formatINR(dessert.price)];
+	if (dessert.kind === "modifier") metaParts.push("Add-on");
+	if (!enabled) metaParts.push("Hidden");
+	if (isChanged && !dessert.hasUnlimitedStock) metaParts.push(`was ${savedQuantity}`);
+	const meta = metaParts.join(" · ");
+
+	if (reorder) {
+		const isFirst = index === 0;
+		const isLast = index === totalCount - 1;
+		return (
+			<ListRow
+				className={cn(isMoving && "bg-primary/5")}
+				leading={<ListRowTile className="tabular-nums max-[379px]:hidden">{index + 1}</ListRowTile>}
+				title={dessert.name}
+				meta={formatINR(dessert.price)}
+				action={
+					<div className="flex items-center">
 						<ReorderControl
 							icon={ChevronsUp}
-							title="Move to top"
-							disabled={index === 0 || isMoving}
+							title={`Move ${dessert.name} to top`}
+							disabled={isFirst || isMoving}
 							onMove={() => onMoveToTop(dessert)}
+							className="@max-xl/main:hidden"
 						/>
 						<ReorderControl
 							icon={ChevronUp}
-							title="Move up"
-							disabled={index === 0 || isMoving}
+							title={`Move ${dessert.name} up`}
+							disabled={isFirst || isMoving}
 							onMove={() => onMoveUp(dessert)}
 						/>
 						<ReorderControl
 							icon={ChevronDown}
-							title="Move down"
-							disabled={index === totalCount - 1 || isMoving}
+							title={`Move ${dessert.name} down`}
+							disabled={isLast || isMoving}
 							onMove={() => onMoveDown(dessert)}
 						/>
 						<ReorderControl
 							icon={ChevronsDown}
-							title="Move to bottom"
-							disabled={index === totalCount - 1 || isMoving}
+							title={`Move ${dessert.name} to bottom`}
+							disabled={isLast || isMoving}
 							onMove={() => onMoveToBottom(dessert)}
+							className="@max-xl/main:hidden"
 						/>
+						<DropdownMenu>
+							<DropdownMenuTrigger
+								render={
+									<Button
+										variant="ghost"
+										size="icon-touch"
+										aria-label={`More moves for ${dessert.name}`}
+										className="@xl/main:hidden"
+										disabled={isMoving}
+									/>
+								}
+							>
+								<MoreHorizontal />
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-48">
+								<DropdownMenuItem disabled={isFirst || isMoving} onClick={() => void onMoveToTop(dessert)}>
+									<ChevronsUp />
+									Move to top
+								</DropdownMenuItem>
+								<DropdownMenuItem disabled={isLast || isMoving} onClick={() => void onMoveToBottom(dessert)}>
+									<ChevronsDown />
+									Move to bottom
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
-				)}
-				{!showReorder && dessert.enabled && <span className="text-xs text-muted-foreground">#{index + 1}</span>}
-			</TableCell>
+				}
+			/>
+		);
+	}
 
-			{/* Dessert name */}
-			<TableCell>
-				<div className="flex flex-col">
-					<span className={cn("font-medium", !dessert.enabled && "line-through text-muted-foreground")}>
-						{dessert.name}
-						{dessert.hasUnlimitedStock && <InfinityIcon className="inline-block ml-1.5 size-4 text-blue-500" />}
-					</span>
-					<span className="text-xs text-muted-foreground">Rs {dessert.price}</span>
-				</div>
-			</TableCell>
+	const toggleBusy = toggleFeedback.phase !== "idle";
 
-			{/* Stock input - only show if inventory is provided */}
-			{inventory && (
-				<TableCell className="w-25">
-					{dessert.hasUnlimitedStock ? (
-						<div className="flex items-center justify-center h-8 w-20 text-blue-500">
-							<InfinityIcon className="size-5" />
-						</div>
-					) : (
-						<Input
-							type="number"
-							min={0}
-							step={1}
+	return (
+		<ListRow
+			className={cn(isMoving && "bg-primary/5")}
+			title={dessert.name}
+			meta={meta}
+			onClick={() => onEdit(dessert)}
+			rowLabel={`Edit ${dessert.name}`}
+			trailingMeta={dessert.isOutOfStock && enabled ? <Badge variant="destructive">Out of stock</Badge> : null}
+			action={
+				<div className="flex items-center gap-3">
+					{inventory && enabled ? (
+						<StockField
+							dessert={dessert}
 							value={inventory.quantities[dessert.id] ?? "0"}
-							onChange={(e) => inventory.onQuantityChange(dessert.id, e.target.value)}
-							onFocus={(e) => e.target.select()}
-							className={cn("h-8 w-20", isChanged && "border-yellow-400 ring-1 ring-yellow-400")}
-							disabled={!dessert.enabled}
+							changed={isChanged}
+							onChange={(value) => inventory.onQuantityChange(dessert.id, value)}
 						/>
-					)}
-				</TableCell>
-			)}
-
-			{/* Edit button */}
-			<TableCell className="w-12">
-				<Button variant="ghost" size="sm" onClick={() => onEdit(dessert)} className="h-7 w-7 p-0" title="Edit dessert">
-					<Pencil className="size-3" />
-				</Button>
-			</TableCell>
-
-			{/* Enable/Disable toggle */}
-			<TableCell className="w-20">
-				<ToggleButton
-					variant={dessert.enabled ? "outline" : "secondary"}
-					size="sm"
-					onClick={() => onToggle(dessert, toggleControls)}
-					className={cn(
-						"text-xs h-7 px-2",
-						dessert.enabled
-							? "border-green-200 text-green-700 hover:bg-green-50"
-							: "bg-red-100 text-red-700 hover:bg-red-200 border-red-200",
-					)}
-				/>
-			</TableCell>
-		</TableRow>
+					) : null}
+					<span className="flex h-11 items-center">
+						<span className="relative inline-flex rounded-full">
+							<Switch
+								checked={dessert.enabled}
+								onCheckedChange={() => onToggle(dessert)}
+								disabled={toggleBusy}
+								aria-label={`Sell ${dessert.name}`}
+							/>
+							<ActionFeedbackCheckOverlay phase={toggleFeedback.phase} announcement={toggleFeedback.announcement} />
+						</span>
+					</span>
+				</div>
+			}
+		/>
 	);
 }
 
@@ -640,9 +811,10 @@ type ReorderControlProps = {
 	title: string;
 	disabled: boolean;
 	onMove: () => Promise<boolean>;
+	className?: string;
 };
 
-function ReorderControl({ icon, title, disabled, onMove }: ReorderControlProps) {
+function ReorderControl({ icon, title, disabled, onMove, className }: ReorderControlProps) {
 	const [controls, ReactiveIconButton] = useReactiveButton({
 		label: "",
 		icon,
@@ -666,11 +838,12 @@ function ReorderControl({ icon, title, disabled, onMove }: ReorderControlProps) 
 	return (
 		<ReactiveIconButton
 			variant="ghost"
-			size="sm"
+			size="icon-touch"
 			onClick={handleClick}
 			disabled={disabled}
-			className="h-7 w-7 p-0"
+			className={className}
 			title={title}
+			aria-label={title}
 		/>
 	);
 }

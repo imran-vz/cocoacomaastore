@@ -1,13 +1,11 @@
 "use client";
 
-import { useForm } from "@tanstack/react-form";
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useForm, useStore } from "@tanstack/react-form";
+import { useEffect, useMemo, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { ReactiveButtonComponent, ReactiveButtonControls } from "@/components/ui/reactive-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { distance } from "@/lib/levenshtein-distance";
@@ -20,11 +18,13 @@ type onSubmit = (values: Omit<Dessert, "id" | "enabled" | "sequence" | "isDelete
 type DessertFormProps = {
 	initialData?: Dessert;
 	onSubmit: onSubmit;
-	onDelete?: () => Promise<void>;
-	/** Controls for the shared submit button (state lives in the parent). */
-	submitControls: ReactiveButtonControls;
-	/** Stable reactive submit button, configured by the parent. */
-	SubmitButton: ReactiveButtonComponent;
+	/**
+	 * The form's `id`. The submit button lives in the `FormSheet` header and joins the form
+	 * through `form={formId}`.
+	 */
+	formId: string;
+	/** Reports whether any field differs from its initial value (drives Save and the discard prompt). */
+	onDirtyChange?: (dirty: boolean) => void;
 	existingNames?: string[];
 };
 
@@ -43,7 +43,7 @@ function getNameHint(input: string, existingNames: string[]): NameHint | null {
 	if (exactMatch) {
 		return {
 			tier: "exact",
-			message: `⚠️ A dessert named "${exactMatch}" already exists`,
+			message: `A dessert named "${exactMatch}" already exists`,
 		};
 	}
 
@@ -54,7 +54,7 @@ function getNameHint(input: string, existingNames: string[]): NameHint | null {
 			const display = startsWithMatches.slice(0, 3).join(", ");
 			return {
 				tier: "starts-with",
-				message: `⚠️ Similar desserts exist: ${display}`,
+				message: `Similar desserts exist: ${display}`,
 			};
 		}
 	}
@@ -65,7 +65,7 @@ function getNameHint(input: string, existingNames: string[]): NameHint | null {
 		if (closeMatches.length > 0) {
 			return {
 				tier: "levenshtein",
-				message: `💡 Did you mean "${closeMatches[0]}"?`,
+				message: `Did you mean "${closeMatches[0]}"?`,
 				match: closeMatches[0],
 			};
 		}
@@ -74,14 +74,7 @@ function getNameHint(input: string, existingNames: string[]): NameHint | null {
 	return null;
 }
 
-export function DessertForm({
-	initialData,
-	onSubmit,
-	onDelete,
-	submitControls,
-	SubmitButton,
-	existingNames = [],
-}: DessertFormProps) {
+export function DessertForm({ initialData, onSubmit, formId, onDirtyChange, existingNames = [] }: DessertFormProps) {
 	const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 	const [pendingValues, setPendingValues] = useState<Omit<Dessert, "id" | "enabled" | "sequence" | "isDeleted"> | null>(
 		null,
@@ -89,15 +82,16 @@ export function DessertForm({
 	const [currentName, setCurrentName] = useState(initialData?.name || "");
 	const nameHint = useMemo(() => getNameHint(currentName, existingNames), [currentName, existingNames]);
 
+	const [defaultValues] = useState(() => ({
+		name: initialData?.name || "",
+		description: initialData?.description || "",
+		price: initialData?.price || 0,
+		kind: initialData?.kind || ("base" as "base" | "modifier"),
+		isOutOfStock: initialData?.isOutOfStock || false,
+		hasUnlimitedStock: initialData?.hasUnlimitedStock || false,
+	}));
 	const form = useForm({
-		defaultValues: {
-			name: initialData?.name || "",
-			description: initialData?.description || "",
-			price: initialData?.price || 0,
-			kind: initialData?.kind || ("base" as const),
-			isOutOfStock: initialData?.isOutOfStock || false,
-			hasUnlimitedStock: initialData?.hasUnlimitedStock || false,
-		},
+		defaultValues,
 		validators: {
 			onChange: dessertFormSchema,
 		},
@@ -113,9 +107,19 @@ export function DessertForm({
 		},
 	});
 
+	// Dirty = any value differs from where the form started (typing a change and undoing it is clean).
+	const values = useStore(form.store, (state) => state.values);
+	const dirty = (Object.keys(defaultValues) as (keyof typeof defaultValues)[]).some(
+		(key) => values[key] !== defaultValues[key],
+	);
+	useEffect(() => {
+		onDirtyChange?.(dirty);
+	}, [dirty, onDirtyChange]);
+
 	return (
 		<>
 			<form
+				id={formId}
 				onSubmit={(e) => {
 					e.preventDefault();
 					e.stopPropagation();
@@ -140,7 +144,7 @@ export function DessertForm({
 								<p
 									className={cn(
 										"text-sm",
-										nameHint.tier === "levenshtein" ? "text-muted-foreground" : "text-amber-600 font-medium",
+										nameHint.tier === "levenshtein" ? "text-muted-foreground" : "font-medium text-warning",
 									)}
 								>
 									{nameHint.message}
@@ -172,10 +176,11 @@ export function DessertForm({
 				<form.Field name="price">
 					{(field) => (
 						<div className="space-y-2">
-							<Label htmlFor={field.name}>Price (₹)</Label>
+							<Label htmlFor={field.name}>Price</Label>
 							<Input
 								id={field.name}
 								type="number"
+								inputMode="numeric"
 								value={field.state.value}
 								onChange={(e) => {
 									if (e.target.value === "") {
@@ -203,16 +208,18 @@ export function DessertForm({
 								value={field.state.value}
 								onValueChange={(value) => field.handleChange(value as "base" | "modifier")}
 							>
-								<SelectTrigger>
-									<SelectValue placeholder="Select type" />
+								<SelectTrigger className="w-full">
+									<SelectValue placeholder="Select type">
+										{field.state.value === "modifier" ? "Add-on" : "Dessert"}
+									</SelectValue>
 								</SelectTrigger>
 								<SelectContent>
-									<SelectItem value="base">Base Dessert</SelectItem>
-									<SelectItem value="modifier">Modifier (Add-on)</SelectItem>
+									<SelectItem value="base">Dessert</SelectItem>
+									<SelectItem value="modifier">Add-on</SelectItem>
 								</SelectContent>
 							</Select>
 							<p className="text-xs text-muted-foreground">
-								Base desserts have inventory tracking. Modifiers are add-ons for combos.
+								Desserts are sold on their own and have stock. Add-ons are extras inside combos.
 							</p>
 						</div>
 					)}
@@ -235,7 +242,7 @@ export function DessertForm({
 								<Label htmlFor={field.name} className="font-normal cursor-pointer">
 									Unlimited stock
 								</Label>
-								<p className="text-sm text-muted-foreground">For items like water that don't need inventory tracking</p>
+								<p className="text-sm text-muted-foreground">For items like water that aren't counted</p>
 							</div>
 						</div>
 					)}
@@ -263,55 +270,31 @@ export function DessertForm({
 						</form.Field>
 					)}
 				</form.Subscribe>
-
-				<div className="flex gap-2">
-					<Button
-						type="button"
-						className={cn("flex-1", initialData ? "" : "invisible")}
-						variant="outline"
-						onClick={onDelete}
-						disabled={submitControls.isBusy || submitControls.status === "success"}
-					>
-						Delete Dessert
-					</Button>
-					<SubmitButton type="submit" className="flex-1" />
-				</div>
 			</form>
 
-			{/* Confirmation dialog for levenshtein soft hints */}
-			<Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Similar dessert exists</DialogTitle>
-					</DialogHeader>
-					<p className="text-sm text-muted-foreground">
-						A similar dessert{nameHint?.tier === "levenshtein" ? ` "${nameHint.match}"` : ""} already exists. Are you
-						sure you want to {initialData ? "update" : "create"} this dessert?
-					</p>
-					<DialogFooter className="gap-2 sm:gap-0">
-						<Button
-							variant="outline"
-							onClick={() => {
-								setShowConfirmDialog(false);
-								setPendingValues(null);
-							}}
-						>
-							Cancel
-						</Button>
-						<Button
-							onClick={async () => {
-								setShowConfirmDialog(false);
-								if (pendingValues) {
-									await onSubmit(pendingValues);
-									setPendingValues(null);
-								}
-							}}
-						>
-							Continue
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+			{/* A close match to an existing name: check before saving (not destructive, so the default tone). */}
+			<ConfirmSheet
+				open={showConfirmDialog}
+				onOpenChange={(open) => {
+					setShowConfirmDialog(open);
+					if (!open) setPendingValues(null);
+				}}
+				tone="default"
+				title="A similar dessert exists"
+				description={`${nameHint?.tier === "levenshtein" ? `“${nameHint.match}” is already in the catalog. ` : ""}${
+					initialData ? "Save this dessert" : "Add this dessert"
+				} anyway?`}
+				confirmLabel={initialData ? "Save anyway" : "Add anyway"}
+				cancelLabel="Go back"
+				onConfirm={async () => {
+					const values = pendingValues;
+					setShowConfirmDialog(false);
+					if (values) {
+						await onSubmit(values);
+						setPendingValues(null);
+					}
+				}}
+			/>
 		</>
 	);
 }

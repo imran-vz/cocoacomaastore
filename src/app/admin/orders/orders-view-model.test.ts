@@ -18,7 +18,7 @@ describe("admin orders view model", () => {
 	it("formats a zero label when every order is cancelled", () => {
 		const model = buildAdminOrdersViewModel([makeOrder({ status: "cancelled" })]);
 
-		expect(model.netRevenueLabel).toBe("₹0.00");
+		expect(model.netRevenueLabel).toBe("₹0");
 		expect(model.itemsSold).toBe(0);
 	});
 });

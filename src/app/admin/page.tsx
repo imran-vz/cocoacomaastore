@@ -14,9 +14,9 @@ export default function AdminPage() {
 	const combos = getCachedCombos();
 
 	return (
-		<AdminPageShell className="p-0 pb-0">
+		<AdminPageShell frame="wide" className="p-0 md:p-0">
 			<Suspense fallback={<AdminHomeSkeleton includeMain={false} />}>
-				<POSHome desserts={desserts} upiAccounts={upiAccounts} inventory={inventory} combos={combos} variant="admin" />
+				<POSHome desserts={desserts} upiAccounts={upiAccounts} inventory={inventory} combos={combos} />
 			</Suspense>
 		</AdminPageShell>
 	);

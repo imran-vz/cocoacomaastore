@@ -1,9 +1,9 @@
 "use client";
 
-import type { Icon } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { isLinkActive, type SidebarNavItem } from "@/components/app-nav";
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -16,16 +16,9 @@ import {
 	useSidebar,
 } from "@/components/ui/sidebar";
 
-type NavItem = {
-	title: string;
-	url: string;
-	icon?: Icon;
-	items?: NavItem[];
-};
-
-export function NavMain({ items }: { items: NavItem[] }) {
+export function NavMain({ items }: { items: SidebarNavItem[] }) {
 	const pathname = usePathname();
-	const { setOpenMobile, isMobile } = useSidebar();
+	const { setOpenMobile, isMobile, state } = useSidebar();
 
 	const handleLinkClick = () => {
 		if (isMobile) {
@@ -36,37 +29,47 @@ export function NavMain({ items }: { items: NavItem[] }) {
 	return (
 		<SidebarGroup>
 			<SidebarGroupContent className="flex flex-col gap-2">
-				<SidebarMenu>
+				<SidebarMenu className="gap-0.5">
 					{items.map((item) => {
-						const isActive = pathname === item.url || item.items?.some((child) => pathname === child.url);
+						const children = item.items ?? [];
+						const activeChild = children.some((child) => isLinkActive({ ...child, exact: true }, pathname));
+						// A section highlights itself only when none of its visible children carries the highlight.
+						const isActive =
+							isLinkActive(item, pathname) && (children.length === 0 || state === "collapsed" || !activeChild);
 
 						return (
-							<SidebarMenuItem key={item.title}>
+							<SidebarMenuItem key={item.href}>
 								<SidebarMenuButton
-									tooltip={item.title}
+									tooltip={item.label}
 									isActive={isActive}
 									render={
-										<Link href={item.url} onClick={handleLinkClick}>
-											{item.icon && <item.icon />}
-											<span>{item.title}</span>
+										<Link href={item.href} onClick={handleLinkClick} aria-current={isActive ? "page" : undefined}>
+											<item.icon />
+											<span>{item.label}</span>
 										</Link>
 									}
 								/>
-								{item.items && item.items.length > 0 && (
+								{children.length > 0 && (
 									<SidebarMenuSub>
-										{item.items.map((child) => (
-											<SidebarMenuSubItem key={child.title}>
-												<SidebarMenuSubButton
-													isActive={pathname === child.url}
-													render={
-														<Link href={child.url} onClick={handleLinkClick}>
-															{child.icon && <child.icon />}
-															<span>{child.title}</span>
-														</Link>
-													}
-												/>
-											</SidebarMenuSubItem>
-										))}
+										{children.map((child) => {
+											const childActive = isLinkActive({ ...child, exact: true }, pathname);
+											return (
+												<SidebarMenuSubItem key={child.href}>
+													<SidebarMenuSubButton
+														isActive={childActive}
+														render={
+															<Link
+																href={child.href}
+																onClick={handleLinkClick}
+																aria-current={childActive ? "page" : undefined}
+															>
+																<span>{child.label}</span>
+															</Link>
+														}
+													/>
+												</SidebarMenuSubItem>
+											);
+										})}
 									</SidebarMenuSub>
 								)}
 							</SidebarMenuItem>

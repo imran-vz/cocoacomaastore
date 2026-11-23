@@ -1,15 +1,16 @@
 "use client";
 
-import { IconEye, IconEyeOff, IconKey, IconUser } from "@tabler/icons-react";
-import { useState } from "react";
+import { IconEye, IconEyeOff } from "@tabler/icons-react";
+import { useId, useState } from "react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ListRow, ListRowTile, ListSection, RecordList } from "@/components/ui/list-row";
+import { PageHeader } from "@/components/ui/page-header";
 import { useReactiveButton } from "@/components/ui/reactive-button";
-import { Separator } from "@/components/ui/separator";
 import { authClient } from "@/lib/auth-client";
+import { formatInitials, roleLabel } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 interface SettingsPageProps {
 	user: {
@@ -18,30 +19,68 @@ interface SettingsPageProps {
 		email: string;
 		role: string;
 	};
+	description?: string;
+	/** Extra groups rendered above Account (admin: Managers, UPI accounts). */
+	children?: React.ReactNode;
 }
 
-export function SettingsPage({ user }: SettingsPageProps) {
+/**
+ * Settings for both roles: page header, optional store groups, the Account record and
+ * the Password form. Grouped inset lists with one left edge (DESIGN.md §Settings).
+ */
+export function SettingsPage({ user, description = "Your account and password.", children }: SettingsPageProps) {
+	return (
+		<div className="w-full">
+			<PageHeader title="Settings" description={description} />
+			<div className="space-y-6">
+				{children}
+
+				<ListSection title="Account" id="account">
+					<RecordList aria-label="Account">
+						<ListRow
+							leading={<ListRowTile tone="brand">{formatInitials(user.name)}</ListRowTile>}
+							title={user.name}
+							meta={<EmailText email={user.email} />}
+							trailingMeta={roleLabel(user.role)}
+						/>
+					</RecordList>
+				</ListSection>
+
+				<ListSection title="Password" id="password">
+					<ChangePasswordForm />
+				</ListSection>
+			</div>
+		</div>
+	);
+}
+
+/** An email that wraps after the "@" (never mid-word) when the row is too narrow. */
+function EmailText({ email }: { email: string }) {
+	const at = email.indexOf("@");
+	if (at === -1) return <span className="block break-words">{email}</span>;
+	return (
+		<span className="block break-words">
+			{email.slice(0, at + 1)}
+			<wbr />
+			{email.slice(at + 1)}
+		</span>
+	);
+}
+
+function ChangePasswordForm() {
+	const currentId = useId();
+	const newId = useId();
+	const newHintId = useId();
+	const confirmId = useId();
 	const [currentPassword, setCurrentPassword] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
-	const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-	const [showNewPassword, setShowNewPassword] = useState(false);
-	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 	const [passwordButton, SaveButton] = useReactiveButton({
-		label: "Change Password",
-		loading: { label: "Changing Password..." },
+		label: "Change password",
+		loading: { label: "Changing password…" },
 		success: { label: "Password changed" },
 		feedbackStyle: "brand",
 	});
-
-	const getInitials = (name: string) => {
-		return name
-			.split(" ")
-			.slice(0, 2)
-			.map((n) => n[0])
-			.join("")
-			.toUpperCase();
-	};
 
 	const handleChangePassword = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -87,133 +126,109 @@ export function SettingsPage({ user }: SettingsPageProps) {
 		}
 	};
 
+	const mismatch = Boolean(newPassword && confirmPassword && newPassword !== confirmPassword);
+
 	return (
-		<div className="space-y-6">
-			{/* Account Info Card */}
-			<Card>
-				<CardHeader className="pb-4">
-					<div className="flex items-center gap-3">
-						<IconUser className="size-5 text-muted-foreground" />
-						<div>
-							<CardTitle className="text-lg">Account</CardTitle>
-							<CardDescription>Your account information</CardDescription>
-						</div>
-					</div>
-				</CardHeader>
-				<CardContent className="space-y-4">
-					<div className="flex items-center gap-4">
-						<Avatar className="size-16">
-							<AvatarFallback className="text-lg bg-primary/10 text-primary">{getInitials(user.name)}</AvatarFallback>
-						</Avatar>
-						<div className="min-w-0 flex-1">
-							<p className="font-medium text-base truncate">{user.name}</p>
-							<p className="text-sm text-muted-foreground truncate">{user.email}</p>
-							<p className="text-xs text-muted-foreground mt-1 capitalize">Role: {user.role}</p>
-						</div>
-					</div>
-				</CardContent>
-			</Card>
+		<form onSubmit={handleChangePassword} className="space-y-4 rounded-xl border bg-card p-4 md:p-5">
+			<PasswordField
+				id={currentId}
+				label="Current password"
+				value={currentPassword}
+				onChange={setCurrentPassword}
+				autoComplete="current-password"
+			/>
+			<PasswordField
+				id={newId}
+				label="New password"
+				value={newPassword}
+				onChange={setNewPassword}
+				autoComplete="new-password"
+				minLength={8}
+				hintId={newHintId}
+				hint="At least 8 characters."
+			/>
+			<PasswordField
+				id={confirmId}
+				label="Confirm new password"
+				value={confirmPassword}
+				onChange={setConfirmPassword}
+				autoComplete="new-password"
+				minLength={8}
+				invalid={mismatch}
+				hint={mismatch ? "Passwords do not match" : undefined}
+				hintTone="error"
+			/>
 
-			{/* Change Password Card */}
-			<Card>
-				<CardHeader className="pb-4">
-					<div className="flex items-center gap-3">
-						<IconKey className="size-5 text-muted-foreground" />
-						<div>
-							<CardTitle className="text-lg">Change Password</CardTitle>
-							<CardDescription>Update your password to keep your account secure</CardDescription>
-						</div>
-					</div>
-				</CardHeader>
-				<Separator />
-				<CardContent className="pt-6">
-					<form onSubmit={handleChangePassword} className="space-y-4">
-						<div className="space-y-2">
-							<Label htmlFor="current-password">Current Password</Label>
-							<div className="relative">
-								<Input
-									id="current-password"
-									type={showCurrentPassword ? "text" : "password"}
-									value={currentPassword}
-									onChange={(e) => setCurrentPassword(e.target.value)}
-									placeholder="Enter current password"
-									required
-									autoComplete="current-password"
-									className="pr-10"
-								/>
-								<button
-									type="button"
-									onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-									className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-									tabIndex={-1}
-								>
-									{showCurrentPassword ? <IconEyeOff className="size-4" /> : <IconEye className="size-4" />}
-								</button>
-							</div>
-						</div>
+			<SaveButton
+				type="submit"
+				size="lg"
+				className="w-full md:w-auto"
+				disabled={!currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
+			/>
+		</form>
+	);
+}
 
-						<div className="space-y-2">
-							<Label htmlFor="new-password">New Password</Label>
-							<div className="relative">
-								<Input
-									id="new-password"
-									type={showNewPassword ? "text" : "password"}
-									value={newPassword}
-									onChange={(e) => setNewPassword(e.target.value)}
-									placeholder="Enter new password (min 8 characters)"
-									required
-									minLength={8}
-									autoComplete="new-password"
-									className="pr-10"
-								/>
-								<button
-									type="button"
-									onClick={() => setShowNewPassword(!showNewPassword)}
-									className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-									tabIndex={-1}
-								>
-									{showNewPassword ? <IconEyeOff className="size-4" /> : <IconEye className="size-4" />}
-								</button>
-							</div>
-						</div>
+function PasswordField({
+	id,
+	label,
+	value,
+	onChange,
+	autoComplete,
+	minLength,
+	hint,
+	hintId,
+	hintTone = "muted",
+	invalid,
+}: {
+	id: string;
+	label: string;
+	value: string;
+	onChange: (value: string) => void;
+	autoComplete: string;
+	minLength?: number;
+	hint?: string;
+	hintId?: string;
+	hintTone?: "muted" | "error";
+	invalid?: boolean;
+}) {
+	const [visible, setVisible] = useState(false);
+	const describedBy = hint ? (hintId ?? `${id}-hint`) : undefined;
 
-						<div className="space-y-2">
-							<Label htmlFor="confirm-password">Confirm New Password</Label>
-							<div className="relative">
-								<Input
-									id="confirm-password"
-									type={showConfirmPassword ? "text" : "password"}
-									value={confirmPassword}
-									onChange={(e) => setConfirmPassword(e.target.value)}
-									placeholder="Confirm new password"
-									required
-									minLength={8}
-									autoComplete="new-password"
-									className="pr-10"
-								/>
-								<button
-									type="button"
-									onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-									className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-									tabIndex={-1}
-								>
-									{showConfirmPassword ? <IconEyeOff className="size-4" /> : <IconEye className="size-4" />}
-								</button>
-							</div>
-						</div>
-
-						{newPassword && confirmPassword && newPassword !== confirmPassword && (
-							<p className="text-sm text-destructive">Passwords do not match</p>
-						)}
-
-						<SaveButton
-							type="submit"
-							className="w-full"
-							disabled={!currentPassword || !newPassword || !confirmPassword || newPassword !== confirmPassword}
-						/>
-					</form>
-				</CardContent>
-			</Card>
+	return (
+		<div className="space-y-2">
+			<Label htmlFor={id}>{label}</Label>
+			<div className="relative">
+				<Input
+					id={id}
+					type={visible ? "text" : "password"}
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+					required
+					minLength={minLength}
+					autoComplete={autoComplete}
+					aria-describedby={describedBy}
+					aria-invalid={invalid || undefined}
+					className="pr-12"
+				/>
+				<button
+					type="button"
+					onClick={() => setVisible((v) => !v)}
+					aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+					aria-pressed={visible}
+					className="absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-offset-[-5px]"
+				>
+					{visible ? <IconEyeOff className="size-5 md:size-4" /> : <IconEye className="size-5 md:size-4" />}
+				</button>
+			</div>
+			{hint ? (
+				<p
+					id={describedBy}
+					className={cn("text-[13px]", hintTone === "error" ? "text-destructive" : "text-muted-foreground")}
+				>
+					{hint}
+				</p>
+			) : null}
 		</div>
 	);
 }

@@ -7,9 +7,9 @@ import { type ReactiveButtonComponent, useReactiveButton } from "@/components/ui
 
 export function useCacheRefreshController() {
 	const [button, RefreshButton] = useReactiveButton({
-		label: "Refresh Data",
+		label: "Refresh data",
 		icon: IconRefresh,
-		loading: { label: "Refreshing..." },
+		loading: { label: "Refreshing…" },
 		success: { label: "Refreshed", icon: IconCheck, duration: 900 },
 		error: { label: "Refresh failed" },
 		feedbackStyle: "neutral",
@@ -31,6 +31,12 @@ export function useCacheRefreshController() {
 	return { RefreshButton, refresh };
 }
 
+/**
+ * ReactiveButton stacks its idle/loading/success labels in a centered grid; inside a menu
+ * row they must start at the row's left edge like the other items.
+ */
+export const reactiveMenuItemClassName = "cursor-pointer [&>span]:justify-items-start";
+
 export function CacheRefreshMenuItem({
 	button: RefreshButton,
 	onRefresh,
@@ -39,6 +45,9 @@ export function CacheRefreshMenuItem({
 	onRefresh: () => void | Promise<void>;
 }) {
 	return (
-		<RefreshButton onClick={onRefresh} render={<DropdownMenuItem closeOnClick={false} className="cursor-pointer" />} />
+		<RefreshButton
+			onClick={onRefresh}
+			render={<DropdownMenuItem closeOnClick={false} className={reactiveMenuItemClassName} />}
+		/>
 	);
 }

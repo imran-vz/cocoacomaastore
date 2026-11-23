@@ -9,7 +9,7 @@ describe("manager orders view model adapter", () => {
 		expect(model.todayLabel).toBe("Friday, 17 July");
 		expect(model.totalOrders).toBe(1);
 		expect(model.itemsSold).toBe(2);
-		expect(model.orders[0]).toMatchObject({ orderLabel: "#1", totalLabel: "₹280.00" });
+		expect(model.orders[0]).toMatchObject({ orderLabel: "#1", totalLabel: "₹280" });
 		expect(model).not.toHaveProperty("revenue");
 		expect(model).not.toHaveProperty("netRevenue");
 		expect(model).not.toHaveProperty("netRevenueLabel");

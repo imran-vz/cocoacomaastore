@@ -8,7 +8,7 @@ export default function UpiPage() {
 	const upiAccounts = getCachedAdminUpiAccounts();
 
 	return (
-		<AdminPageShell>
+		<AdminPageShell frame="narrow">
 			<Suspense fallback={<UpiAccountsSkeleton includeMain={false} />}>
 				<UpiClientPage upiAccounts={upiAccounts} />
 			</Suspense>

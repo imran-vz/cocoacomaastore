@@ -3,18 +3,22 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { use, useId, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
+import { FormSheet } from "@/components/ui/form-sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ListRow, ListRowTile, ListSection, RecordList } from "@/components/ui/list-row";
+import { PageHeader, PageHeaderAction } from "@/components/ui/page-header";
 import { useReactiveButton } from "@/components/ui/reactive-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { authClient } from "@/lib/auth-client";
+import { formatDate, formatInitials, roleLabel } from "@/lib/format";
 import { createManager, deleteManager, type ManagerRow } from "../actions";
 
 const managersQueryKey = ["admin-managers"] as const;
+const MANAGER_FORM_ID = "add-manager-form";
+const EMPTY_MANAGER_FORM = { name: "", email: "", password: "", role: "user" as "admin" | "user" };
 
 async function fetchManagers(signal?: AbortSignal): Promise<ManagerRow[]> {
 	const response = await fetch("/api/admin/managers", {
@@ -46,20 +50,18 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 	});
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
 	const submitTokenRef = useRef<number | null>(null);
-	const [formData, setFormData] = useState({
-		name: "",
-		email: "",
-		password: "",
-		role: "user" as "admin" | "user",
-	});
+	const [formData, setFormData] = useState(EMPTY_MANAGER_FORM);
+	const dirty = (Object.keys(EMPTY_MANAGER_FORM) as (keyof typeof EMPTY_MANAGER_FORM)[]).some(
+		(key) => formData[key] !== EMPTY_MANAGER_FORM[key],
+	);
 
 	const [submitButton, SubmitButton] = useReactiveButton({
-		label: "Create Manager",
-		loading: { label: "Creating..." },
+		label: "Add",
+		loading: { label: "Adding…" },
 		success: { label: "Created" },
 	});
 
-	const resetForm = () => setFormData({ name: "", email: "", password: "", role: "user" });
+	const resetForm = () => setFormData(EMPTY_MANAGER_FORM);
 
 	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
@@ -106,137 +108,147 @@ export default function ManagerClientPage({ managers }: { managers: Promise<Mana
 		console.error("Failed to fetch managers:", error);
 	}
 
+	const adminCount = managersList.filter(({ role }) => role === "admin").length;
+
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center justify-between">
-				<div>
-					<h2 className="text-3xl font-bold tracking-tight">Managers</h2>
-					<p className="text-muted-foreground">Manage admin and manager accounts</p>
-				</div>
-				<Dialog
-					open={isDialogOpen}
-					onOpenChange={(open) => {
-						setIsDialogOpen(open);
-						if (!open) {
-							submitButton.reset();
-							if (submitTokenRef.current === null) {
-								resetForm();
-							}
+		<div className="w-full">
+			<FormSheet
+				open={isDialogOpen}
+				onOpenChange={(open) => {
+					setIsDialogOpen(open);
+					if (!open) {
+						submitButton.reset();
+						if (submitTokenRef.current === null) {
+							resetForm();
 						}
-					}}
-				>
-					<Button type="button" onClick={() => setIsDialogOpen(true)}>
-						<Plus className="mr-2 h-4 w-4" />
-						Add Manager
-					</Button>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>Add New Manager</DialogTitle>
-							<DialogDescription>Create a new manager or admin account</DialogDescription>
-						</DialogHeader>
-						<form onSubmit={handleSubmit} className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor={nameID}>Name</Label>
-								<Input
-									id={nameID}
-									value={formData.name}
-									onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-									required
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor={emailID}>Email</Label>
-								<Input
-									id={emailID}
-									type="email"
-									value={formData.email}
-									onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-									required
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor={passwordID}>Password</Label>
-								<Input
-									id={passwordID}
-									type="password"
-									value={formData.password}
-									onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-									required
-								/>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor={roleID}>Role</Label>
-								<Select
-									value={formData.role}
-									onValueChange={(value) =>
-										setFormData({
-											...formData,
-											role: value as "user" | "admin",
-										})
-									}
-								>
-									<SelectTrigger>
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="user">User</SelectItem>
-										<SelectItem value="admin">Admin</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-							<SubmitButton type="submit" className="w-full" />
-						</form>
-					</DialogContent>
-				</Dialog>
-			</div>
+					}
+				}}
+				title="Add manager"
+				description="They sign in with this email and password."
+				dirty={dirty}
+				busy={submitButton.isBusy}
+				primary={<SubmitButton type="submit" form={MANAGER_FORM_ID} size="sm" />}
+			>
+				<form id={MANAGER_FORM_ID} onSubmit={handleSubmit} className="space-y-4">
+					<div className="space-y-2">
+						<Label htmlFor={nameID}>Name</Label>
+						<Input
+							id={nameID}
+							value={formData.name}
+							onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+							autoComplete="off"
+							required
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor={emailID}>Email</Label>
+						<Input
+							id={emailID}
+							type="email"
+							value={formData.email}
+							onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+							autoComplete="off"
+							required
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor={passwordID}>Password</Label>
+						<Input
+							id={passwordID}
+							type="password"
+							value={formData.password}
+							onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+							autoComplete="new-password"
+							required
+						/>
+					</div>
+					<div className="space-y-2">
+						<Label htmlFor={roleID}>Role</Label>
+						<Select
+							value={formData.role}
+							onValueChange={(value) =>
+								setFormData({
+									...formData,
+									role: value as "user" | "admin",
+								})
+							}
+						>
+							<SelectTrigger id={roleID} className="w-full">
+								<SelectValue>{roleLabel(formData.role)}</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="user">Manager</SelectItem>
+								<SelectItem value="admin">Admin</SelectItem>
+							</SelectContent>
+						</Select>
+						<p className="text-[13px] text-muted-foreground">
+							Managers sell, count stock and edit the catalog. Admins also see insights and settings.
+						</p>
+					</div>
+				</form>
+			</FormSheet>
 
-			<div className="rounded-md border">
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>Name</TableHead>
-							<TableHead>Email</TableHead>
-							<TableHead>Role</TableHead>
-							<TableHead>Created At</TableHead>
-							<TableHead className="text-right">Actions</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{managersList.map((manager) => {
-							const isSelf = session?.user.id === manager.id;
-							const isLastAdmin =
-								manager.role === "admin" && managersList.filter(({ role }) => role === "admin").length === 1;
-							const deleteBlockedReason =
-								isSessionPending || !session
-									? "Delete unavailable until your session is available"
-									: isSelf
-										? "You cannot delete your own account"
-										: isLastAdmin
-											? "You cannot delete the sole administrator"
-											: undefined;
+			<PageHeader
+				title="Managers"
+				description="Who can sign in to the counter."
+				action={<PageHeaderAction icon={Plus} label="Add manager" onClick={() => setIsDialogOpen(true)} />}
+			/>
 
-							return (
-								<TableRow key={manager.id}>
-									<TableCell className="font-medium">{manager.name}</TableCell>
-									<TableCell>{manager.email}</TableCell>
-									<TableCell className="capitalize">
-										<Badge variant={manager.role === "admin" ? "default" : "secondary"}>{manager.role}</Badge>
-									</TableCell>
-									<TableCell>{new Date(manager.createdAt).toLocaleDateString()}</TableCell>
-									<TableCell className="text-right">
+			<ListSection title="Accounts" count={managersList.length}>
+				<RecordList aria-label="Accounts">
+					{managersList.map((manager) => {
+						const isSelf = session?.user.id === manager.id;
+						const isLastAdmin = manager.role === "admin" && adminCount === 1;
+						const deleteBlockedReason =
+							isSessionPending || !session
+								? "Delete unavailable until your session is available"
+								: isSelf
+									? "You cannot delete your own account"
+									: isLastAdmin
+										? "You cannot delete the sole administrator"
+										: undefined;
+
+						return (
+							<ListRow
+								key={manager.id}
+								leading={<ListRowTile>{formatInitials(manager.name)}</ListRowTile>}
+								title={isSelf ? `${manager.name} (you)` : manager.name}
+								meta={
+									<>
+										<EmailText email={manager.email} />
+										<span className="block">
+											{roleLabel(manager.role)} · Added {formatDate(manager.createdAt)}
+										</span>
+									</>
+								}
+								action={
+									isSelf ? null : (
 										<DeleteManagerButton
 											manager={manager}
 											disabledReason={deleteBlockedReason}
 											onDeleted={() => queryClient.invalidateQueries({ queryKey: managersQueryKey })}
 										/>
-									</TableCell>
-								</TableRow>
-							);
-						})}
-					</TableBody>
-				</Table>
-			</div>
+									)
+								}
+							/>
+						);
+					})}
+				</RecordList>
+			</ListSection>
 		</div>
+	);
+}
+
+/** Lets a long address wrap before the "@" instead of mid-word. */
+function EmailText({ email }: { email: string }) {
+	const at = email.indexOf("@");
+	if (at <= 0) return <span className="break-words">{email}</span>;
+	return (
+		<span className="break-words">
+			{email.slice(0, at)}
+			<wbr />
+			{email.slice(at)}
+		</span>
 	);
 }
 
@@ -249,45 +261,47 @@ function DeleteManagerButton({
 	disabledReason?: string;
 	onDeleted: () => Promise<unknown>;
 }) {
-	const [deleteButton, DeleteButton] = useReactiveButton({
-		label: "",
-		icon: Trash2,
-		loading: { label: "" },
-		error: { label: "Failed" },
-		feedbackStyle: "neutral",
-	});
+	const [confirmOpen, setConfirmOpen] = useState(false);
 
+	/** Runs from the confirmation; a throw keeps it open with the message. */
 	const handleDelete = async () => {
-		if (deleteButton.status !== "idle") return;
-		if (!confirm(`Are you sure you want to delete ${manager.name}?`)) {
-			return;
-		}
-
-		const token = deleteButton.setLoading();
+		let result: Awaited<ReturnType<typeof deleteManager>>;
 		try {
-			const result = await deleteManager(manager.id);
-			if (!result.success) {
-				console.error("Failed to delete manager:", result.error);
-				deleteButton.setError("Failed", { token });
-				return;
-			}
-
-			// Success: the row disappears once the list refetches — that is the feedback.
-			await onDeleted();
+			result = await deleteManager(manager.id);
 		} catch (error) {
 			console.error("Failed to delete manager:", error);
-			deleteButton.setError("Failed", { token });
+			throw new Error("Couldn't delete this account. Try again.");
 		}
+		if (!result.success) {
+			console.error("Failed to delete manager:", result.error);
+			throw new Error("Couldn't delete this account. Try again.");
+		}
+		// Success: the row disappears once the list refetches — that is the feedback.
+		await onDeleted();
 	};
 
 	return (
-		<DeleteButton
-			variant="ghost"
-			size="sm"
-			disabled={Boolean(disabledReason)}
-			title={disabledReason}
-			aria-label={disabledReason ?? `Delete ${manager.name}`}
-			onClick={handleDelete}
-		/>
+		<>
+			<Button
+				variant="ghost"
+				size="icon-touch"
+				className="text-muted-foreground hover:text-destructive"
+				disabled={Boolean(disabledReason)}
+				title={disabledReason}
+				aria-label={disabledReason ?? `Delete ${manager.name}`}
+				onClick={() => setConfirmOpen(true)}
+			>
+				<Trash2 aria-hidden="true" />
+			</Button>
+			<ConfirmSheet
+				open={confirmOpen}
+				onOpenChange={setConfirmOpen}
+				title={`Delete ${manager.name}?`}
+				description={`${manager.email} can no longer sign in to the counter.`}
+				confirmLabel={manager.role === "admin" ? "Delete admin" : "Delete manager"}
+				pendingLabel="Deleting…"
+				onConfirm={handleDelete}
+			/>
+		</>
 	);
 }

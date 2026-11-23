@@ -1,6 +1,5 @@
+import { formatCount, formatINR, formatNumber, formatTime } from "@/lib/format";
 import type { SerializedOrderDetails, SerializedOrders } from "@/lib/order-lifecycle";
-
-const IST_TIME_ZONE = "Asia/Kolkata";
 
 type OrderModifierViewModel = {
 	id: number;
@@ -13,6 +12,8 @@ type OrderLineViewModel = {
 	name: string;
 	baseDessertName: string | null;
 	quantity: number;
+	/** Unit price × quantity, formatted (`₹180`). Matches the invoice line total. */
+	lineTotalLabel: string;
 	isCombo: boolean;
 	modifiers: OrderModifierViewModel[];
 };
@@ -29,7 +30,13 @@ export type OrderViewModel = {
 	statusLabel: string;
 	isCancelled: boolean;
 	totalItems: number;
+	/** `5 items`, `1 item`. */
+	itemsLabel: string;
 	itemsSummary: string;
+	/** The first line on its own (`Rocky Road Brownie ×2`), so a row stays recognisable. */
+	firstItemLabel: string;
+	/** `+4 more` when the order has other lines, else null. */
+	moreItemsLabel: string | null;
 	totalLabel: string;
 	deliveryCostLabel: string | null;
 	lines: OrderLineViewModel[];
@@ -41,38 +48,30 @@ export type OrdersViewModel = {
 	orders: OrderViewModel[];
 };
 
-function formatTime(date: string) {
-	return new Date(date).toLocaleTimeString("en-IN", {
-		hour: "2-digit",
-		minute: "2-digit",
-		hour12: true,
-		timeZone: IST_TIME_ZONE,
-	});
-}
-
 function statusLabel(status: SerializedOrderDetails["status"]) {
 	return `${status.charAt(0).toUpperCase()}${status.slice(1)}`;
 }
 
-function moneyLabel(value: string) {
-	return `₹${value}`;
+function lineTotal(unitPrice: string, quantity: number) {
+	// Whole paise, the same arithmetic as the invoice model, so the two never disagree.
+	return (Math.round(Number(unitPrice) * 100) * quantity) / 100;
 }
 
 function buildOrderViewModel(order: SerializedOrderDetails): OrderViewModel {
 	const customerName = order.customerName?.trim();
 	const totalItems = order.orderItems.reduce((total, item) => total + item.quantity, 0);
-	const itemsSummary = order.orderItems
-		.map((item) => {
-			const name = item.comboName || item.dessert.name;
-			return `${name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`;
-		})
-		.join(", ");
+	const itemLabels = order.orderItems.map((item) => {
+		const name = item.comboName || item.dessert.name;
+		return `${name}${item.quantity > 1 ? ` ×${item.quantity}` : ""}`;
+	});
+	const itemsSummary = itemLabels.join(", ");
+	const moreItems = itemLabels.length - 1;
 
 	return {
 		source: order,
 		id: order.id,
 		orderLabel: `#${order.id}`,
-		customerName: customerName || "Walk-in Customer",
+		customerName: customerName || "Walk-in",
 		isWalkInCustomer: !customerName,
 		createdAtTimestamp: new Date(order.createdAt).getTime(),
 		timeLabel: formatTime(order.createdAt),
@@ -80,14 +79,18 @@ function buildOrderViewModel(order: SerializedOrderDetails): OrderViewModel {
 		statusLabel: statusLabel(order.status),
 		isCancelled: order.status === "cancelled",
 		totalItems,
+		itemsLabel: formatCount(totalItems, "items"),
 		itemsSummary,
-		totalLabel: moneyLabel(order.total),
-		deliveryCostLabel: Number(order.deliveryCost) > 0 ? moneyLabel(order.deliveryCost) : null,
+		firstItemLabel: itemLabels[0] ?? "",
+		moreItemsLabel: moreItems > 0 ? `+${formatNumber(moreItems)} more` : null,
+		totalLabel: formatINR(order.total),
+		deliveryCostLabel: Number(order.deliveryCost) > 0 ? formatINR(order.deliveryCost) : null,
 		lines: order.orderItems.map((item) => ({
 			id: item.id,
 			name: item.comboName || item.dessert.name,
 			baseDessertName: item.comboName ? item.dessert.name : null,
 			quantity: item.quantity,
+			lineTotalLabel: formatINR(lineTotal(item.unitPrice, item.quantity)),
 			isCombo: Boolean(item.comboName),
 			modifiers: item.modifiers.map((modifier) => ({
 				id: modifier.id,
