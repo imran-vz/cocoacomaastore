@@ -57,9 +57,9 @@ function monthSlot(point: MonthTotals): TrendSlot {
 	};
 }
 
-function weekSlot(week: BusinessWeekTotals): TrendSlot {
+function weekSlot(week: BusinessWeekTotals, month: MonthKey): TrendSlot {
 	return {
-		key: String(week.index),
+		key: `${month}-W${week.index}`,
 		axisLabel: `W${week.index}`,
 		title: `Week ${week.index}`,
 		subtitle:
@@ -96,15 +96,19 @@ function TrendSection({
 	selectedMonth: MonthKey;
 	onSelectMonth: (month: MonthKey) => void;
 }) {
-	const [openMonth, setOpenMonth] = useState<MonthKey | null>(null);
+	const [showWeeks, setShowWeeks] = useState(false);
 	const [selectedWeekKey, setSelectedWeekKey] = useState<string | null>(null);
+	const openMonth = showWeeks ? selectedMonth : null;
 	const weeksQuery = useQuery(insightsQueries.businessWeeks(openMonth));
 	const weeks = openMonth ? weeksQuery.data : undefined;
 	const isWeekly = weeks !== undefined;
 	const isOpening = openMonth !== null && !isWeekly && weeksQuery.isFetching;
 	const weeksFailed = openMonth !== null && !isWeekly && weeksQuery.isError;
 
-	const slots = useMemo(() => (weeks ? weeks.map(weekSlot) : months.map(monthSlot)), [weeks, months]);
+	const slots = useMemo(
+		() => (weeks && openMonth ? weeks.map((week) => weekSlot(week, openMonth)) : months.map(monthSlot)),
+		[weeks, openMonth, months],
+	);
 	const unit = isWeekly ? "week" : "month";
 	const best = bestSlot(slots);
 	const showTrend = hasTrend(slots);
@@ -116,7 +120,7 @@ function TrendSection({
 	const openWeeks = (month: MonthKey) => {
 		onSelectMonth(month);
 		setSelectedWeekKey(null);
-		setOpenMonth(month);
+		setShowWeeks(true);
 	};
 
 	const detail = (slot: TrendSlot, className?: string) => (
@@ -150,7 +154,7 @@ function TrendSection({
 			onKeyDown={(event) => {
 				// Escape from a popup portalled out of the section (a select, a dialog) is the popup's own.
 				if (isWeekly && event.key === "Escape" && event.currentTarget.contains(event.target as Node)) {
-					setOpenMonth(null);
+					setShowWeeks(false);
 				}
 			}}
 		>
@@ -164,7 +168,7 @@ function TrendSection({
 							Loading {formatMonth(openMonth)}
 						</span>
 					) : openMonth ? (
-						<Button variant="ghost" size="sm" onClick={() => setOpenMonth(null)}>
+						<Button variant="ghost" size="sm" onClick={() => setShowWeeks(false)}>
 							<ChevronLeft aria-hidden="true" />
 							All months
 						</Button>

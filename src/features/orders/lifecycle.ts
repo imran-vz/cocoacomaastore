@@ -138,39 +138,40 @@ function resolveOrderLines(
 	});
 }
 
-/** Reads and share-locks the catalog rows the order refers to, so concurrent catalog edits wait for it. */
+/** Locks combos before reading their add-ons and locking desserts, so an order uses one catalog version. */
 async function resolveAndLockOrderLines(tx: Transaction, lines: readonly OrderRequestLine[]) {
 	const comboIds = [...new Set(lines.flatMap((line) => (line.comboId === undefined ? [] : [line.comboId])))].sort(
 		(a, b) => a - b,
 	);
-	const [combos, comboItems] =
+	const combos =
 		comboIds.length === 0
-			? [[], []]
-			: await Promise.all([
-					tx
-						.select({
-							id: dessertCombosTable.id,
-							name: dessertCombosTable.name,
-							baseDessertId: dessertCombosTable.baseDessertId,
-							overridePrice: dessertCombosTable.overridePrice,
-							enabled: dessertCombosTable.enabled,
-							isDeleted: dessertCombosTable.isDeleted,
-						})
-						.from(dessertCombosTable)
-						.where(inArray(dessertCombosTable.id, comboIds))
-						.orderBy(asc(dessertCombosTable.id))
-						.for("no key update"),
-					tx
-						.select({
-							comboId: dessertComboItemsTable.comboId,
-							dessertId: dessertComboItemsTable.dessertId,
-							quantity: dessertComboItemsTable.quantity,
-						})
-						.from(dessertComboItemsTable)
-						.where(inArray(dessertComboItemsTable.comboId, comboIds))
-						.orderBy(asc(dessertComboItemsTable.comboId), asc(dessertComboItemsTable.dessertId))
-						.for("no key update"),
-				]);
+			? []
+			: await tx
+					.select({
+						id: dessertCombosTable.id,
+						name: dessertCombosTable.name,
+						baseDessertId: dessertCombosTable.baseDessertId,
+						overridePrice: dessertCombosTable.overridePrice,
+						enabled: dessertCombosTable.enabled,
+						isDeleted: dessertCombosTable.isDeleted,
+					})
+					.from(dessertCombosTable)
+					.where(inArray(dessertCombosTable.id, comboIds))
+					.orderBy(asc(dessertCombosTable.id))
+					.for("no key update");
+	const comboItems =
+		comboIds.length === 0
+			? []
+			: await tx
+					.select({
+						comboId: dessertComboItemsTable.comboId,
+						dessertId: dessertComboItemsTable.dessertId,
+						quantity: dessertComboItemsTable.quantity,
+					})
+					.from(dessertComboItemsTable)
+					.where(inArray(dessertComboItemsTable.comboId, comboIds))
+					.orderBy(asc(dessertComboItemsTable.comboId), asc(dessertComboItemsTable.dessertId))
+					.for("no key update");
 
 	const dessertIds = [
 		...new Set([...lines.map((line) => line.baseDessertId), ...comboItems.map((item) => item.dessertId)]),
