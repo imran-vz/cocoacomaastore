@@ -42,6 +42,7 @@ const manager = { id: MANAGER_ID, area: "manager" } as const;
 const actions = await import("@/features/orders/actions");
 const createOrder = signedInAs(manager, actions.createOrder);
 const cancelOrder = signedInAs(manager, actions.cancelOrder);
+const saveCombo = signedInAs(manager, (await import("@/features/catalog/actions")).saveCombo);
 const getDayOrders = signedInAs(manager, (await import("@/features/orders/queries")).getDayOrders);
 const { dayOrdersTags } = await import("@/features/orders/tags");
 const { dayInventoryTags } = await import("@/features/inventory/tags");
@@ -411,6 +412,39 @@ describe("orders", () => {
 			expect(await integrationDb.select().from(orderItemModifiersTable)).toMatchObject([
 				{ dessertId: newModifier.id, dessertName: "New Modifier", quantity: 2 },
 			]);
+		});
+
+		it("lets an order lock a combo's desserts while a catalog edit waits on that combo", async () => {
+			const base = await seedInventory(2);
+			const { combo, modifiers } = await seedCombo(base.id, "Concurrent Combo", [{ price: 25, quantity: 1 }]);
+			const { writerPid, release, writer } = await lockCatalog(async (tx) => {
+				await tx
+					.select({ id: dessertCombosTable.id })
+					.from(dessertCombosTable)
+					.where(eq(dessertCombosTable.id, combo.id))
+					.for("no key update");
+			});
+
+			const edit = saveCombo({
+				id: combo.id,
+				name: combo.name,
+				baseDessertId: base.id,
+				overridePrice: 150,
+				enabled: true,
+				addOns: [{ dessertId: modifiers[0].id, quantity: 1 }],
+			});
+			try {
+				await waitUntilBlockedBy(writerPid);
+				await integrationDb
+					.select({ id: dessertsTable.id })
+					.from(dessertsTable)
+					.where(eq(dessertsTable.id, base.id))
+					.for("no key update", { noWait: true });
+			} finally {
+				release();
+				await Promise.all([writer, edit]);
+			}
+			expect(await edit).toMatchObject({ ok: true, data: combo.id });
 		});
 
 		it("lets exactly one of two orders competing for the last item through", async () => {

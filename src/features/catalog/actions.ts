@@ -201,6 +201,16 @@ export const saveCombo = staffAction(async (_user, input: ComboInput) => {
 	const combo = comboInputSchema.parse(input);
 	return writeAndRefresh("save combo", COMBO_TAGS, (db) =>
 		db.transaction(async (tx) => {
+			// Order saves take the combo lock before locking its desserts.
+			if (combo.id !== undefined) {
+				const [current] = await tx
+					.select({ id: dessertCombosTable.id })
+					.from(dessertCombosTable)
+					.where(and(eq(dessertCombosTable.id, combo.id), eq(dessertCombosTable.isDeleted, false)))
+					.for("no key update");
+				if (!current) throw new UserFacingError("This combo has been deleted");
+			}
+
 			const dessertIds = [combo.baseDessertId, ...combo.addOns.map(({ dessertId }) => dessertId)];
 			const desserts = await tx
 				.select({
@@ -211,6 +221,7 @@ export const saveCombo = staffAction(async (_user, input: ComboInput) => {
 				})
 				.from(dessertsTable)
 				.where(inArray(dessertsTable.id, dessertIds))
+				.orderBy(asc(dessertsTable.id))
 				.for("share");
 			const byId = new Map(desserts.map((dessert) => [dessert.id, dessert]));
 			const removed = dessertIds.flatMap((id) => {
