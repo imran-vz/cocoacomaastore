@@ -1,6 +1,6 @@
-import { Package } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
+/** A day without orders: the shared block empty state (decision 8). */
 export function OrdersEmptyState({
 	className,
 	title = "No orders yet",
@@ -10,19 +10,5 @@ export function OrdersEmptyState({
 	title?: string;
 	description?: string;
 }) {
-	return (
-		<div
-			className={cn(
-				"rounded-xl border border-dashed bg-card px-5 py-12 text-center",
-				"animate-in fade-in-0 slide-in-from-bottom-2 duration-300 ease-out motion-reduce:animate-none",
-				className,
-			)}
-		>
-			<div className="mx-auto grid size-12 place-items-center rounded-full bg-muted">
-				<Package className="size-6 text-muted-foreground" aria-hidden="true" />
-			</div>
-			<h2 className="mt-4 text-lg font-semibold">{title}</h2>
-			<p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
-		</div>
-	);
+	return <EmptyState variant="block" title={title} description={description} className={className} />;
 }

@@ -1,19 +1,12 @@
 "use client";
 
 import { XCircle } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmSheet } from "@/components/ui/confirm-sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Popover,
-	PopoverClose,
-	PopoverContent,
-	PopoverDescription,
-	PopoverTitle,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import { useReactiveButton } from "@/components/ui/reactive-button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MAX_ORDER_CANCELLATION_REASON_LENGTH } from "@/lib/order-limits";
 import type { OrderViewModel } from "./orders-view-model";
 
@@ -27,6 +20,26 @@ const CANCELLATION_REASONS = [
 	"Payment issue",
 ];
 
+const NO_REASON = "none";
+const OTHER_REASON = "other";
+
+const REASON_LABELS: Record<string, string> = {
+	[NO_REASON]: "No reason",
+	[OTHER_REASON]: "Other…",
+	...Object.fromEntries(CANCELLATION_REASONS.map((reason) => [reason, reason])),
+};
+
+/** The order row's toggle, found again once this action unmounts (the order is now cancelled). */
+function findOrderToggle(orderId: number): HTMLElement | null {
+	const toggles = document.querySelectorAll<HTMLElement>(`[data-order-toggle="${orderId}"]`);
+	return Array.from(toggles).find((element) => element.offsetParent !== null) ?? null;
+}
+
+/**
+ * "Cancel order" opens the shared `ConfirmSheet` (decision 2): a bottom sheet on phones, an
+ * alert dialog from md, focus on "Keep order". The optional reason is the shared Select (the
+ * preset reasons, or "Other…" for a typed one), so the cancellation call is unchanged.
+ */
 export function OrderCancelAction({
 	order,
 	onCancelOrder,
@@ -34,111 +47,85 @@ export function OrderCancelAction({
 	order: OrderViewModel;
 	onCancelOrder: CancelOrderHandler;
 }) {
-	const [isCancelPopoverOpen, setIsCancelPopoverOpen] = useState(false);
-	const [cancelReason, setCancelReason] = useState("");
-	const cancelReasonInputRef = useRef<HTMLInputElement>(null);
-	const cancelTriggerRef = useRef<HTMLButtonElement>(null);
+	const [open, setOpen] = useState(false);
+	const [reasonChoice, setReasonChoice] = useState(NO_REASON);
+	const [otherReason, setOtherReason] = useState("");
+	const triggerWrapRef = useRef<HTMLSpanElement>(null);
+	const reasonId = useId();
+	const otherReasonId = useId();
 
-	const [cancelButton, CancelButton] = useReactiveButton({
-		label: "Cancel Order",
-		loading: { label: "Cancelling..." },
-		success: { label: "Cancelled", duration: 900 },
-	});
-
-	// Loading (mid-cancel) and the brief success flash both hold the popover open;
-	// success auto-closes it via onComplete below.
-	const isBusy = cancelButton.status !== "idle";
-
-	const handleCancelPopoverOpenChange = (open: boolean) => {
-		if (isBusy && !open) {
-			return;
-		}
-
-		setIsCancelPopoverOpen(open);
-		if (!open) {
-			setCancelReason("");
+	const handleOpenChange = (next: boolean) => {
+		setOpen(next);
+		if (!next) {
+			setReasonChoice(NO_REASON);
+			setOtherReason("");
 		}
 	};
 
-	const handleCancelOrder = async () => {
-		const token = cancelButton.setLoading();
+	const reason = reasonChoice === OTHER_REASON ? otherReason.trim() : reasonChoice === NO_REASON ? "" : reasonChoice;
+
+	const handleConfirm = async () => {
 		try {
-			await onCancelOrder(order.id, cancelReason.trim() || undefined);
-			cancelButton.setSuccess("Cancelled", {
-				token,
-				duration: 900,
-				onComplete: () => {
-					setIsCancelPopoverOpen(false);
-					setCancelReason("");
-				},
-			});
+			await onCancelOrder(order.id, reason || undefined);
 		} catch (error) {
 			console.error(error);
-			cancelButton.setError("Cancellation failed", { token });
+			throw new Error("Couldn't cancel the order. Try again.");
 		}
 	};
 
 	return (
-		<Popover open={isCancelPopoverOpen} onOpenChange={handleCancelPopoverOpenChange} modal="trap-focus">
-			<PopoverTrigger
-				ref={cancelTriggerRef}
-				disabled={isBusy}
-				render={
-					<Button variant="destructive" size="sm" className="h-11 w-full md:h-8">
-						<XCircle className="size-4" />
-						Cancel Order
-					</Button>
-				}
-			/>
+		<>
+			<span ref={triggerWrapRef} className="contents">
+				<Button variant="destructive-ghost" className="flex-1 md:flex-none" onClick={() => handleOpenChange(true)}>
+					<XCircle aria-hidden="true" />
+					Cancel order
+				</Button>
+			</span>
 
-			<PopoverContent
-				align="end"
-				side="top"
-				sideOffset={8}
-				initialFocus={cancelReasonInputRef}
-				finalFocus={cancelTriggerRef}
-				className="max-h-(--available-height) w-[min(22rem,calc(100vw-2rem))] overflow-y-auto p-0"
+			<ConfirmSheet
+				open={open}
+				onOpenChange={handleOpenChange}
+				title={`Cancel order ${order.orderLabel}?`}
+				description={`${order.totalLabel} · ${order.itemsLabel}. The items go back into today's stock.`}
+				confirmLabel="Cancel order"
+				pendingLabel="Cancelling…"
+				cancelLabel="Keep order"
+				onConfirm={handleConfirm}
+				// After a cancel this button is gone, so focus returns to the order's row.
+				finalFocus={() => triggerWrapRef.current?.querySelector("button") ?? findOrderToggle(order.id) ?? true}
 			>
-				<div className="space-y-2 p-4">
-					<PopoverTitle>Cancel Order #{order.id}</PopoverTitle>
-					<PopoverDescription>
-						Are you sure you want to cancel this order? The inventory will be restored automatically.
-					</PopoverDescription>
-				</div>
-
-				<div className="border-t px-4 py-3">
-					<div className="space-y-2">
-						<Label htmlFor={`cancel-reason-${order.id}`}>Reason (optional)</Label>
-						<Input
-							ref={cancelReasonInputRef}
-							id={`cancel-reason-${order.id}`}
-							list={`cancel-reasons-${order.id}`}
-							placeholder="Select or type a reason..."
-							value={cancelReason}
-							maxLength={MAX_ORDER_CANCELLATION_REASON_LENGTH}
-							onChange={(event) => setCancelReason(event.target.value)}
-							disabled={cancelButton.isBusy}
-						/>
-						<datalist id={`cancel-reasons-${order.id}`}>
-							{CANCELLATION_REASONS.map((reason) => (
-								<option key={reason} value={reason} />
-							))}
-						</datalist>
+				<div className="space-y-3">
+					<div className="space-y-1.5">
+						<Label htmlFor={reasonId}>Reason (optional)</Label>
+						<Select value={reasonChoice} onValueChange={(value) => setReasonChoice(String(value ?? NO_REASON))}>
+							<SelectTrigger id={reasonId} className="w-full">
+								<SelectValue>{(value: string) => REASON_LABELS[value] ?? value}</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value={NO_REASON}>No reason</SelectItem>
+								{CANCELLATION_REASONS.map((option) => (
+									<SelectItem key={option} value={option}>
+										{option}
+									</SelectItem>
+								))}
+								<SelectItem value={OTHER_REASON}>Other…</SelectItem>
+							</SelectContent>
+						</Select>
 					</div>
+					{reasonChoice === OTHER_REASON ? (
+						<div className="space-y-1.5">
+							<Label htmlFor={otherReasonId}>Other reason</Label>
+							<Input
+								id={otherReasonId}
+								autoComplete="off"
+								value={otherReason}
+								maxLength={MAX_ORDER_CANCELLATION_REASON_LENGTH}
+								onChange={(event) => setOtherReason(event.target.value)}
+							/>
+						</div>
+					) : null}
 				</div>
-
-				<div className="grid grid-cols-2 gap-2 rounded-b-xl border-t bg-muted/50 p-3">
-					<PopoverClose
-						disabled={isBusy}
-						render={
-							<Button variant="outline" className="w-full">
-								Keep Order
-							</Button>
-						}
-					/>
-					<CancelButton variant="destructive" onClick={handleCancelOrder} />
-				</div>
-			</PopoverContent>
-		</Popover>
+			</ConfirmSheet>
+		</>
 	);
 }

@@ -1,19 +1,11 @@
 "use client";
 
-import {
-	IconChartBar,
-	IconChartPie,
-	IconDashboard,
-	IconDatabase,
-	IconFileDescription,
-	IconPackage,
-	IconSettings,
-	IconShoppingCart,
-	IconUsers,
-} from "@tabler/icons-react";
-import Image from "next/image";
+import Link from "next/link";
 import type * as React from "react";
 
+import { adminSidebar } from "@/components/app-nav";
+import { BrandLogo } from "@/components/brand-lockup";
+import type { ShellUser } from "@/components/more-sheet";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import {
@@ -26,31 +18,9 @@ import {
 	SidebarMenuItem,
 	SidebarRail,
 } from "@/components/ui/sidebar";
-import { authClient } from "@/lib/auth-client";
 
-const data = {
-	navMain: [
-		{ title: "Home", url: "/admin", icon: IconDashboard },
-		{ title: "Dashboard", url: "/admin/dashboard", icon: IconChartBar },
-		{ title: "Analytics", url: "/admin/analytics", icon: IconChartPie },
-		{ title: "Orders", url: "/admin/orders", icon: IconShoppingCart },
-		{ title: "Desserts", url: "/admin/desserts", icon: IconFileDescription },
-		{ title: "Combos", url: "/admin/combos", icon: IconPackage },
-		{
-			title: "Settings",
-			url: "/admin/settings",
-			icon: IconSettings,
-			items: [
-				{ title: "Managers", url: "/admin/settings/managers", icon: IconUsers },
-				{ title: "UPI Accounts", url: "/admin/settings/upi", icon: IconDatabase },
-			],
-		},
-	],
-};
-
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	const session = authClient.useSession();
-
+/** Admin desktop/tablet sidebar (≥ md). Below md the admin uses the shared top bar + bottom tabs. */
+export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sidebar> & { user: ShellUser }) {
 	return (
 		<Sidebar collapsible="icon" {...props}>
 			<SidebarHeader>
@@ -58,41 +28,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							size="lg"
-							className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+							tooltip="Cocoa Comaa"
 							render={
-								<a href="/admin">
-									<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-										<Image
-											src="/logo.png"
-											alt="Cocoacomaa Store"
-											loading="eager"
-											width={32}
-											height={32}
-											className="rounded-lg"
-										/>
-									</div>
-									<div className="grid flex-1 text-left text-sm leading-tight">
-										<span className="truncate font-semibold">Cocoa Comaa</span>
-										<span className="truncate text-xs">Admin Panel</span>
-									</div>
-								</a>
+								<Link href="/admin">
+									<span className="flex size-8 shrink-0 items-center justify-center">
+										<BrandLogo size={32} />
+									</span>
+									<span className="grid flex-1 text-left leading-tight">
+										<span className="truncate text-[15px] font-bold tracking-tight text-primary">Cocoa Comaa</span>
+										<span className="truncate text-xs text-muted-foreground">Admin</span>
+									</span>
+								</Link>
 							}
 						/>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarHeader>
 			<SidebarContent>
-				<NavMain items={data.navMain} />
+				<NavMain items={adminSidebar} />
 			</SidebarContent>
 			<SidebarFooter>
-				<NavUser
-					user={
-						session.data?.user || {
-							name: "Admin",
-							email: "admin@cocoacomaa.com",
-						}
-					}
-				/>
+				<NavUser user={user} />
 			</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>

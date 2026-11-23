@@ -115,6 +115,7 @@ export function useManageCombos({
 	const filteredCombos = combos.filter((combo) => combo.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	return {
+		combos,
 		filteredCombos,
 		searchTerm,
 		toggleLoadingIds,

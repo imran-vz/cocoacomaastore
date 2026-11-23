@@ -16,6 +16,7 @@ import {
 	ordersTable,
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth/guards";
+import { formatDateShort } from "@/lib/format";
 import {
 	getAnalyticsDay,
 	getDayKey,
@@ -289,11 +290,7 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 		.orderBy(analyticsDailyRevenueTable.day);
 
 	const dailyData: DailyRevenue[] = results.map((r) => ({
-		date: new Date(r.day).toLocaleDateString("en-IN", {
-			day: "numeric",
-			month: "short",
-			timeZone: "Asia/Kolkata",
-		}),
+		date: formatDateShort(new Date(r.day)),
 		revenue: Number(r.revenue),
 		orders: r.orders,
 	}));
@@ -303,11 +300,7 @@ async function getDailyRevenue(endDate: Date, days = 7): Promise<DailyRevenue[]>
 		const todayTotals = await getLiveDayTotals(endDate);
 
 		dailyData.push({
-			date: new Date(todayUTC).toLocaleDateString("en-IN", {
-				day: "numeric",
-				month: "short",
-				timeZone: "Asia/Kolkata",
-			}),
+			date: formatDateShort(todayUTC),
 			...todayTotals,
 		});
 	}
@@ -339,12 +332,8 @@ function isValidMonthKey(month: string): boolean {
 }
 
 function formatWeekDate(month: string, day: number): string {
-	const [year, monthNum] = month.split("-").map(Number);
-	return new Date(Date.UTC(year, monthNum - 1, day)).toLocaleDateString("en-IN", {
-		day: "numeric",
-		month: "short",
-		timeZone: "UTC",
-	});
+	// A calendar-day key is formatted as that day, with no time-zone shift.
+	return formatDateShort(`${month}-${String(day).padStart(2, "0")}`);
 }
 
 async function getWeeklyRevenue(month: string): Promise<WeeklyRevenue[]> {
@@ -403,7 +392,7 @@ async function getWeeklyRevenue(month: string): Promise<WeeklyRevenue[]> {
 
 		if (!currentWeek || isTuesday) {
 			currentWeek = {
-				week: `Business Week ${weeks.length + 1}`,
+				week: `Week ${weeks.length + 1}`,
 				startDate: formatWeekDate(month, day),
 				endDate: formatWeekDate(month, day),
 				grossRevenue: 0,

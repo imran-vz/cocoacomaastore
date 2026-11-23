@@ -1,19 +1,23 @@
 "use client";
 
-import { ChevronUp, ShoppingBag, X } from "lucide-react";
+import { ChevronRight, ChevronUp, UserRound, X } from "lucide-react";
 import { AnimatePresence, motion, type PanInfo, useDragControls } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import type { UpiAccount } from "@/db/schema";
+import { formatCount, formatINR } from "@/lib/format";
 import { springSheet, tweenEnter } from "@/lib/motion";
 import { MAX_DELIVERY_COST } from "@/lib/order-limits";
 import type { CartLine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { CartCopyActions } from "./cart-copy-actions";
 import { CartLinePresenter } from "./cart-line-presenter";
+import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import type { ReactiveButtonComponent, ReactiveButtonControls } from "./ui/reactive-button";
+import { useModalFocus } from "./ui/use-modal-focus";
 import type { SaveCartOrder } from "./use-save-cart-order";
 
 // Swipe past either threshold (distance in px, or flick velocity in px/s)
@@ -34,6 +38,8 @@ interface MobileCartSheetProps {
 	onSaveOrder: SaveCartOrder;
 	saveControls: ReactiveButtonControls;
 	SaveButton: ReactiveButtonComponent;
+	/** Viewport-relative box of the POS pane; the bar and sheet align to it. */
+	frame?: { left: number; width: number };
 }
 
 export function MobileCartSheet({
@@ -48,8 +54,13 @@ export function MobileCartSheet({
 	onSaveOrder,
 	saveControls,
 	SaveButton,
+	frame,
 }: MobileCartSheetProps) {
 	const [isOpen, setIsOpen] = useState(false);
+	// The expanded sheet renders into <body>: the admin content area is an isolated stacking
+	// context (page texture), which would otherwise trap the sheet under the bottom tabs.
+	const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+	useEffect(() => setPortalTarget(document.body), []);
 	const [shouldRender, setShouldRender] = useState(false);
 	const [showForm, setShowForm] = useState(false);
 	const openSessionRef = useRef(0);
@@ -65,6 +76,8 @@ export function MobileCartSheet({
 	}, [total]);
 
 	const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
+	const deliveryAmount = Number.parseFloat(deliveryCost || "0") || 0;
+	const hasDetails = customerName.trim() !== "" || deliveryAmount > 0;
 
 	const handleToggle = useCallback(() => {
 		openSessionRef.current += 1;
@@ -104,6 +117,19 @@ export function MobileCartSheet({
 		setIsOpen(false);
 	}, []);
 
+	// A real modal (decision 3): the page behind is inert, Tab wraps inside the sheet, focus
+	// starts on Close cart and returns to View cart on Escape, close, swipe or scrim tap. If
+	// the bar is gone (the last line was removed) it returns to the search field.
+	const overlayRef = useRef<HTMLDivElement>(null);
+	const viewCartRef = useRef<HTMLButtonElement>(null);
+	useModalFocus({
+		open: isOpen,
+		containerRef: overlayRef,
+		returnFocusRef: viewCartRef,
+		fallbackFocus: () => document.querySelector<HTMLElement>("[data-pos-search]"),
+		onEscape: handleClose,
+	});
+
 	const handleExitComplete = useCallback(() => {
 		setShouldRender(false);
 	}, []);
@@ -134,22 +160,203 @@ export function MobileCartSheet({
 		return null;
 	}
 
+	const subtitle = [
+		customerName.trim() || "Walk-in",
+		deliveryAmount > 0 ? `Delivery ${formatINR(deliveryAmount)}` : null,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	// In sheet mode the bar and sheet line up with the POS pane (it can sit beside the admin
+	// sidebar on tablets); without a measurement they span the viewport.
+	const frameStyle = frame ? { left: frame.left, width: frame.width } : undefined;
+
 	return (
 		<>
-			<AnimatePresence onExitComplete={handleExitComplete}>
-				{isOpen && (
-					<motion.div
-						initial={{ opacity: 0 }}
-						animate={{ opacity: 1 }}
-						exit={{ opacity: 0 }}
-						transition={tweenEnter}
-						className="fixed inset-0 bg-black/30 z-40 md:hidden"
-						onClick={handleClose}
-					/>
-				)}
-			</AnimatePresence>
+			{/* Scrim + sheet share one container so the scrim stays tappable while the rest of
+			    the page is inert. */}
+			{portalTarget &&
+				createPortal(
+					<div ref={overlayRef} className="contents">
+						<AnimatePresence onExitComplete={handleExitComplete}>
+							{isOpen && (
+								<motion.div
+									initial={{ opacity: 0 }}
+									animate={{ opacity: 1 }}
+									exit={{ opacity: 0 }}
+									transition={tweenEnter}
+									className="fixed inset-0 z-40 bg-foreground/30"
+									onClick={handleClose}
+								/>
+							)}
+						</AnimatePresence>
 
-			{shouldRender && !isOpen && <div className="fixed inset-0 z-40 md:hidden" />}
+						<AnimatePresence>
+							{isOpen && (
+								<motion.div
+									role="dialog"
+									aria-modal="true"
+									aria-labelledby="pos-cart-title"
+									initial={{ y: "100%" }}
+									animate={{ y: 0 }}
+									exit={{ y: "100%" }}
+									transition={springSheet}
+									drag="y"
+									dragControls={dragControls}
+									dragListener={false}
+									dragConstraints={{ top: 0, bottom: 0 }}
+									dragElastic={{ top: 0, bottom: 0.5 }}
+									onDragEnd={handleExpandedDragEnd}
+									style={frameStyle}
+									className="fixed inset-x-0 bottom-0 z-50"
+								>
+									<div className="flex max-h-[88svh] flex-col rounded-t-2xl bg-card shadow-[0_-8px_32px_rgb(0_0_0/0.18)]">
+										{/* Drag handle + header: pointer-downs here start the drag-to-close. */}
+										<div className="shrink-0 touch-none" onPointerDown={startExpandedDrag}>
+											<div aria-hidden="true" className="mx-auto mt-2 h-1 w-9 rounded-full bg-border" />
+											<div className="flex items-center gap-3 py-1.5 pr-2 pl-4">
+												<div className="min-w-0 flex-1">
+													<h2 id="pos-cart-title" className="text-[20px] leading-7 font-bold">
+														Cart
+														<span className="ml-2 text-[15px] font-normal text-muted-foreground tabular-nums">
+															{formatCount(itemCount, "items")}
+														</span>
+													</h2>
+													<p className="truncate text-[13px] text-muted-foreground">{subtitle}</p>
+												</div>
+												<Button
+													variant="ghost"
+													size="icon-touch"
+													aria-label="Close cart"
+													onClick={handleClose}
+													onPointerDown={(event) => event.stopPropagation()}
+													className="rounded-full bg-muted hover:bg-accent"
+												>
+													<X />
+												</Button>
+											</div>
+										</div>
+
+										<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-2 pb-4">
+											<div className="overflow-hidden rounded-xl border bg-card">
+												<button
+													type="button"
+													aria-expanded={showForm}
+													aria-controls="pos-cart-details"
+													onClick={() => setShowForm((current) => !current)}
+													className="flex min-h-12 w-full items-center gap-3 px-4 text-left hover:bg-accent focus-ring"
+												>
+													<UserRound aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+													<span className="min-w-0 flex-1 truncate text-[15px] font-medium">
+														{hasDetails ? subtitle : "Add customer & delivery"}
+													</span>
+													<ChevronRight
+														aria-hidden="true"
+														className={cn(
+															"size-5 shrink-0 text-muted-foreground transition-transform duration-200",
+															showForm && "rotate-90",
+														)}
+													/>
+												</button>
+												<div
+													id="pos-cart-details"
+													inert={!showForm}
+													className={cn(
+														"grid transition-[grid-template-rows,opacity] duration-200 ease-out",
+														showForm ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+													)}
+												>
+													<div className="overflow-hidden">
+														<div className="grid grid-cols-2 gap-3 border-t px-4 pt-3 pb-4">
+															<form.Field name="name">
+																{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
+																{(field: any) => (
+																	<div className="space-y-1.5">
+																		<Label htmlFor={field.name} className="text-[13px] text-muted-foreground">
+																			Customer
+																		</Label>
+																		<Input
+																			id={field.name}
+																			placeholder="Walk-in"
+																			autoComplete="off"
+																			value={field.state.value}
+																			onChange={(e) => field.handleChange(e.target.value)}
+																			onBlur={field.handleBlur}
+																		/>
+																	</div>
+																)}
+															</form.Field>
+
+															<form.Field name="deliveryCost">
+																{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
+																{(field: any) => (
+																	<div className="space-y-1.5">
+																		<Label htmlFor={field.name} className="text-[13px] text-muted-foreground">
+																			Delivery fee
+																		</Label>
+																		<Input
+																			id={field.name}
+																			placeholder="0"
+																			type="number"
+																			inputMode="decimal"
+																			step="0.01"
+																			min="0"
+																			max={MAX_DELIVERY_COST}
+																			value={field.state.value}
+																			onChange={(e) => field.handleChange(e.target.value)}
+																			onBlur={field.handleBlur}
+																		/>
+																	</div>
+																)}
+															</form.Field>
+														</div>
+													</div>
+												</div>
+											</div>
+
+											<ul
+												aria-label="Cart items"
+												className="mt-3 divide-y overflow-hidden rounded-xl border empty:hidden"
+											>
+												<AnimatePresence mode="popLayout">
+													{cart.map((line) => (
+														<CartLinePresenter
+															variant="mobile"
+															key={line.cartLineId}
+															line={line}
+															updateQuantity={updateQuantity}
+															removeFromCart={removeFromCart}
+														/>
+													))}
+												</AnimatePresence>
+											</ul>
+										</div>
+
+										<div className="shrink-0 space-y-3 border-t bg-card px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+											{cart.length > 0 && (
+												<CartCopyActions
+													cart={cart}
+													total={total}
+													deliveryCost={deliveryCost}
+													upiAccounts={upiAccounts}
+												/>
+											)}
+
+											<SaveButton
+												onClick={handleSaveOrder}
+												disabled={cart.length === 0}
+												size="lg"
+												className="w-full rounded-xl text-base"
+											/>
+										</div>
+									</div>
+								</motion.div>
+							)}
+						</AnimatePresence>
+					</div>,
+					portalTarget,
+				)}
+
+			{shouldRender && !isOpen && <div className="fixed inset-0 z-40" />}
 
 			<AnimatePresence>
 				{!isOpen && (
@@ -162,205 +369,30 @@ export function MobileCartSheet({
 						dragConstraints={{ top: 0, bottom: 0 }}
 						dragElastic={{ top: 0.5, bottom: 0 }}
 						onDragEnd={handleCollapsedDragEnd}
-						className="fixed bottom-0 inset-x-0 z-50 md:hidden p-4 pb-6"
+						style={frameStyle}
+						className="fixed inset-x-0 bottom-above-nav z-30 px-3 pb-2 md:px-4 md:pb-4"
 					>
 						<button
+							ref={viewCartRef}
 							type="button"
 							onClick={handleToggle}
-							className="w-full bg-background rounded-2xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] border p-4 flex items-center justify-between active:scale-[0.98] transition-transform"
+							aria-label={`View cart, ${formatCount(itemCount, "items")}, ${formatINR(total)}`}
+							className="flex h-13 w-full items-center gap-3 rounded-xl bg-primary pr-3 pl-2 text-primary-foreground shadow-lg shadow-primary/20 transition-transform focus-ring active:scale-[0.98]"
 						>
-							<div className="flex items-center gap-3">
-								<div className="relative">
-									<ShoppingBag className="size-6 text-primary" />
-									<span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full size-5 flex items-center justify-center">
-										{itemCount > 99 ? "99+" : itemCount}
-									</span>
-								</div>
-								<div className="text-left">
-									<p className="text-sm font-medium">
-										{itemCount} {itemCount === 1 ? "item" : "items"}
-									</p>
-									<p className="text-xs text-muted-foreground">Swipe up or tap to view cart</p>
-								</div>
-							</div>
-							<div className="flex items-center gap-2">
-								<p
-									className={cn(
-										"text-lg font-bold tabular-nums transition-colors duration-300 ease-out motion-reduce:transition-none",
-										totalTicked && "text-primary",
-									)}
-								>
-									₹{total.toFixed(0)}
-								</p>
-								<ChevronUp className="size-5 text-muted-foreground" />
-							</div>
-						</button>
-					</motion.div>
-				)}
-			</AnimatePresence>
-
-			<AnimatePresence>
-				{isOpen && (
-					<motion.div
-						initial={{ y: "100%" }}
-						animate={{ y: 0 }}
-						exit={{ y: "100%" }}
-						transition={springSheet}
-						drag="y"
-						dragControls={dragControls}
-						dragListener={false}
-						dragConstraints={{ top: 0, bottom: 0 }}
-						dragElastic={{ top: 0, bottom: 0.5 }}
-						onDragEnd={handleExpandedDragEnd}
-						className="fixed inset-x-0 bottom-0 z-50 md:hidden"
-						style={{ maxHeight: "85vh" }}
-					>
-						<div className="bg-background rounded-t-3xl shadow-[0_-4px_24px_rgba(0,0,0,0.15)] flex flex-col max-h-[85vh]">
-							<button
-								type="button"
-								onClick={handleToggle}
-								onPointerDown={startExpandedDrag}
-								style={{ touchAction: "none" }}
-								className="shrink-0 w-full pt-3 pb-2"
-							>
-								<div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto" />
-							</button>
-
-							<div className="shrink-0 px-4 pb-3 touch-none" onPointerDown={startExpandedDrag}>
-								<div className="flex items-center justify-between">
-									<div className="flex items-center gap-3">
-										<div className="relative">
-											<ShoppingBag className="size-6 text-primary" />
-											<span className="absolute -top-1.5 -right-1.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full size-5 flex items-center justify-center">
-												{itemCount > 99 ? "99+" : itemCount}
-											</span>
-										</div>
-										<div>
-											<p className="text-sm font-medium">
-												{itemCount} {itemCount === 1 ? "item" : "items"}
-											</p>
-											<p className="text-xs text-muted-foreground">Swipe down or tap handle to close</p>
-										</div>
-									</div>
-									<div className="flex items-center gap-2">
-										<p
-											className={cn(
-												"text-lg font-bold tabular-nums transition-colors duration-300 ease-out motion-reduce:transition-none",
-												totalTicked && "text-primary",
-											)}
-										>
-											₹{total.toFixed(0)}
-										</p>
-										<ChevronUp
-											className={cn("size-5 text-muted-foreground transition-transform", isOpen && "rotate-180")}
-										/>
-									</div>
-								</div>
-							</div>
-
-							<div className="h-px bg-border mx-4 shrink-0" />
-							<div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 min-h-0">
-								<div
-									inert={!showForm}
-									className={cn(
-										"grid transition-[grid-template-rows,opacity] duration-200 ease-out",
-										showForm ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-									)}
-								>
-									<div className="overflow-hidden">
-										<div className="grid grid-cols-2 gap-3 mb-4 pb-4 border-b">
-											<form.Field name="name">
-												{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
-												{(field: any) => (
-													<div className="space-y-1.5">
-														<Label htmlFor={field.name} className="text-xs font-medium text-muted-foreground">
-															Customer
-														</Label>
-														<Input
-															id={field.name}
-															placeholder="Guest"
-															value={field.state.value}
-															onChange={(e) => field.handleChange(e.target.value)}
-															onBlur={field.handleBlur}
-															className="h-10"
-														/>
-													</div>
-												)}
-											</form.Field>
-
-											<form.Field name="deliveryCost">
-												{/* biome-ignore lint/suspicious/noExplicitAny: TanStack field type */}
-												{(field: any) => (
-													<div className="space-y-1.5">
-														<Label htmlFor={field.name} className="text-xs font-medium text-muted-foreground">
-															Delivery (₹)
-														</Label>
-														<Input
-															id={field.name}
-															placeholder="0"
-															type="number"
-															step="0.01"
-															min="0"
-															max={MAX_DELIVERY_COST}
-															value={field.state.value}
-															onChange={(e) => field.handleChange(e.target.value)}
-															onBlur={field.handleBlur}
-															className="h-10"
-														/>
-													</div>
-												)}
-											</form.Field>
-										</div>
-									</div>
-								</div>
-
-								<button
-									type="button"
-									onClick={() => setShowForm((current) => !current)}
-									className="w-full text-xs text-primary font-medium mb-4 flex items-center justify-center gap-1"
-								>
-									{showForm ? (
-										<>
-											<X className="size-3" />
-											Hide details
-										</>
-									) : (
-										"+ Add customer & delivery"
-									)}
-								</button>
-
-								<div className="overflow-hidden rounded-xl border shadow-sm empty:hidden">
-									<AnimatePresence mode="popLayout">
-										{cart.map((line) => (
-											<CartLinePresenter
-												variant="mobile"
-												key={line.cartLineId}
-												line={line}
-												updateQuantity={updateQuantity}
-												removeFromCart={removeFromCart}
-											/>
-										))}
-									</AnimatePresence>
-								</div>
-							</div>
-
-							<div className="shrink-0 p-4 border-t bg-background space-y-3">
-								<div className="flex items-center justify-between px-1">
-									<span className="text-sm text-muted-foreground">Total</span>
-									<span className="text-xl font-bold text-primary tabular-nums">₹{total.toFixed(0)}</span>
-								</div>
-
-								{cart.length > 0 && (
-									<CartCopyActions cart={cart} total={total} deliveryCost={deliveryCost} upiAccounts={upiAccounts} />
+							<span className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-primary-foreground/15 px-2 text-[15px] font-bold tabular-nums">
+								{itemCount > 99 ? "99+" : itemCount}
+							</span>
+							<span className="flex-1 text-left text-[15px] font-semibold">View cart</span>
+							<span
+								className={cn(
+									"text-[17px] font-bold tabular-nums transition-transform duration-300 ease-out motion-reduce:transition-none",
+									totalTicked && "scale-110",
 								)}
-
-								<SaveButton
-									onClick={handleSaveOrder}
-									disabled={cart.length === 0}
-									className="w-full h-12 text-base font-semibold rounded-xl"
-								/>
-							</div>
-						</div>
+							>
+								{formatINR(total)}
+							</span>
+							<ChevronUp aria-hidden="true" className="size-5 opacity-70" />
+						</button>
 					</motion.div>
 				)}
 			</AnimatePresence>

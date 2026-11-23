@@ -1,4 +1,5 @@
 import { buildOrdersViewModel, type OrdersViewModel } from "@/components/orders/orders-view-model";
+import { formatINR } from "@/lib/format";
 import { formatLocalDateKey } from "@/lib/local-date";
 import type { SerializedOrders } from "@/lib/order-lifecycle";
 import { summarizeOrderSales } from "@/lib/order-sales-summary";
@@ -12,7 +13,7 @@ export function buildAdminOrdersViewModel(orders: SerializedOrders): AdminOrders
 
 	return {
 		...buildOrdersViewModel(orders),
-		netRevenueLabel: `₹${netRevenue.toFixed(2)}`,
+		netRevenueLabel: formatINR(netRevenue),
 	};
 }
 

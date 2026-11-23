@@ -1,10 +1,13 @@
 "use client";
 
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
-import { type ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { formatDateShort, formatDayHeading, formatDayShort, formatMonth } from "@/lib/format";
 import { formatLocalDateKey } from "@/lib/local-date";
 import { cn } from "@/lib/utils";
 
@@ -16,21 +19,56 @@ interface DateSwitcherProps {
 	className?: string;
 }
 
-function formatDateDisplay(date: Date): string {
-	return date.toLocaleDateString("en-IN", {
-		weekday: "short",
-		day: "numeric",
-		month: "short",
-		timeZone: "Asia/Kolkata",
-	});
+/**
+ * The stepper's label (decision 5: the stepper alone carries the date): `Today · 23 Nov`,
+ * `Yesterday · 22 Nov`, otherwise `Sat, 21 Nov`. Read from the picker's local calendar day.
+ * `compact` (phones, where the extra "Today" button shares the row) drops "Yesterday · " so the
+ * date never truncates.
+ */
+function formatStepLabel(date: Date, today: Date, compact = false): string {
+	const key = formatLocalDateKey(date);
+	if (isSameDay(date, today)) return `Today · ${formatDateShort(key)}`;
+	const yesterday = new Date(today);
+	yesterday.setDate(today.getDate() - 1);
+	if (!compact && isSameDay(date, yesterday)) return `Yesterday · ${formatDateShort(key)}`;
+	return formatDayShort(key);
+}
+
+/** `Monday, 23 November 2026`: the accessible name of a calendar day. */
+function formatFullDate(date: Date): string {
+	return `${formatDayHeading(formatLocalDateKey(date))} ${date.getFullYear()}`;
+}
+
+/** Calendar icon + label: the stepper's centre, and the read-only date on manager Orders. */
+function DateLabelContent({ label }: { label: string }) {
+	return (
+		<>
+			<CalendarDays className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+			<span className="truncate">{label}</span>
+		</>
+	);
+}
+
+/**
+ * The same date label as the stepper, without arrows or a picker (decision 13): for screens
+ * that only ever show one day, such as manager Orders. Pass a label rendered on the server
+ * in shop time (`Today · 23 Nov`) so hydration never disagrees.
+ */
+export function DateDisplay({ label, className }: { label: string; className?: string }) {
+	return (
+		<p
+			className={cn(
+				"inline-flex h-9 items-center gap-2 text-[15px] font-semibold text-foreground tabular-nums",
+				className,
+			)}
+		>
+			<DateLabelContent label={label} />
+		</p>
+	);
 }
 
 function formatMonthDisplay(date: Date): string {
-	return date.toLocaleDateString("en-IN", {
-		month: "long",
-		year: "numeric",
-		timeZone: "Asia/Kolkata",
-	});
+	return formatMonth({ year: date.getFullYear(), month: date.getMonth() + 1 });
 }
 
 function startOfDay(date: Date): Date {
@@ -167,118 +205,240 @@ export function DateSwitcher({ selectedDate, onDateChange, minDate, maxDate, cla
 		[isDateDisabled, onDateChange],
 	);
 
+	const isMobile = useIsMobile();
+	// `Button` takes no ref, so focus returns to the trigger through its wrapper.
+	const triggerWrapRef = useRef<HTMLSpanElement>(null);
+	const selectedDayRef = useRef<HTMLButtonElement>(null);
+	const stepLabel = formatStepLabel(selectedDate, today, isMobile);
+
+	const calendar = (
+		<CalendarPanel
+			variant={isMobile ? "sheet" : "popover"}
+			visibleMonth={visibleMonth}
+			calendarDays={calendarDays}
+			selectedDate={selectedDate}
+			today={today}
+			isToday={isToday}
+			minDate={minDate}
+			maxDate={effectiveMaxDate}
+			canGoPrevMonth={canGoPrevMonth}
+			canGoNextMonth={canGoNextMonth}
+			isDateDisabled={isDateDisabled}
+			onPreviousMonth={goToPreviousMonth}
+			onNextMonth={goToNextMonth}
+			onSelectDate={selectCalendarDate}
+			onDateInputChange={handleDateInputChange}
+			onToday={goToToday}
+			selectedDayRef={selectedDayRef}
+		/>
+	);
+
+	const triggerButton = (
+		<Button
+			variant="outline"
+			aria-label={`Choose date, ${stepLabel}`}
+			className="min-w-0 flex-1 justify-center gap-2 font-semibold tabular-nums md:min-w-44 md:flex-none"
+			onClick={isMobile ? () => setIsCalendarOpen(true) : undefined}
+		>
+			<DateLabelContent label={stepLabel} />
+		</Button>
+	);
+
 	return (
-		<div className={cn("flex items-center gap-2", className)}>
-			<Button
-				variant="outline"
-				size="icon"
-				className="size-8"
-				onClick={goToPreviousDay}
-				disabled={!canGoPrev}
-				aria-label="Previous day"
-			>
-				<ChevronLeft className="size-4" />
+		<div className={cn("flex w-full items-center gap-2 md:w-auto", className)}>
+			<Button variant="outline" size="icon" onClick={goToPreviousDay} disabled={!canGoPrev} aria-label="Previous day">
+				<ChevronLeft aria-hidden="true" />
 			</Button>
 
-			<Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-				<PopoverTrigger
-					render={
-						<Button variant="outline" className="min-w-36 justify-start gap-2 font-medium">
-							<CalendarDays className="size-4 text-muted-foreground" />
-							<span>{isToday ? "Today" : formatDateDisplay(selectedDate)}</span>
-						</Button>
-					}
-				/>
-
-				<PopoverContent align="end" aria-label="Choose date" className="w-76 p-3">
-					<div className="mb-3 flex items-center justify-between gap-2">
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							onClick={goToPreviousMonth}
-							disabled={!canGoPrevMonth}
-							aria-label="Previous month"
+			{isMobile ? (
+				<>
+					<span ref={triggerWrapRef} className="contents">
+						{triggerButton}
+					</span>
+					{/* Phones: a full-width bottom sheet with 44px day cells (decision 5). */}
+					<Sheet open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+						<SheetContent
+							side="bottom"
+							initialFocus={selectedDayRef}
+							finalFocus={() => triggerWrapRef.current?.querySelector("button") ?? true}
+							className="gap-0 rounded-t-2xl px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
 						>
-							<ChevronLeft className="size-4" />
-						</Button>
-						<p className="text-sm font-semibold">{formatMonthDisplay(visibleMonth)}</p>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							onClick={goToNextMonth}
-							disabled={!canGoNextMonth}
-							aria-label="Next month"
-						>
-							<ChevronRight className="size-4" />
-						</Button>
-					</div>
+							<SheetTitle className="flex min-h-11 items-center pr-12 text-[17px] font-bold">Choose date</SheetTitle>
+							{calendar}
+						</SheetContent>
+					</Sheet>
+				</>
+			) : (
+				<Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+					<PopoverTrigger render={triggerButton} />
+					<PopoverContent
+						align="start"
+						aria-label="Choose date"
+						initialFocus={selectedDayRef}
+						className="w-[min(20rem,calc(100vw-2rem))] p-3"
+					>
+						{calendar}
+					</PopoverContent>
+				</Popover>
+			)}
 
-					<div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium text-muted-foreground">
-						{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-							<div key={day} className="py-1">
-								{day}
-							</div>
-						))}
-					</div>
-					<div className="mt-1 grid grid-cols-7 gap-1">
-						{calendarDays.map((date) => {
-							const isSelected = isSameDay(date, selectedDate);
-							const isOutsideMonth = date.getMonth() !== visibleMonth.getMonth();
-							const disabled = isDateDisabled(date);
-
-							return (
-								<button
-									key={formatLocalDateKey(date)}
-									type="button"
-									className={cn(
-										"flex h-8 items-center justify-center rounded-md text-sm transition-colors",
-										isOutsideMonth && "text-muted-foreground/45",
-										disabled && "cursor-not-allowed text-muted-foreground/30",
-										!disabled && "hover:bg-muted",
-										isSelected && "bg-primary text-primary-foreground hover:bg-primary",
-									)}
-									disabled={disabled}
-									onClick={() => selectCalendarDate(date)}
-									aria-current={isSelected ? "date" : undefined}
-								>
-									{date.getDate()}
-								</button>
-							);
-						})}
-					</div>
-
-					<div className="mt-3 flex items-center justify-between border-t border-border pt-3">
-						<input
-							type="date"
-							value={formatLocalDateKey(selectedDate)}
-							onChange={handleDateInputChange}
-							max={formatLocalDateKey(effectiveMaxDate)}
-							min={minDate ? formatLocalDateKey(minDate) : undefined}
-							className="h-8 rounded-md border border-input bg-background px-2 text-xs"
-						/>
-						<Button variant="ghost" size="sm" onClick={goToToday} disabled={isToday}>
-							Today
-						</Button>
-					</div>
-				</PopoverContent>
-			</Popover>
-
-			<Button
-				variant="outline"
-				size="icon"
-				className="size-8"
-				onClick={goToNextDay}
-				disabled={!canGoNext}
-				aria-label="Next day"
-			>
-				<ChevronRight className="size-4" />
+			<Button variant="outline" size="icon" onClick={goToNextDay} disabled={!canGoNext} aria-label="Next day">
+				<ChevronRight aria-hidden="true" />
 			</Button>
 
 			{!isToday && (
-				<Button variant="ghost" size="sm" onClick={goToToday} className="text-xs text-muted-foreground">
+				<Button variant="ghost" onClick={goToToday} className="px-3 text-muted-foreground">
 					Today
 				</Button>
 			)}
+		</div>
+	);
+}
+
+const WEEKDAY_HEADINGS = [
+	{ short: "Sun", long: "Sunday" },
+	{ short: "Mon", long: "Monday" },
+	{ short: "Tue", long: "Tuesday" },
+	{ short: "Wed", long: "Wednesday" },
+	{ short: "Thu", long: "Thursday" },
+	{ short: "Fri", long: "Friday" },
+	{ short: "Sat", long: "Saturday" },
+];
+
+/**
+ * Month header, a 7×6 day grid and the date field + Today footer. In the phone sheet the
+ * seven columns are contiguous 44px cells; in the md+ popover they stay compact.
+ */
+function CalendarPanel({
+	variant,
+	visibleMonth,
+	calendarDays,
+	selectedDate,
+	today,
+	isToday,
+	minDate,
+	maxDate,
+	canGoPrevMonth,
+	canGoNextMonth,
+	isDateDisabled,
+	onPreviousMonth,
+	onNextMonth,
+	onSelectDate,
+	onDateInputChange,
+	onToday,
+	selectedDayRef,
+}: {
+	variant: "sheet" | "popover";
+	visibleMonth: Date;
+	calendarDays: Date[];
+	selectedDate: Date;
+	today: Date;
+	isToday: boolean;
+	minDate?: Date;
+	maxDate: Date;
+	canGoPrevMonth: boolean;
+	canGoNextMonth: boolean;
+	isDateDisabled: (date: Date) => boolean;
+	onPreviousMonth: () => void;
+	onNextMonth: () => void;
+	onSelectDate: (date: Date) => void;
+	onDateInputChange: (event: ChangeEvent<HTMLInputElement>) => void;
+	onToday: () => void;
+	selectedDayRef: RefObject<HTMLButtonElement | null>;
+}) {
+	const isSheet = variant === "sheet";
+	const selectedInView = calendarDays.some(
+		(date) => isSameDay(date, selectedDate) && date.getMonth() === visibleMonth.getMonth(),
+	);
+
+	return (
+		<div>
+			<div className={cn("flex items-center justify-between gap-2", isSheet ? "mb-1" : "mb-2")}>
+				<Button
+					variant="ghost"
+					size={isSheet ? "icon-touch" : "icon"}
+					onClick={onPreviousMonth}
+					disabled={!canGoPrevMonth}
+					aria-label="Previous month"
+				>
+					<ChevronLeft aria-hidden="true" />
+				</Button>
+				<p className="text-[15px] font-semibold" aria-live="polite">
+					{formatMonthDisplay(visibleMonth)}
+				</p>
+				<Button
+					variant="ghost"
+					size={isSheet ? "icon-touch" : "icon"}
+					onClick={onNextMonth}
+					disabled={!canGoNextMonth}
+					aria-label="Next month"
+				>
+					<ChevronRight aria-hidden="true" />
+				</Button>
+			</div>
+
+			<div
+				className={cn(
+					"grid grid-cols-7 text-center text-xs font-medium text-muted-foreground",
+					isSheet ? "gap-0" : "gap-1",
+				)}
+			>
+				{WEEKDAY_HEADINGS.map((day) => (
+					<abbr key={day.short} title={day.long} className="py-1 no-underline">
+						{day.short}
+					</abbr>
+				))}
+			</div>
+			<div className={cn("mt-1 grid grid-cols-7", isSheet ? "gap-0" : "gap-1")}>
+				{calendarDays.map((date) => {
+					const isSelected = isSameDay(date, selectedDate);
+					const isOutsideMonth = date.getMonth() !== visibleMonth.getMonth();
+					const isCurrentDay = isSameDay(date, today);
+					const disabled = isDateDisabled(date);
+					// Focus lands on the selected day, or on the 1st when it is out of view.
+					const takesInitialFocus = selectedInView
+						? isSelected && !isOutsideMonth
+						: date.getDate() === 1 && !isOutsideMonth;
+
+					return (
+						<button
+							key={formatLocalDateKey(date)}
+							ref={takesInitialFocus ? selectedDayRef : undefined}
+							type="button"
+							className={cn(
+								"focus-ring flex items-center justify-center rounded-lg text-sm tabular-nums transition-colors",
+								isSheet ? "h-11 text-[15px]" : "h-8",
+								isOutsideMonth && "text-muted-foreground/60",
+								disabled && "cursor-not-allowed text-muted-foreground/40",
+								!disabled && "hover:bg-muted",
+								isCurrentDay && !isSelected && "font-semibold text-primary",
+								isSelected && "bg-primary font-semibold text-primary-foreground hover:bg-primary",
+							)}
+							disabled={disabled}
+							onClick={() => onSelectDate(date)}
+							aria-label={formatFullDate(date)}
+							aria-current={isSelected ? "date" : undefined}
+						>
+							{date.getDate()}
+						</button>
+					);
+				})}
+			</div>
+
+			<div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
+				<input
+					type="date"
+					aria-label="Date"
+					value={formatLocalDateKey(selectedDate)}
+					onChange={onDateInputChange}
+					max={formatLocalDateKey(maxDate)}
+					min={minDate ? formatLocalDateKey(minDate) : undefined}
+					className="focus-ring h-11 min-w-0 rounded-lg border border-input bg-card px-2 text-base md:h-8 md:text-xs"
+				/>
+				<Button variant="ghost" onClick={onToday} disabled={isToday}>
+					Today
+				</Button>
+			</div>
 		</div>
 	);
 }

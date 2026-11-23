@@ -1,10 +1,20 @@
-import { cn } from "@/lib/utils";
+import { PageFrame } from "@/components/page-frame";
 
 type AdminPageShellProps = {
 	children: React.ReactNode;
+	/** `narrow` (max-w-3xl) for lists and forms, `wide` (max-w-7xl, default) for data. */
+	frame?: "narrow" | "wide";
 	className?: string;
 };
 
-export function AdminPageShell({ children, className }: AdminPageShellProps) {
-	return <main className={cn("min-h-app w-full max-w-7xl mx-auto p-4 pb-8", className)}>{children}</main>;
+/**
+ * Admin page container: a left-aligned `PageFrame` (never centred in the inset). The admin
+ * layout's SidebarInset is already the `<main>` landmark, so this renders a `<div>`.
+ */
+export function AdminPageShell({ children, frame = "wide", className }: AdminPageShellProps) {
+	return (
+		<PageFrame frame={frame} className={className}>
+			{children}
+		</PageFrame>
+	);
 }

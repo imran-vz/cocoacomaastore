@@ -7,7 +7,7 @@ import ManagerClientPage from "./component/manager-client-page";
 export default function ManagersPage() {
 	const managers = getCachedManagers();
 	return (
-		<AdminPageShell>
+		<AdminPageShell frame="narrow">
 			<Suspense fallback={<ManagersSkeleton includeMain={false} />}>
 				<ManagerClientPage managers={managers} />
 			</Suspense>

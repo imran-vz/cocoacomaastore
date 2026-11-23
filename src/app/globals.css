@@ -26,6 +26,13 @@
 	--color-input: var(--input);
 	--color-border: var(--border);
 	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-info: var(--info);
+	--color-info-foreground: var(--info-foreground);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-accent: var(--accent);
 	--color-muted-foreground: var(--muted-foreground);
@@ -49,72 +56,116 @@
 
 :root {
 	--radius: 0.625rem;
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.141 0.005 285.823);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.141 0.005 285.823);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.141 0.005 285.823);
+	/* Shell bar heights. The app shell overrides both on its root element (safe-area insets,
+	   0px tab bar from md); these defaults keep portals and pages outside a shell sane. */
+	--app-bar-height: 56px;
+	--bottom-nav-height: 0px;
+
+	/*
+	 * Warm neutral ladder (hue 40–75, low chroma) so every grey sits in the same
+	 * temperature as the cocoa brown. See docs/design/DESIGN.md §Color.
+	 * muted-foreground is ≥ 4.5:1 on background, card and muted.
+	 */
+	--background: oklch(0.982 0.005 75);
+	--foreground: oklch(0.21 0.018 40);
+	--card: oklch(0.998 0.002 75);
+	--card-foreground: oklch(0.21 0.018 40);
+	--popover: oklch(0.998 0.002 75);
+	--popover-foreground: oklch(0.21 0.018 40);
 	--primary: oklch(0.33 0.06 31.42);
 	--primary-foreground: oklch(0.98 0.016 73.684);
-	--secondary: oklch(0.967 0.001 286.375);
-	--secondary-foreground: oklch(0.21 0.006 285.885);
-	--muted: oklch(0.967 0.001 286.375);
-	--muted-foreground: oklch(0.552 0.016 285.938);
-	--accent: oklch(0.967 0.001 286.375);
-	--accent-foreground: oklch(0.21 0.006 285.885);
-	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklch(0.92 0.004 286.32);
-	--input: oklch(0.92 0.004 286.32);
+	--secondary: oklch(0.952 0.008 70);
+	--secondary-foreground: oklch(0.25 0.022 38);
+	--muted: oklch(0.955 0.007 70);
+	--muted-foreground: oklch(0.5 0.022 50);
+	--accent: oklch(0.945 0.012 62);
+	--accent-foreground: oklch(0.25 0.022 38);
+	--border: oklch(0.905 0.01 65);
+	--input: oklch(0.87 0.013 60);
 	--ring: oklch(0.33 0.06 31.42);
-	--chart-1: oklch(0.646 0.222 41.116);
-	--chart-2: oklch(0.6 0.118 184.704);
-	--chart-3: oklch(0.398 0.07 227.392);
-	--chart-4: oklch(0.828 0.189 84.429);
-	--chart-5: oklch(0.769 0.188 70.08);
-	--sidebar: oklch(0.985 0 0);
-	--sidebar-foreground: oklch(0.141 0.005 285.823);
+
+	/* Status tokens: only for status (badges, deltas, validation). */
+	--destructive: oklch(0.53 0.19 27);
+	--destructive-foreground: oklch(0.985 0.005 75);
+	--success: oklch(0.5 0.11 152);
+	--success-foreground: oklch(0.985 0.005 75);
+	--warning: oklch(0.56 0.12 68);
+	--warning-foreground: oklch(0.985 0.005 75);
+	--info: oklch(0.5 0.11 245);
+	--info-foreground: oklch(0.985 0.005 75);
+
+	/* Brand data ramp: primary, caramel, light cocoa, then warm neutrals. */
+	--chart-1: oklch(0.33 0.06 31.42);
+	--chart-2: oklch(0.62 0.11 60);
+	--chart-3: oklch(0.75 0.05 45);
+	--chart-4: oklch(0.84 0.02 60);
+	--chart-5: oklch(0.9 0.012 65);
+
+	--sidebar: oklch(0.972 0.007 72);
+	--sidebar-foreground: oklch(0.21 0.018 40);
 	--sidebar-primary: oklch(0.33 0.06 31.42);
 	--sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-	--sidebar-accent: oklch(0.967 0.001 286.375);
-	--sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-	--sidebar-border: oklch(0.92 0.004 286.32);
+	--sidebar-accent: oklch(0.935 0.014 60);
+	--sidebar-accent-foreground: oklch(0.25 0.022 38);
+	--sidebar-border: oklch(0.905 0.01 65);
 	--sidebar-ring: oklch(0.33 0.06 31.42);
 	--background-grid: "/bg-grid.svg";
+
+	/*
+	 * Page texture (DESIGN.md §Signature): the cocoa ring pattern, drawn by `.page-texture`.
+	 * Full strength in a top band behind the app bar and page header and in the outer
+	 * gutters on wide screens; `--texture-floor` of that behind content further down.
+	 */
+	--texture-opacity: 0.085;
+	--texture-floor: 0.22;
+	--texture-band: 240px;
+	--texture-size: clamp(390px, 100vw, 960px);
+	/* Width of the content column the gutters start after (set per frame below). */
+	--texture-content: 84rem;
+
+	/* Shared focus ring: 2px, offset 2px (DESIGN.md §Focus). */
+	--focus-ring: color-mix(in oklab, var(--ring) 60%, transparent);
 }
 
 .dark {
-	--background: oklch(0.141 0.005 285.823);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.21 0.006 285.885);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.21 0.006 285.885);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.646 0.222 41.116);
-	--primary-foreground: oklch(0.98 0.016 73.684);
-	--secondary: oklch(0.274 0.006 286.033);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.274 0.006 286.033);
-	--muted-foreground: oklch(0.705 0.015 286.067);
-	--accent: oklch(0.274 0.006 286.033);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.704 0.191 22.216);
+	--background: oklch(0.17 0.01 45);
+	--foreground: oklch(0.97 0.006 75);
+	--card: oklch(0.21 0.012 45);
+	--card-foreground: oklch(0.97 0.006 75);
+	--popover: oklch(0.21 0.012 45);
+	--popover-foreground: oklch(0.97 0.006 75);
+	--primary: oklch(0.72 0.09 55);
+	--primary-foreground: oklch(0.2 0.03 35);
+	--secondary: oklch(0.27 0.012 45);
+	--secondary-foreground: oklch(0.97 0.006 75);
+	--muted: oklch(0.27 0.012 45);
+	--muted-foreground: oklch(0.72 0.018 60);
+	--accent: oklch(0.29 0.016 45);
+	--accent-foreground: oklch(0.97 0.006 75);
 	--border: oklch(1 0 0 / 10%);
 	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.646 0.222 41.116);
-	--chart-1: oklch(0.488 0.243 264.376);
-	--chart-2: oklch(0.696 0.17 162.48);
-	--chart-3: oklch(0.769 0.188 70.08);
-	--chart-4: oklch(0.627 0.265 303.9);
-	--chart-5: oklch(0.645 0.246 16.439);
-	--sidebar: oklch(0.21 0.006 285.885);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.646 0.222 41.116);
-	--sidebar-primary-foreground: oklch(0.98 0.016 73.684);
-	--sidebar-accent: oklch(0.274 0.006 286.033);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
+	--ring: oklch(0.72 0.09 55);
+	--destructive: oklch(0.7 0.17 25);
+	--destructive-foreground: oklch(0.17 0.01 45);
+	--success: oklch(0.74 0.13 152);
+	--success-foreground: oklch(0.17 0.01 45);
+	--warning: oklch(0.8 0.12 75);
+	--warning-foreground: oklch(0.17 0.01 45);
+	--info: oklch(0.74 0.1 245);
+	--info-foreground: oklch(0.17 0.01 45);
+	--chart-1: oklch(0.72 0.09 55);
+	--chart-2: oklch(0.65 0.11 60);
+	--chart-3: oklch(0.55 0.05 45);
+	--chart-4: oklch(0.45 0.02 60);
+	--chart-5: oklch(0.38 0.012 65);
+	--sidebar: oklch(0.21 0.012 45);
+	--sidebar-foreground: oklch(0.97 0.006 75);
+	--sidebar-primary: oklch(0.72 0.09 55);
+	--sidebar-primary-foreground: oklch(0.2 0.03 35);
+	--sidebar-accent: oklch(0.27 0.012 45);
+	--sidebar-accent-foreground: oklch(0.97 0.006 75);
 	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.646 0.222 41.116);
+	--sidebar-ring: oklch(0.72 0.09 55);
 }
 
 @layer base {
@@ -124,6 +175,24 @@
 
 	body {
 		@apply bg-background text-foreground;
+	}
+
+	/*
+	 * One focus-visible ring for anything that doesn't draw its own
+	 * (links, list rows, custom buttons). Primitives use the same values
+	 * through the `focus-ring` utility.
+	 */
+	:where(
+			a,
+			button,
+			summary,
+			[role="button"],
+			[role="tab"],
+			[role="link"],
+			[tabindex]
+		):focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
 	}
 
 	/* Smooth scrolling for the whole app */
@@ -175,10 +244,111 @@
 	}
 }
 
+/* Shared focus ring (DESIGN.md §Focus): 2px primary ring, 2px offset, keyboard only. */
+@utility focus-ring {
+	outline: none;
+
+	&:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
+	}
+}
+
+/*
+ * The one page-layer texture (DESIGN.md §Signature). Put it on a shell root; every card,
+ * list, sheet and form on top stays opaque. Visible in the top band (fading out by
+ * --texture-band) and, on wide screens, in the gutters beside the content column;
+ * faint (--texture-floor) behind content. `.page-texture-centered` is for shells whose
+ * content column is centred (manager), so both outer gutters carry the pattern.
+ */
+@utility page-texture {
+	position: relative;
+	isolation: isolate;
+
+	&::before {
+		content: "";
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+		pointer-events: none;
+		background-image: url(/page-texture.svg);
+		background-size: var(--texture-size);
+		background-position: 0 0;
+		opacity: var(--texture-opacity);
+		mask-image:
+			linear-gradient(
+				to bottom,
+				black 0,
+				black calc(var(--texture-band) * 0.35),
+				rgb(0 0 0 / var(--texture-floor)) var(--texture-band)
+			),
+			var(
+				--texture-gutters,
+				linear-gradient(
+					to right,
+					transparent 0,
+					transparent var(--texture-content),
+					black calc(var(--texture-content) + 6rem)
+				)
+			);
+		mask-composite: add;
+	}
+
+	&:has([data-frame="narrow"]) {
+		--texture-content: 52rem;
+	}
+}
+
+/* Centred content column (manager, sign-in): both outer gutters carry the pattern. */
+@utility page-texture-centered {
+	--texture-gutters: linear-gradient(
+		to right,
+		black 0,
+		transparent calc(50% - 41rem),
+		transparent calc(50% + 41rem),
+		black 100%
+	);
+}
+
+/* Figures: UI sans with tabular numerals (DESIGN.md §Numbers). */
+@utility num {
+	font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Bottom-anchored bars on phones (cart bar, save bar) sit directly above the bottom tab
+ * bar. The shell publishes `--bottom-nav-height` (56px + safe area) while the tab bar is
+ * shown; without it these fall back to the screen edge.
+ */
+@utility bottom-above-nav {
+	bottom: var(--bottom-nav-height, 0px);
+}
+
+/* 12px of padding, plus the home-indicator safe area when no tab bar is below. */
+@utility pb-safe-above-nav {
+	padding-bottom: max(
+		0.75rem,
+		calc(
+			env(safe-area-inset-bottom, 0px) +
+			0.75rem -
+			var(--bottom-nav-height, 0px)
+		)
+	);
+}
+
 /* Custom scrollbar for webkit browsers */
 @layer utilities {
+	/*
+	 * Fills exactly the space between the shell's bars, so a short page never scrolls
+	 * (DESIGN.md §Shell). `--shell-chrome-y` is the admin inset's own vertical margin from md.
+	 */
 	.min-h-app {
-		min-height: calc(100vh - 52px);
+		min-height: calc(
+			100dvh -
+			var(--app-bar-height, 0px) -
+			var(--bottom-nav-height, 0px) -
+			var(--shell-chrome-y, 0px)
+		);
 	}
 
 	.scrollbar-thin {

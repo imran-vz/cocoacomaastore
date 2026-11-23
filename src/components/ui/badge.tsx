@@ -4,17 +4,29 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Badges are neutral by default; colour means status (DESIGN.md §Badges).
+ * Routine states (Completed, Enabled, a role) get no badge at all — render them
+ * as muted text. Use `destructive` / `warning` / `success` / `info` only for an
+ * exception the reader must notice (Cancelled, Disabled, Out of stock, Low).
+ */
 const badgeVariants = cva(
-	"h-5 gap-1 rounded-4xl border border-transparent px-2 py-0.5 text-xs font-medium transition-all has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&>svg]:size-3! inline-flex items-center justify-center w-fit whitespace-nowrap shrink-0 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive overflow-hidden group/badge",
+	"h-5 gap-1 rounded-full border border-transparent px-2 text-xs font-semibold tabular-nums transition-colors has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&>svg]:size-3! inline-flex items-center justify-center w-fit whitespace-nowrap shrink-0 [&>svg]:pointer-events-none focus-ring aria-invalid:border-destructive overflow-hidden group/badge",
 	{
 		variants: {
 			variant: {
-				default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
-				secondary: "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
-				destructive:
-					"bg-destructive/10 [a]:hover:bg-destructive/20 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 text-destructive dark:bg-destructive/20",
-				outline: "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
-				ghost: "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
+				/** Neutral: counts, "Combo", "Hidden". */
+				default: "bg-muted text-muted-foreground [a]:hover:bg-accent",
+				/** Alias of `default`, kept for existing call sites. */
+				secondary: "bg-muted text-muted-foreground [a]:hover:bg-accent",
+				outline: "border-border bg-card text-muted-foreground [a]:hover:bg-muted",
+				/** Brand tint for a selected/featured state — not for routine status. */
+				brand: "bg-primary/10 text-primary [a]:hover:bg-primary/15",
+				success: "bg-success/12 text-success",
+				warning: "bg-warning/12 text-warning",
+				info: "bg-info/12 text-info",
+				destructive: "bg-destructive/10 text-destructive [a]:hover:bg-destructive/15 dark:bg-destructive/20",
+				ghost: "text-muted-foreground hover:bg-muted",
 				link: "text-primary underline-offset-4 hover:underline",
 			},
 		},
@@ -24,6 +36,7 @@ const badgeVariants = cva(
 	},
 );
 
+/** Neutral by default; pass a status variant only for exceptions. */
 function Badge({
 	className,
 	variant = "default",
@@ -46,4 +59,4 @@ function Badge({
 	});
 }
 
-export { Badge };
+export { Badge, badgeVariants };

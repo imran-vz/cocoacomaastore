@@ -1,30 +1,30 @@
 import { cn } from "@/lib/utils";
 import type { OrderViewModel } from "./orders-view-model";
 
+/** `2 × Name` on the left, the line amount on the right (Shopify POS order detail). */
 export function OrderLineItems({ order, className }: { order: OrderViewModel; className?: string }) {
 	return (
-		<ul className={cn("divide-y", className)}>
+		<ul className={cn("space-y-2.5", className)} aria-label={`Items in order ${order.orderLabel}`}>
 			{order.lines.map((line) => (
-				<li key={line.id} className="grid grid-cols-[1fr_auto] gap-x-3 py-2">
+				<li key={line.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 text-sm">
 					<div className="min-w-0">
-						<p className={cn("font-medium", line.isCombo && "text-primary")}>{line.name}</p>
-						{line.baseDessertName && (
-							<p className="mt-0.5 text-xs text-muted-foreground">Base: {line.baseDessertName}</p>
-						)}
-						{line.modifiers.length > 0 && (
-							<ul className="mt-1 space-y-0.5 border-l-2 pl-2 text-xs text-muted-foreground">
-								{line.modifiers.map((modifier) => (
-									<li key={modifier.id}>
-										{modifier.name}
-										{modifier.quantity > 1 ? ` ×${modifier.quantity}` : ""}
-									</li>
-								))}
-							</ul>
-						)}
+						<p className="font-medium text-foreground">
+							<span className="tabular-nums text-muted-foreground">{line.quantity} ×</span> {line.name}
+						</p>
+						{line.baseDessertName || line.modifiers.length > 0 ? (
+							<p className="mt-0.5 text-[13px] leading-[18px] text-muted-foreground">
+								{[
+									line.baseDessertName,
+									...line.modifiers.map(
+										(modifier) => `${modifier.name}${modifier.quantity > 1 ? ` ×${modifier.quantity}` : ""}`,
+									),
+								]
+									.filter(Boolean)
+									.join(" + ")}
+							</p>
+						) : null}
 					</div>
-					<div className="text-right">
-						<span className="font-mono font-medium tabular-nums">×{line.quantity}</span>
-					</div>
+					<span className="text-right tabular-nums text-foreground">{line.lineTotalLabel}</span>
 				</li>
 			))}
 		</ul>

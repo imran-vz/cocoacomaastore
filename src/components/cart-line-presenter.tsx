@@ -1,10 +1,12 @@
 "use client";
 
-import { Minus, Plus, Trash2, X } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef } from "react";
 
+import { Button } from "@/components/ui/button";
 import { useLongPress } from "@/hooks/use-long-press";
+import { formatINR } from "@/lib/format";
 import { springSnappy } from "@/lib/motion";
 import { MAX_ORDER_LINE_QUANTITY } from "@/lib/order-limits";
 import { getCartLineView } from "@/lib/pos-cart-behaviour";
@@ -80,101 +82,81 @@ export function CartLinePresenter({ line, variant, updateQuantity, removeFromCar
 		}, 100);
 	}, createQuantityHandler(1));
 
+	const lineTotal = line.unitPrice * line.quantity;
+	const meta = [
+		lineView.hasModifiers ? lineView.modifierText : null,
+		line.quantity > 1 ? `${formatINR(line.unitPrice)} each` : null,
+	]
+		.filter(Boolean)
+		.join(" · ");
+	const atMax = line.quantity >= MAX_ORDER_LINE_QUANTITY;
+	// Phones get 44px steppers and remove; the inline (tablet/desktop) cart is compact from md.
+	const stepClass = cn(
+		"flex items-center justify-center text-foreground transition-colors focus-ring focus-visible:z-10",
+		"hover:bg-accent active:bg-accent disabled:pointer-events-none disabled:text-muted-foreground/60",
+		isTablet ? "size-11 md:size-9" : "size-11",
+	);
+
 	return (
-		<motion.div
+		<motion.li
 			layout
-			initial={isTablet ? { opacity: 0, y: -10 } : { opacity: 0, x: -20 }}
-			animate={isTablet ? { opacity: 1, y: 0 } : { opacity: 1, x: 0 }}
+			initial={{ opacity: 0, y: -6 }}
+			animate={{ opacity: 1, y: 0 }}
 			exit={{ opacity: 0, x: 20 }}
 			transition={springSnappy}
-			className={cn(
-				"bg-card",
-				isTablet
-					? "group relative rounded-xl border p-3 hover:border-primary/20 transition-colors"
-					: // Mobile lines sit flush inside the list frame, separated by a hairline
-						// rule instead of a gap; the frame owns the rounding and border.
-						"px-3 py-2.5 border-b last:border-b-0",
-			)}
+			className={cn("bg-card", isTablet ? "px-3 py-2.5" : "px-4 py-3")}
 		>
-			{isTablet && (
-				<motion.button
-					type="button"
-					onClick={() => removeFromCart(line.cartLineId)}
-					whileTap={{ scale: 0.96 }}
-					className={cn(
-						"absolute -top-2 -right-2 size-6 rounded-full",
-						"bg-destructive text-white shadow-md",
-						"flex items-center justify-center",
-						"opacity-0 group-hover:opacity-100 transition-opacity",
-						"hover:bg-destructive/90",
-					)}
-				>
-					<X className="size-3.5" />
-				</motion.button>
-			)}
-
-			<div className={cn("flex items-start justify-between", isTablet ? "gap-2 mb-2" : "gap-3 mb-2")}>
-				<div className="flex-1 min-w-0">
-					<h4 className="font-semibold text-sm leading-tight capitalize truncate">{lineView.displayName}</h4>
-					{lineView.hasModifiers && (
-						<p className={cn("text-muted-foreground mt-0.5 truncate", isTablet ? "text-[10px]" : "text-xs")}>
-							{lineView.modifierText}
-						</p>
-					)}
+			<div className="flex items-start justify-between gap-3">
+				<div className="min-w-0 flex-1">
+					<p className="line-clamp-2 text-[15px] leading-5 font-semibold capitalize">{lineView.displayName}</p>
+					{meta ? <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{meta}</p> : null}
 				</div>
-				<p className={cn("font-bold text-sm text-primary", isTablet && "shrink-0")}>{lineView.lineTotalText}</p>
+				<p className="shrink-0 text-[15px] leading-5 font-semibold tabular-nums">{formatINR(lineTotal)}</p>
 			</div>
 
-			{/* Mobile drops the unit-price line: the stepper and line total already say it. */}
-			<div className="flex items-center justify-between gap-2">
-				{isTablet && <p className="text-[10px] text-muted-foreground font-mono">{lineView.unitPriceText}</p>}
-				<div className="flex items-center rounded-lg bg-muted">
+			<div className="mt-2 flex items-center justify-between gap-2">
+				<fieldset
+					aria-label={`Quantity of ${lineView.displayName}`}
+					className="m-0 flex min-w-0 items-center overflow-hidden rounded-lg border bg-card p-0"
+				>
 					<motion.button
-						whileTap={{ scale: 0.96 }}
+						whileTap={{ scale: 0.94 }}
 						type="button"
-						aria-label="Decrease quantity"
-						className={cn(
-							"flex items-center justify-center rounded-l-lg text-muted-foreground transition-colors",
-							"hover:bg-muted/80 hover:text-foreground",
-							"focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-							isTablet ? "h-7 w-8" : "h-8 w-9",
-						)}
+						aria-label={`Decrease ${lineView.displayName}`}
+						className={stepClass}
 						{...decrementLongPress()}
 					>
-						<Minus className={isTablet ? "size-3" : "size-4"} />
+						<Minus className={isTablet ? "size-5 md:size-4" : "size-5"} />
 					</motion.button>
-					<span className={cn("text-center font-semibold tabular-nums", isTablet ? "w-7 text-xs" : "w-8 text-sm")}>
+					<span
+						className={cn(
+							"min-w-9 border-x px-1 text-center font-semibold tabular-nums",
+							isTablet ? "text-base leading-11 md:text-sm md:leading-9" : "text-base leading-11",
+						)}
+					>
 						{line.quantity}
 					</span>
 					<motion.button
-						whileTap={{ scale: 0.96 }}
+						whileTap={{ scale: 0.94 }}
 						type="button"
-						disabled={line.quantity >= MAX_ORDER_LINE_QUANTITY}
-						aria-label="Increase quantity"
-						className={cn(
-							"flex items-center justify-center rounded-r-lg text-muted-foreground transition-colors",
-							"hover:bg-muted/80 hover:text-foreground",
-							"focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-							"disabled:pointer-events-none disabled:opacity-50",
-							isTablet ? "h-7 w-8" : "h-8 w-9",
-						)}
+						disabled={atMax}
+						aria-label={`Increase ${lineView.displayName}`}
+						className={stepClass}
 						{...incrementLongPress()}
 					>
-						<Plus className={isTablet ? "size-3" : "size-4"} />
+						<Plus className={isTablet ? "size-5 md:size-4" : "size-5"} />
 					</motion.button>
-				</div>
-				{!isTablet && (
-					<motion.button
-						whileTap={{ scale: 0.96 }}
-						type="button"
-						aria-label="Remove item"
-						onClick={() => removeFromCart(line.cartLineId)}
-						className="size-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-					>
-						<Trash2 className="size-4" />
-					</motion.button>
-				)}
+				</fieldset>
+				<Button
+					variant="ghost"
+					size={isTablet ? "icon" : "icon-touch"}
+					aria-label={`Remove ${lineView.displayName}`}
+					onClick={() => removeFromCart(line.cartLineId)}
+					className="-mr-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+				>
+					<Trash2 />
+				</Button>
 			</div>
-		</motion.div>
+		</motion.li>
 	);
 }

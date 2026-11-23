@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandLockup } from "@/components/brand-lockup";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ReactiveButton } from "@/components/ui/reactive-button";
@@ -82,19 +82,19 @@ export default function LoginPage() {
 	const showLoading = isSessionPending || isRedirecting;
 
 	return (
-		<main className="min-h-app w-full max-w-sm mx-auto flex flex-col px-4 pt-10 pb-24 sm:justify-center sm:py-12">
-			<Card>
-				{showLoading ? (
-					<CardContent>
+		<main className="page-texture flex min-h-svh w-full flex-col [--texture-floor:0.4] [--texture-gutters:linear-gradient(to_right,black,transparent_calc(50%-15rem),transparent_calc(50%+15rem),black)] items-center justify-center px-4 pt-[max(env(safe-area-inset-top),2.5rem)] pb-[max(env(safe-area-inset-bottom),2.5rem)]">
+			<div className="w-full max-w-sm">
+				<BrandLockup variant="stacked" className="mb-6" />
+
+				<div className="rounded-2xl border bg-card p-5 text-card-foreground shadow-sm sm:p-6">
+					{showLoading ? (
 						<LoadingState message={isSessionPending ? "Checking session…" : "Opening store…"} />
-					</CardContent>
-				) : (
-					<>
-						<CardHeader>
-							<CardTitle className="text-lg">Sign in</CardTitle>
-							<CardDescription>Use your staff account to open the store.</CardDescription>
-						</CardHeader>
-						<CardContent>
+					) : (
+						<>
+							<div className="mb-5 space-y-1">
+								<h1 className="text-xl font-bold tracking-tight">Sign in</h1>
+								<p className="text-sm text-muted-foreground">Use your staff account to open the store.</p>
+							</div>
 							<form onSubmit={handleSubmit} className="space-y-4">
 								<div className="space-y-2">
 									<Label htmlFor={emailID}>Email</Label>
@@ -111,6 +111,7 @@ export default function LoginPage() {
 										disabled={isLoading}
 										autoComplete="email"
 										inputMode="email"
+										className="md:h-11 md:text-base"
 									/>
 								</div>
 								<div className="space-y-2">
@@ -118,7 +119,6 @@ export default function LoginPage() {
 									<Input
 										id={passwordID}
 										type="password"
-										placeholder="Enter your password"
 										value={password}
 										onChange={(e) => {
 											setPassword(e.target.value);
@@ -127,6 +127,7 @@ export default function LoginPage() {
 										required
 										disabled={isLoading}
 										autoComplete="current-password"
+										className="md:h-11 md:text-base"
 									/>
 								</div>
 								<ReactiveButton
@@ -136,17 +137,19 @@ export default function LoginPage() {
 									isError={isError}
 									loadingLabel="Signing in…"
 									errorLabel="Invalid email or password"
-									className="w-full"
+									className="mt-2 w-full md:h-11"
 								>
 									Sign in
 								</ReactiveButton>
 							</form>
-						</CardContent>
-					</>
-				)}
-			</Card>
+						</>
+					)}
+				</div>
 
-			<p className="mt-4 text-center text-xs text-muted-foreground">Trouble signing in? Ask your store manager.</p>
+				<p className="mt-4 text-center text-[13px] text-muted-foreground">
+					Trouble signing in? Ask your store manager.
+				</p>
+			</div>
 		</main>
 	);
 }

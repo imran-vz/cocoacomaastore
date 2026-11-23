@@ -1,70 +1,164 @@
 "use client";
 
 import { Check, CircleAlert, Plus, X } from "lucide-react";
-import { motion } from "motion/react";
-import { useCallback, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { useReactiveButton } from "@/components/ui/reactive-button";
-import { tweenEnter } from "@/lib/motion";
+import { formatCount, formatINR } from "@/lib/format";
+import { tweenEnter, tweenFast } from "@/lib/motion";
 import type { Dessert } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-// Sized icons for the render-prop stock-toggle host (design-system button svg sizing
-// is not applied to custom hosts, so icons carry their own size classes).
+// Tracked stock below this reads as "Low" (warning) instead of plain muted text.
+const LOW_STOCK_THRESHOLD = 5;
+
 const StockSpinnerIcon = ({ className }: { className?: string }) => (
 	<span
 		aria-hidden="true"
-		className={cn("size-3 animate-spin rounded-full border-2 border-current border-r-transparent", className)}
+		className={cn("size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent", className)}
 	/>
 );
-const StockCheckIcon = ({ className }: { className?: string }) => <Check className={cn("size-3", className)} />;
-const StockAlertIcon = ({ className }: { className?: string }) => <CircleAlert className={cn("size-3", className)} />;
+const StockCheckIcon = ({ className }: { className?: string }) => <Check className={cn("size-3.5", className)} />;
+const StockAlertIcon = ({ className }: { className?: string }) => <CircleAlert className={cn("size-3.5", className)} />;
 
-// The round add-indicator flashes green on a successful add and red when the cart
-// reducer rejects the add (out of stock / limit); null is the resting "+" state.
-type AddFlashStatus = "added" | "rejected" | null;
+/**
+ * Flashes the trailing slot when the cart reducer rejects an add (out of stock / line limit).
+ * A successful add needs no flash: the in-cart count badge pops instead.
+ */
+function useRejectFlash() {
+	const [rejected, setRejected] = useState(false);
+	const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	useEffect(() => () => void (timer.current && clearTimeout(timer.current)), []);
+	const flash = useCallback((ok: boolean) => {
+		if (ok) return;
+		setRejected(true);
+		if (timer.current) clearTimeout(timer.current);
+		timer.current = setTimeout(() => setRejected(false), 700);
+	}, []);
+	return [rejected, flash] as const;
+}
+
+/**
+ * Trailing slot of a tile: a quiet "+" at rest, the in-cart count (22px primary circle)
+ * once the item is in the cart, and a short destructive "×" when an add is rejected.
+ */
+function TileSlot({ quantity, rejected }: { quantity: number; rejected: boolean }) {
+	if (rejected) {
+		return (
+			<span className="flex size-5.5 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+				<X className="size-3.5" strokeWidth={2.5} />
+			</span>
+		);
+	}
+	if (quantity > 0) {
+		return (
+			<AnimatePresence initial={false} mode="popLayout">
+				<motion.span
+					key={quantity}
+					initial={{ scale: 1.35 }}
+					animate={{ scale: 1 }}
+					transition={tweenFast}
+					className="flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-bold text-primary-foreground tabular-nums"
+				>
+					{quantity > 99 ? "99+" : quantity}
+				</motion.span>
+			</AnimatePresence>
+		);
+	}
+	return (
+		<span className="flex size-5.5 items-center justify-center text-muted-foreground/70 transition-colors group-hover/tile:text-foreground">
+			<Plus className="size-4.5" strokeWidth={2} />
+		</span>
+	);
+}
+
+/**
+ * One tile style for every sellable thing on the POS grid (DESIGN.md decision 13):
+ * name first (up to three lines, X1-7), a muted meta line, then the price with the trailing slot.
+ * The whole tile is the add button; in-cart tiles get a brand tint, a ring and the count.
+ */
+function tileShellClass({ inCart, interactive }: { inCart: boolean; interactive: boolean }) {
+	return cn(
+		"group/tile relative flex h-full min-h-27 w-full flex-col rounded-xl border p-3 text-left shadow-xs transition-[background-color,border-color,box-shadow] duration-150 focus-ring",
+		inCart
+			? "border-primary/40 bg-[color-mix(in_oklab,var(--primary)_5%,var(--card))] ring-[0.5px] ring-primary/40"
+			: "bg-card",
+		interactive && !inCart && "hover:bg-accent active:bg-accent",
+		interactive && inCart && "hover:bg-[color-mix(in_oklab,var(--primary)_8%,var(--card))]",
+	);
+}
+
+function TileBody({
+	name,
+	meta,
+	price,
+	trailing,
+	priceMuted = false,
+}: {
+	name: string;
+	meta?: React.ReactNode;
+	price: number;
+	trailing?: React.ReactNode;
+	priceMuted?: boolean;
+}) {
+	return (
+		<>
+			<span className="line-clamp-3 text-[15px] leading-5 font-semibold text-pretty text-foreground">{name}</span>
+			{meta ? <span className="mt-1 flex min-h-5 items-center text-[13px] text-muted-foreground">{meta}</span> : null}
+			<span className="mt-auto flex items-end justify-between gap-2 pt-2">
+				<span
+					className={cn(
+						"text-[15px] leading-5 font-semibold tabular-nums",
+						priceMuted ? "text-muted-foreground" : "text-foreground",
+					)}
+				>
+					{formatINR(price)}
+				</span>
+				{trailing}
+			</span>
+		</>
+	);
+}
 
 interface ProductCardProps {
 	dessert: Dessert;
+	/** How many of this dessert (as a plain line, not via a combo) are already in the cart. */
+	cartQuantity?: number;
 	onAddToCart: (dessert: Dessert) => boolean;
 	onToggleStock?: (dessert: Dessert) => Promise<string>;
 	onToggleStockComplete?: (dessertId: number) => void;
 	isStockToggleLoading?: boolean;
 	stockToggleIsOutOfStock?: boolean;
-	compact?: boolean;
 }
 
 export function ProductCard({
 	dessert,
+	cartQuantity = 0,
 	onAddToCart,
 	onToggleStock,
 	onToggleStockComplete,
 	isStockToggleLoading = false,
 	stockToggleIsOutOfStock,
-	compact = false,
 }: ProductCardProps) {
-	const [addFlash, setAddFlash] = useState<AddFlashStatus>(null);
+	const [rejected, flashReject] = useRejectFlash();
 
 	const inventoryQty = dessert.inventoryQuantity;
 	const isInventoryOutOfStock = !dessert.hasUnlimitedStock && inventoryQty !== undefined && inventoryQty <= 0;
 	const isUnavailable = dessert.isOutOfStock || isInventoryOutOfStock || isStockToggleLoading;
-	// The stock control only ever restores stock now — marking an item unavailable from
-	// the grid was too easy to hit by accident. Use the pinned value so the control
-	// survives the success flash.
+	// The stock control only ever restores stock — marking an item unavailable from the grid
+	// was too easy to hit by accident. Use the pinned value so the control survives the flash.
 	const canRestock = stockToggleIsOutOfStock ?? dessert.isOutOfStock;
 	const stockToggleAction = "Restock";
 	const showRestock = Boolean(onToggleStock) && canRestock;
-	// The restock control sits in the card footer, so the shell cannot be a <button>
-	// while it is on screen — buttons do not nest. Unavailable cards are not clickable
-	// anyway, and the card stays inert through the post-restock flash so the "Updated"
-	// confirmation has somewhere to sit.
+	// The restock control sits inside the tile, so the tile cannot be a <button> while it is
+	// on screen (buttons do not nest). Unavailable tiles are not addable anyway.
 	const isInert = isUnavailable || showRestock;
 
 	const handleAddToCart = useCallback(() => {
 		if (isUnavailable) return;
-		const ok = onAddToCart(dessert);
-		setAddFlash(ok ? "added" : "rejected");
-		setTimeout(() => setAddFlash(null), 600);
-	}, [dessert, isUnavailable, onAddToCart]);
+		flashReject(onAddToCart(dessert));
+	}, [dessert, flashReject, isUnavailable, onAddToCart]);
 
 	const [stockButton, StockButton] = useReactiveButton({
 		label: stockToggleAction,
@@ -93,119 +187,19 @@ export function ProductCard({
 		[dessert, onToggleStock, onToggleStockComplete, stockButton],
 	);
 
-	const getStockBadge = () => {
-		if (isUnavailable) {
-			return (
-				<span className="inline-flex items-center px-2 py-0.5 rounded-full bg-destructive/10 text-destructive text-[10px] font-semibold">
-					Out of Stock
-				</span>
+	let meta: React.ReactNode = null;
+	if (isUnavailable) {
+		meta = <Badge variant="destructive">Out of stock</Badge>;
+	} else if (inventoryQty !== undefined) {
+		meta =
+			inventoryQty < LOW_STOCK_THRESHOLD ? (
+				<Badge variant="warning">{formatCount(inventoryQty, "left")}</Badge>
+			) : (
+				<span className="tabular-nums">{formatCount(inventoryQty, "left")}</span>
 			);
-		}
+	}
 
-		if (inventoryQty !== undefined) {
-			const isLow = inventoryQty < 5;
-			return (
-				<span
-					className={cn(
-						"inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold",
-						isLow
-							? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-							: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-					)}
-				>
-					{inventoryQty} left
-				</span>
-			);
-		}
-
-		return null;
-	};
-
-	// Cells sit flush inside the grid frame, so the shell carries no border or rounding
-	// of its own — the frame owns those, and unavailability reads as a shaded row.
-	const shellClass = cn(
-		"w-full h-full text-left flex flex-col transition-colors duration-200",
-		"focus:outline-none focus-visible:inset-ring-2 focus-visible:inset-ring-ring",
-		isUnavailable ? "bg-muted/40 cursor-not-allowed" : "bg-card",
-		compact ? "p-2.5" : "p-4",
-	);
-
-	const cardBody = (
-		<div className="flex flex-col flex-1">
-			{/* Header: Name & Price */}
-			<div className={cn("flex items-start justify-between gap-2", compact ? "mb-1" : "mb-1.5")}>
-				<h3
-					className={cn(
-						"font-semibold leading-tight",
-						compact ? "text-[13px] line-clamp-2" : "text-base",
-						isUnavailable && "line-through text-muted-foreground",
-					)}
-				>
-					{dessert.name}
-				</h3>
-				<span
-					className={cn(
-						"shrink-0 font-bold tabular-nums",
-						compact ? "text-[13px]" : "text-base",
-						isUnavailable ? "text-muted-foreground" : "text-primary",
-					)}
-				>
-					₹{dessert.price}
-				</span>
-			</div>
-
-			{/* Description */}
-			{dessert.description && !compact && (
-				<p className="text-xs text-muted-foreground line-clamp-2 mb-2.5 leading-relaxed">{dessert.description}</p>
-			)}
-
-			{/* Footer: Stock badge, plus either the restock shortcut or the add indicator */}
-			<div className={cn("flex items-center justify-between gap-2 mt-auto", compact ? "pt-1.5" : "pt-2")}>
-				{getStockBadge()}
-
-				{showRestock ? (
-					<StockButton
-						onClick={handleToggleStock}
-						aria-label={`${stockToggleAction} ${dessert.name}`}
-						render={
-							<motion.button
-								type="button"
-								whileTap={{ scale: 0.95 }}
-								className={cn(
-									"ml-auto shrink-0 inline-flex items-center gap-1 rounded-md border border-border",
-									"bg-background px-1.5 py-0.5 text-[10px] font-medium",
-									"text-green-600 hover:text-green-700 hover:bg-muted",
-									"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-								)}
-							/>
-						}
-					/>
-				) : (
-					!isUnavailable && (
-						<div
-							className={cn(
-								"ml-auto flex items-center justify-center rounded-full transition-colors",
-								compact ? "size-7" : "size-9",
-								addFlash === "added"
-									? "bg-green-500 text-white"
-									: addFlash === "rejected"
-										? "bg-red-500 text-white"
-										: "bg-primary/10 text-primary hover:bg-primary/20",
-							)}
-						>
-							{addFlash === "added" ? (
-								<Check className={cn(compact ? "size-3.5" : "size-5")} />
-							) : addFlash === "rejected" ? (
-								<X className={cn(compact ? "size-3.5" : "size-5")} />
-							) : (
-								<Plus className={cn(compact ? "size-3.5" : "size-5")} />
-							)}
-						</div>
-					)
-				)}
-			</div>
-		</div>
-	);
+	const inCart = cartQuantity > 0 && !isInert;
 
 	return (
 		<motion.div
@@ -214,25 +208,48 @@ export function ProductCard({
 			animate={{ opacity: 1 }}
 			exit={{ opacity: 0 }}
 			transition={tweenEnter}
-			className="group relative h-full select-none"
+			className="h-full select-none"
 		>
 			{isInert ? (
-				<div className={shellClass}>{cardBody}</div>
+				<div className={tileShellClass({ inCart: false, interactive: false })}>
+					<TileBody
+						name={dessert.name}
+						meta={meta}
+						price={dessert.price}
+						priceMuted
+						trailing={
+							showRestock ? (
+								<StockButton
+									onClick={handleToggleStock}
+									aria-label={`${stockToggleAction} ${dessert.name}`}
+									variant="outline"
+									size="sm"
+									className="-my-1 -mr-1"
+								/>
+							) : null
+						}
+					/>
+				</div>
 			) : (
 				<motion.button
 					type="button"
 					onClick={handleAddToCart}
 					whileTap={{ scale: 0.97 }}
-					className={cn(shellClass, "hover:bg-muted/40 active:bg-muted/60")}
+					aria-label={`${dessert.name} ${formatINR(dessert.price)}${cartQuantity > 0 ? `, ${cartQuantity} in cart` : ""}`}
+					className={tileShellClass({ inCart, interactive: true })}
 				>
-					{cardBody}
+					<TileBody
+						name={dessert.name}
+						meta={meta}
+						price={dessert.price}
+						trailing={<TileSlot quantity={cartQuantity} rejected={rejected} />}
+					/>
 				</motion.button>
 			)}
 		</motion.div>
 	);
 }
 
-// Combo variant of the product card
 interface ComboCardProps {
 	combo: {
 		id: number;
@@ -255,100 +272,44 @@ interface ComboCardProps {
 		}>;
 		overridePrice: number | null;
 	};
+	cartQuantity?: number;
 	onAddToCart: () => boolean;
-	compact?: boolean;
 }
 
-export function ComboCard({ combo, onAddToCart, compact = false }: ComboCardProps) {
-	const [addFlash, setAddFlash] = useState<AddFlashStatus>(null);
+export function ComboCard({ combo, cartQuantity = 0, onAddToCart }: ComboCardProps) {
+	const [rejected, flashReject] = useRejectFlash();
 
-	// Compute display price
 	const modifierTotal = combo.items.reduce((sum, item) => sum + item.dessert.price * item.quantity, 0);
 	const displayPrice = combo.overridePrice ?? combo.baseDessert.price + modifierTotal;
 
 	const handleAddToCart = useCallback(() => {
-		const ok = onAddToCart();
-		setAddFlash(ok ? "added" : "rejected");
-		setTimeout(() => setAddFlash(null), 600);
-	}, [onAddToCart]);
+		flashReject(onAddToCart());
+	}, [flashReject, onAddToCart]);
 
-	const comboDescription =
-		combo.baseDessert.name +
-		(combo.items.length > 0
-			? ` + ${combo.items
-					.map((item) => (item.quantity > 1 ? `${item.quantity}× ${item.dessert.name}` : item.dessert.name))
-					.join(", ")}`
-			: "");
+	const inCart = cartQuantity > 0;
 
 	return (
 		<motion.div
 			layout
-			initial={{ opacity: 0, scale: 0.95 }}
-			animate={{ opacity: 1, scale: 1 }}
-			exit={{ opacity: 0, scale: 0.95 }}
+			initial={{ opacity: 0 }}
+			animate={{ opacity: 1 }}
+			exit={{ opacity: 0 }}
 			transition={tweenEnter}
-			className="group relative select-none h-full"
+			className="h-full select-none"
 		>
 			<motion.button
 				type="button"
 				onClick={handleAddToCart}
 				whileTap={{ scale: 0.97 }}
-				className={cn(
-					"w-full h-full text-left rounded-2xl bg-linear-to-br from-primary/5 to-primary/10 border-2 border-primary/20 overflow-hidden transition-[border-color,box-shadow] duration-200",
-					"focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-					"hover:border-primary/40 hover:shadow-md active:border-primary/50",
-					compact ? "p-2.5" : "p-4",
-				)}
+				aria-label={`${combo.name} combo ${formatINR(displayPrice)}${inCart ? `, ${cartQuantity} in cart` : ""}`}
+				className={tileShellClass({ inCart, interactive: true })}
 			>
-				<div className="relative z-10 flex flex-col h-full">
-					{/* Header */}
-					<div className="flex items-center justify-between gap-2 mb-1">
-						<span className="text-[10px] font-bold uppercase tracking-wide text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
-							Combo
-						</span>
-						<span className={cn("shrink-0 font-bold text-primary tabular-nums", compact ? "text-[13px]" : "text-base")}>
-							₹{displayPrice}
-						</span>
-					</div>
-
-					{/* Name */}
-					<h3 className={cn("font-semibold leading-tight line-clamp-1 mb-0.5", compact ? "text-[13px]" : "text-base")}>
-						{combo.name}
-					</h3>
-
-					{/* Description */}
-					<p
-						className={cn(
-							"text-[11px] text-muted-foreground line-clamp-1 leading-relaxed",
-							compact ? "" : "text-xs line-clamp-2",
-						)}
-					>
-						{comboDescription}
-					</p>
-
-					{/* Add Button */}
-					<div className={cn("flex justify-end mt-auto", compact ? "pt-1.5" : "pt-2")}>
-						<div
-							className={cn(
-								"flex items-center justify-center rounded-full transition-colors",
-								compact ? "size-7" : "size-9",
-								addFlash === "added"
-									? "bg-green-500 text-white"
-									: addFlash === "rejected"
-										? "bg-red-500 text-white"
-										: "bg-primary text-primary-foreground",
-							)}
-						>
-							{addFlash === "added" ? (
-								<Check className={cn(compact ? "size-3.5" : "size-5")} />
-							) : addFlash === "rejected" ? (
-								<X className={cn(compact ? "size-3.5" : "size-5")} />
-							) : (
-								<Plus className={cn(compact ? "size-3.5" : "size-5")} />
-							)}
-						</div>
-					</div>
-				</div>
+				<TileBody
+					name={combo.name}
+					meta="Combo"
+					price={displayPrice}
+					trailing={<TileSlot quantity={cartQuantity} rejected={rejected} />}
+				/>
 			</motion.button>
 		</motion.div>
 	);

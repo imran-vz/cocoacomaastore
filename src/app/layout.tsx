@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Nunito_Sans } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import Navbar from "@/components/navbar";
 import { QueryProvider } from "@/components/query-provider";
 import { cn } from "@/lib/utils";
 
@@ -10,7 +9,7 @@ import "./globals.css";
 const nunitoSans = Nunito_Sans({
 	variable: "--font-nunito-sans",
 	subsets: ["latin"],
-	weight: ["400", "500", "600", "700"],
+	weight: ["400", "500", "600", "700", "800"],
 });
 
 const geistMono = Geist_Mono({
@@ -41,7 +40,8 @@ export const metadata: Metadata = {
 	appleWebApp: {
 		capable: true,
 		title: "Cocoa Comaa",
-		statusBarStyle: "black-translucent",
+		// The app bar is light, so the iOS status bar uses dark text on its own opaque strip.
+		statusBarStyle: "default",
 		startupImage: "/icon-512x512.png",
 	},
 };
@@ -52,7 +52,9 @@ export const viewport: Viewport = {
 	minimumScale: 1,
 	maximumScale: 1,
 	userScalable: false,
-	themeColor: "#502922",
+	viewportFit: "cover",
+	// Warm page background (--background), so the browser/status bar merges with the app bar.
+	themeColor: "#faf8f4",
 	colorScheme: "light",
 };
 
@@ -63,12 +65,9 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" data-scroll-behavior="smooth">
-			<body className={cn(nunitoSans.variable, geistMono.variable, "antialiased bg-[url(/bg-grid.svg)] select-none")}>
+			<body className={cn(nunitoSans.variable, geistMono.variable, "antialiased select-none")}>
 				<NuqsAdapter>
-					<QueryProvider>
-						<Navbar />
-						{children}
-					</QueryProvider>
+					<QueryProvider>{children}</QueryProvider>
 				</NuqsAdapter>
 			</body>
 		</html>

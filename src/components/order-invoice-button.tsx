@@ -5,15 +5,14 @@ import { Download } from "lucide-react";
 import { useReactiveButton } from "@/components/ui/reactive-button";
 import { downloadOrderInvoice } from "@/lib/order-invoice";
 import type { SerializedOrderDetails } from "@/lib/order-lifecycle";
-import { cn } from "@/lib/utils";
 
 export function OrderInvoiceButton({ order, className }: { order: SerializedOrderDetails; className?: string }) {
 	const [button, ExportButton] = useReactiveButton({
-		label: "Export PDF",
+		label: "Download invoice",
 		icon: Download,
-		loading: { label: "Preparing PDF..." },
+		loading: { label: "Preparing invoice..." },
 		success: { label: "Downloaded" },
-		error: { label: "Export failed" },
+		error: { label: "Download failed" },
 		feedbackStyle: "neutral",
 	});
 
@@ -24,10 +23,10 @@ export function OrderInvoiceButton({ order, className }: { order: SerializedOrde
 			await downloadOrderInvoice(order);
 			button.setSuccess("Downloaded", { token });
 		} catch (error) {
-			if (!button.setError("Export failed", { token })) return;
+			if (!button.setError("Download failed", { token })) return;
 			console.error("Failed to export invoice:", error);
 		}
 	};
 
-	return <ExportButton variant="outline" size="sm" className={cn("w-full", className)} onClick={handleExport} />;
+	return <ExportButton variant="outline" className={className} onClick={handleExport} />;
 }

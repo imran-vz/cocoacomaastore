@@ -16,7 +16,7 @@ export default async function AdminOrders() {
 	const orders = getCachedOrders();
 
 	return (
-		<AdminPageShell>
+		<AdminPageShell frame="wide">
 			<Suspense fallback={<OrdersSkeleton includeMain={false} />}>
 				<OrdersPage initialOrders={orders} />
 			</Suspense>

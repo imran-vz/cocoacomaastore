@@ -9,8 +9,8 @@ import ManageCombos from "./manage-combos";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-	title: "Combo Management",
-	description: "Manage dessert combos",
+	title: "Combos",
+	description: "Dessert combos",
 };
 
 export default async function page() {
@@ -19,7 +19,7 @@ export default async function page() {
 	const modifierDesserts = getCachedModifierDesserts();
 
 	return (
-		<AdminPageShell>
+		<AdminPageShell frame="narrow">
 			<Suspense fallback={<CombosSkeleton includeMain={false} />}>
 				<ManageCombos initialCombos={combos} baseDesserts={baseDesserts} modifierDesserts={modifierDesserts} />
 			</Suspense>

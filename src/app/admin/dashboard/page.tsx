@@ -20,7 +20,7 @@ export default async function DashboardPage() {
 	const dailyRevenue = report.then((data) => data.dailyRevenue);
 
 	return (
-		<AdminPageShell>
+		<AdminPageShell frame="wide">
 			<Suspense fallback={<DashboardSkeleton includeMain={false} />}>
 				<DashboardContent stats={stats} stock={stock} auditLogs={auditLogs} dailyRevenue={dailyRevenue} />
 			</Suspense>

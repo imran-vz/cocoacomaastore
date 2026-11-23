@@ -1,9 +1,15 @@
+import { cookies } from "next/headers";
 import { RedirectType, redirect } from "next/navigation";
 
+import { AppBarProvider } from "@/components/app-bar";
+import { AppMain, shellVarsClassName } from "@/components/app-shell";
 import { AppSidebar } from "@/components/app-sidebar";
+import { AppTopBar } from "@/components/app-top-bar";
+import { BottomNav } from "@/components/bottom-nav";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { getServerSession } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
 	const data = await getServerSession();
@@ -16,22 +22,30 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 		redirect("/", RedirectType.replace);
 	}
 
+	const user = { name: data.user.name, email: data.user.email, role: data.user.role };
+	// Respect the collapsed/expanded choice the sidebar stores in its cookie.
+	const sidebarOpen = (await cookies()).get("sidebar_state")?.value !== "false";
+
 	return (
-		<div className="flex min-h-app flex-col">
+		<AppBarProvider>
 			<SidebarProvider
+				defaultOpen={sidebarOpen}
+				className={cn(shellVarsClassName, "md:[--shell-chrome-y:1rem]")}
 				style={
 					{
-						"--sidebar-width": "calc(var(--spacing) * 72)",
-						"--header-height": "calc(var(--spacing) * 12)",
+						"--sidebar-width": "calc(var(--spacing) * 64)",
+						"--header-height": "calc(var(--spacing) * 14)",
 					} as React.CSSProperties
 				}
 			>
-				<AppSidebar variant="inset" />
-				<SidebarInset>
+				<AppSidebar variant="inset" user={user} />
+				<SidebarInset className="page-texture min-w-0">
+					<AppTopBar area="admin" user={user} />
 					<SiteHeader />
-					<div className="md:px-4 md:py-6">{children}</div>
+					<AppMain>{children}</AppMain>
 				</SidebarInset>
+				<BottomNav area="admin" user={user} />
 			</SidebarProvider>
-		</div>
+		</AppBarProvider>
 	);
 }

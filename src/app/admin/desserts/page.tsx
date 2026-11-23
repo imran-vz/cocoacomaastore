@@ -11,8 +11,8 @@ import { DessertsSkeleton } from "../loading-skeletons";
 export const dynamic = "force-dynamic"; // forces dynamic rendering
 
 export const metadata: Metadata = {
-	title: "Desserts & Inventory",
-	description: "Manage desserts and daily inventory",
+	title: "Desserts",
+	description: "Desserts, visibility and today's stock",
 };
 
 export default async function page() {
@@ -22,14 +22,13 @@ export default async function page() {
 	const inventory = getCachedTodayInventory();
 
 	return (
-		<AdminPageShell>
+		<AdminPageShell frame="narrow">
 			<Suspense fallback={<DessertsSkeleton includeMain={false} />}>
 				<ManageDessertsInventory
 					initialDesserts={desserts}
 					initialInventory={inventory}
 					onSaveInventory={upsertInventoryWithAudit}
-					subtitle="Manage your dessert inventory, stock, and visibility"
-					maxWidth="max-w-none"
+					area="admin"
 				/>
 			</Suspense>
 		</AdminPageShell>

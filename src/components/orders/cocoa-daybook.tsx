@@ -2,7 +2,6 @@
 
 import { ChevronDown } from "lucide-react";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { OrderDetailPanel } from "./order-detail-panel";
@@ -15,14 +14,40 @@ export function DaybookTableColumns() {
 	return (
 		<TableHeader className="bg-muted/50">
 			<TableRow className="hover:bg-transparent">
-				<TableHead className="w-28">Time</TableHead>
-				<TableHead className="w-24">Order</TableHead>
-				<TableHead>Details</TableHead>
-				<TableHead className="w-20 text-right">Qty</TableHead>
+				<TableHead className="w-24 pl-4">Order</TableHead>
+				<TableHead className="w-24">Time</TableHead>
+				<TableHead>Items</TableHead>
+				<TableHead className="w-16 text-right">Qty</TableHead>
 				<TableHead className="w-28 text-right">Total</TableHead>
-				<TableHead className="w-32 text-right">Status</TableHead>
+				<TableHead className="w-32 pr-4 text-right">
+					<span className="sr-only">Status and details</span>
+				</TableHead>
 			</TableRow>
 		</TableHeader>
+	);
+}
+
+/** Line 3 of a row: `12:30 AM · 5 items`. */
+function orderMeta(order: OrderViewModel) {
+	return [order.timeLabel, order.itemsLabel].join(" · ");
+}
+
+/**
+ * The first item on its own (up to two lines) with "+N more" (X1-7), so walk-in rows stay
+ * recognisable without opening them.
+ */
+function OrderItemsPreview({ order, className }: { order: OrderViewModel; className?: string }) {
+	if (!order.firstItemLabel) return null;
+	return (
+		<span className={cn("line-clamp-2 text-sm leading-5 text-foreground", className)}>
+			{order.firstItemLabel}
+			{order.moreItemsLabel ? (
+				<>
+					{" "}
+					<span className="whitespace-nowrap text-muted-foreground tabular-nums">{order.moreItemsLabel}</span>
+				</>
+			) : null}
+		</span>
 	);
 }
 
@@ -75,82 +100,79 @@ export function CocoaDaybook({
 		order.isCancelled ? undefined : renderCancelAction?.(order);
 
 	if (model.orders.length === 0) {
-		return <OrdersEmptyState className="mx-auto max-w-6xl" {...emptyState} />;
+		return <OrdersEmptyState {...emptyState} />;
 	}
 
 	return (
-		<section className="mx-auto max-w-6xl space-y-3" aria-label="Cocoa Daybook order layout">
+		<section className="space-y-4" aria-label="Orders">
 			<OrdersSummary model={model} additionalMetric={additionalMetric} />
 
-			<div className="overflow-hidden rounded-xl border bg-card md:hidden">
-				<ul className="divide-y">
-					{model.orders.map((order) => {
-						const isExpanded = expandedOrderId === order.id;
-						const contentId = `daybook-mobile-${order.id}`;
+			{/* Records switch on the content width, not the viewport (decision 1): at 820px with the
+			    admin sidebar open the content is ~520px, so the list keeps every amount visible. */}
+			<ul className="divide-y overflow-hidden rounded-xl border bg-card @3xl/main:hidden" aria-label="Orders list">
+				{model.orders.map((order) => {
+					const isExpanded = expandedOrderId === order.id;
+					const contentId = `daybook-mobile-${order.id}`;
 
-						return (
-							<li key={order.id} ref={order.id === targetOrderId ? mobileTargetRowRef : undefined}>
-								<button
-									type="button"
-									aria-expanded={isExpanded}
-									aria-controls={contentId}
-									onClick={() => toggleOrder(order.id)}
-									className="w-full px-3 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none motion-reduce:transition-none"
-								>
-									<span className="flex items-center gap-2">
-										<span className="font-mono text-xs text-muted-foreground tabular-nums">{order.timeLabel}</span>
-										<Badge variant="outline" className="font-mono">
-											{order.orderLabel}
-										</Badge>
-										<span className="shrink-0 text-xs text-muted-foreground">
-											{order.totalItems} item{order.totalItems === 1 ? "" : "s"}
+					return (
+						<li key={order.id} ref={order.id === targetOrderId ? mobileTargetRowRef : undefined}>
+							<button
+								type="button"
+								data-order-toggle={order.id}
+								aria-expanded={isExpanded}
+								aria-controls={contentId}
+								onClick={() => toggleOrder(order.id)}
+								className={cn(
+									"flex min-h-16 w-full items-start gap-3 py-3 pr-3 pl-4 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--focus-ring) active:bg-muted motion-reduce:transition-none",
+									isExpanded && "bg-muted/40",
+								)}
+							>
+								<span className="flex min-w-0 flex-1 flex-col gap-0.5">
+									<span className="flex items-baseline justify-between gap-3">
+										<span className="min-w-0 truncate text-[15px] leading-5 font-semibold text-foreground">
+											<span className="tabular-nums">{order.orderLabel}</span>
+											{!order.isWalkInCustomer && <span> · {order.customerName}</span>}
 										</span>
 										<span
 											className={cn(
-												"ml-auto font-mono font-semibold tabular-nums",
-												order.isCancelled && "line-through",
+												"shrink-0 text-[15px] leading-5 font-semibold tabular-nums",
+												order.isCancelled ? "text-muted-foreground line-through" : "text-foreground",
 											)}
 										>
 											{order.totalLabel}
 										</span>
-										<ChevronDown
-											aria-hidden="true"
-											className={cn(
-												"size-4 text-muted-foreground transition-transform motion-reduce:transition-none",
-												isExpanded && "rotate-180",
-											)}
-										/>
 									</span>
-									<span className="mt-2 flex min-w-0 items-center gap-2">
-										<span
-											className={cn(
-												"truncate",
-												order.isWalkInCustomer ? "text-sm text-muted-foreground" : "font-semibold",
-											)}
-										>
-											{order.isWalkInCustomer ? order.itemsSummary : order.customerName}
+									<OrderItemsPreview order={order} />
+									<span className="flex min-h-5 items-center justify-between gap-3">
+										<span className="min-w-0 truncate text-[13px] leading-[18px] text-muted-foreground tabular-nums">
+											{orderMeta(order)}
 										</span>
-										<span className="ml-auto shrink-0">
-											<OrderStatusBadge order={order} />
-										</span>
+										<OrderStatusBadge order={order} />
 									</span>
-								</button>
+								</span>
+								<ChevronDown
+									aria-hidden="true"
+									className={cn(
+										"mt-0.5 size-5 shrink-0 text-muted-foreground/70 transition-transform motion-reduce:transition-none",
+										isExpanded && "rotate-180",
+									)}
+								/>
+							</button>
 
-								{isExpanded && (
-									<div
-										id={contentId}
-										className="overflow-hidden border-t bg-muted/20 px-3 py-3 animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-out motion-reduce:animate-none"
-									>
-										<OrderDetailPanel order={order} cancelAction={renderCancelActionFor(order)} />
-									</div>
-								)}
-							</li>
-						);
-					})}
-				</ul>
-			</div>
+							{isExpanded && (
+								<div
+									id={contentId}
+									className="border-t bg-muted/40 px-4 pt-3 pb-4 animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-out motion-reduce:animate-none"
+								>
+									<OrderDetailPanel order={order} cancelAction={renderCancelActionFor(order)} />
+								</div>
+							)}
+						</li>
+					);
+				})}
+			</ul>
 
-			<div className="hidden overflow-hidden rounded-xl border bg-card shadow-xs md:block">
+			<div className="hidden rounded-xl border bg-card @3xl/main:block [&_[data-slot=table-container]]:rounded-xl">
 				<Table>
 					<DaybookTableColumns />
 					<TableBody>
@@ -163,40 +185,38 @@ export function CocoaDaybook({
 									<TableRow
 										ref={order.id === targetOrderId ? tableTargetRowRef : undefined}
 										data-state={isExpanded ? "selected" : undefined}
+										className="cursor-pointer"
+										onClick={() => toggleOrder(order.id)}
 									>
-										<TableCell className="font-mono text-xs text-muted-foreground tabular-nums">
-											{order.timeLabel}
+										<TableCell className="pl-4 font-semibold tabular-nums">{order.orderLabel}</TableCell>
+										<TableCell className="text-muted-foreground tabular-nums">{order.timeLabel}</TableCell>
+										<TableCell className="min-w-48 whitespace-normal">
+											{!order.isWalkInCustomer && <p className="truncate font-semibold">{order.customerName}</p>}
+											<OrderItemsPreview order={order} />
 										</TableCell>
-										<TableCell>
-											<Badge variant="outline" className="font-mono">
-												{order.orderLabel}
-											</Badge>
-										</TableCell>
-										<TableCell className="max-w-80">
-											{!order.isWalkInCustomer && <p className="truncate font-medium">{order.customerName}</p>}
-											<p className={cn("truncate text-sm text-muted-foreground", !order.isWalkInCustomer && "mt-0.5")}>
-												{order.itemsSummary}
-											</p>
-										</TableCell>
-										<TableCell className="text-right font-mono tabular-nums">{order.totalItems}</TableCell>
+										<TableCell className="text-right tabular-nums">{order.totalItems}</TableCell>
 										<TableCell
 											className={cn(
-												"text-right font-mono font-semibold tabular-nums",
-												order.isCancelled && "line-through",
+												"text-right font-semibold tabular-nums",
+												order.isCancelled && "text-muted-foreground line-through",
 											)}
 										>
 											{order.totalLabel}
 										</TableCell>
-										<TableCell>
+										<TableCell className="pr-4">
 											<div className="flex items-center justify-end gap-2">
 												<OrderStatusBadge order={order} />
 												<button
 													type="button"
+													data-order-toggle={order.id}
 													aria-label={`${isExpanded ? "Hide" : "Show"} details for order ${order.orderLabel}`}
 													aria-expanded={isExpanded}
 													aria-controls={contentId}
-													onClick={() => toggleOrder(order.id)}
-													className="grid size-8 place-items-center rounded-lg hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+													onClick={(event) => {
+														event.stopPropagation();
+														toggleOrder(order.id);
+													}}
+													className="focus-ring grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
 												>
 													<ChevronDown
 														aria-hidden="true"
@@ -211,12 +231,12 @@ export function CocoaDaybook({
 									</TableRow>
 									{isExpanded && (
 										<TableRow id={contentId} className="hover:bg-transparent">
-											<TableCell colSpan={6} className="overflow-hidden whitespace-normal bg-muted/20 p-4">
+											<TableCell colSpan={6} className="whitespace-normal bg-muted/40 px-4 py-4">
 												<div className="animate-in fade-in-0 slide-in-from-top-1 duration-200 ease-out motion-reduce:animate-none">
 													<OrderDetailPanel
 														order={order}
 														cancelAction={renderCancelActionFor(order)}
-														className="mx-auto max-w-3xl"
+														className="ml-24 max-w-xl"
 													/>
 												</div>
 											</TableCell>

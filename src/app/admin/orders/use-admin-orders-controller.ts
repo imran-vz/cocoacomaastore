@@ -41,6 +41,7 @@ export function useAdminOrdersController(initialOrders: SerializedOrders) {
 		isFetching,
 		isPending,
 		isPlaceholderData,
+		refetch,
 	} = useQuery({
 		queryKey: ["admin-orders", selectedDateString],
 		queryFn: ({ signal }) => fetchAdminOrders(selectedDateString, signal),
@@ -70,6 +71,10 @@ export function useAdminOrdersController(initialOrders: SerializedOrders) {
 		console.error("Failed to fetch orders:", error);
 	}
 
+	const refreshOrders = useCallback(() => {
+		refetch();
+	}, [refetch]);
+
 	const orders = queriedOrders ?? EMPTY_ORDERS;
 	const model = useMemo(() => buildAdminOrdersViewModel(orders), [orders]);
 
@@ -79,6 +84,8 @@ export function useAdminOrdersController(initialOrders: SerializedOrders) {
 		// of a date, or a date switch still displaying the previous date's placeholder);
 		// background refetches such as the post-cancel invalidation keep the daybook mounted.
 		isLoading: isPending || (isFetching && isPlaceholderData),
+		isRefreshing: isFetching || cancelOrderMutation.isPending,
+		refreshOrders,
 		selectedDate,
 		handleDateChange: setSelectedDate,
 		targetOrderId,
